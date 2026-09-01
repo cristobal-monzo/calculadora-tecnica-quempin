@@ -7,3 +7,9 @@
 # Artefactos de SO
 Thumbs.db
 .DS_Store
+
+# Capturas y snapshots de verificación manual con Playwright
+.playwright-mcp/
+*.png
+!assets/*.PNG
+!assets/*.png

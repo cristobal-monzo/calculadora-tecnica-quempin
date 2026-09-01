@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QUEMPIN — Calculadora Técnica</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%A7%AA</text></svg>">
+  <link rel="stylesheet" href="assets/brand.css">
+  <style>
+    body { margin: 0; }
+    main { max-width: 900px; margin: 0 auto; padding: 0 20px 60px; }
+
+    .hub-hero { text-align: center; padding: 8px 0 8px; }
+    .hub-hero p { font-size: 13.5px; color: var(--text-secondary); max-width: 640px; margin: 0 auto; line-height: 1.6; }
+
+    .hub-section-title {
+      font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-secondary); margin: 0; padding-top: 20px; border-top: 1px solid var(--border-hairline);
+    }
+    .hub-section-title:first-of-type { border-top: none; padding-top: 0; }
+    .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; padding: 16px 0 12px; }
+    .hub-card {
+      background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 14px;
+      padding: 24px; display: flex; flex-direction: column; gap: 10px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .hub-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); }
+    .hub-card .icon { font-size: 32px; line-height: 1; }
+    .hub-card h3 { font-size: 16px; font-weight: 700; margin: 0; }
+    .hub-card p.desc { font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin: 0; flex: 1; }
+    .hub-card a.btn {
+      align-self: flex-start; background: var(--brand-orange); color: #000000; font-weight: 900;
+      font-size: 13px; text-decoration: none; padding: 9px 16px; border-radius: 8px; margin-top: 4px;
+    }
+    .hub-card a.btn:hover { filter: brightness(1.08); }
+    .hub-card a.btn:focus-visible { outline: 2px solid var(--brand-orange-ink, var(--brand-orange)); outline-offset: 2px; }
+    .hub-card.proximamente { opacity: 0.6; }
+    .hub-card.proximamente a.btn { background: var(--gridline); color: var(--text-muted); pointer-events: none; }
+
+    .hub-footnote { font-size: 12px; color: var(--text-muted); text-align: center; margin: 12px 0 0; line-height: 1.6; }
+  </style>
+</head>
+<body>
+<div class="viz-root">
+  <header class="viz-header">
+    <div class="viz-container">
+      <span class="viz-wordmark">QUEMP<span class="in">IN</span></span>
+      <div class="viz-titleblock">
+        <h1>Calculadora Técnica</h1>
+        <p>Dimensionamiento de tuberías, volúmenes y presiones de almacenamiento por gas</p>
+      </div>
+      <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
+    </div>
+  </header>
+
+  <main class="viz-container">
+    <div class="hub-hero">
+      <p>Herramientas de ingeniería para dimensionar instalaciones de gas — diámetro de tuberías,
+      presión máxima de diseño, y volumen/masa/autonomía de almacenamiento. Cada tarjeta abre en
+      una pestaña nueva.</p>
+    </div>
+
+    <h2 class="hub-section-title">Gases</h2>
+    <div class="hub-grid">
+      <article class="hub-card">
+        <div class="icon" aria-hidden="true">🧪</div>
+        <h3>Hidrógeno</h3>
+        <p class="desc">Tubería y flujo (ASME B31.12), almacenamiento (PV=ZnRT) y memoria de cálculo de redes ramificadas.</p>
+        <a class="btn" href="Hidrogeno/" target="_blank" rel="noopener">Abrir calculadora →</a>
+      </article>
+
+      <article class="hub-card proximamente">
+        <div class="icon" aria-hidden="true">🔥</div>
+        <h3>Gas Natural / GLP</h3>
+        <p class="desc">Próximamente — selector de gas compartido entre Gas Natural y GLP.</p>
+        <a class="btn" href="#" aria-disabled="true">Próximamente</a>
+      </article>
+    </div>
+
+    <p class="hub-footnote">Publicado en GitHub Pages, código abierto en
+      <a href="https://github.com/cristobal-monzo/calculadora-tecnica-quempin" target="_blank" rel="noopener">cristobal-monzo/calculadora-tecnica-quempin</a>.</p>
+  </main>
+</div>
+
+<script>
+  (function () {
+    try {
+      var savedTheme = localStorage.getItem('quempin_h2_theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      }
+    } catch (e) {}
+
+    var themeBtn = document.getElementById('themeToggle');
+    function isDarkNow() {
+      var docEl = document.documentElement;
+      return docEl.getAttribute('data-theme') === 'dark' ||
+        (docEl.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    themeBtn.textContent = isDarkNow() ? 'Modo claro' : 'Modo oscuro';
+    themeBtn.addEventListener('click', function () {
+      var docEl = document.documentElement;
+      var next = isDarkNow() ? 'light' : 'dark';
+      docEl.setAttribute('data-theme', next);
+      themeBtn.textContent = next === 'dark' ? 'Modo claro' : 'Modo oscuro';
+      try { localStorage.setItem('quempin_h2_theme', next); } catch (e) {}
+    });
+  })();
+</script>
+</body>
+</html>
