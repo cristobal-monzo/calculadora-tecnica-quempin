@@ -3,10 +3,14 @@
 // MASTER DISEÑO.xlsm!"Estanque GLP" (estanque). Celdas citadas por bloque.
 
 // Bases de Cálculo!K26:Q35 — consumo de artefactos [kWh/día] por nivel de
-// uso y temperatura ambiente. ⚠️ Cocina/Bajo a 10°C (K33=35) es un valor
-// muchísimo más alto que el resto de la fila (patrón esperable ~3.5) — se
-// transcribe literal del Excel fuente, posible error de tipeo del
-// original que Cristóbal debería confirmar (ver GasNatural-GLP/CLAUDE.md).
+// uso y temperatura ambiente.
+//
+// CORREGIDO respecto al Excel fuente (2026-09-01, a pedido del usuario):
+// Cocina/Bajo a 10°C tenía K33=35, muy por encima del resto de la fila
+// (4.6, 5.8, 5.8, 5.8, 5.8, 5.8) y del patrón de las filas Medio/Alto de
+// la misma tabla (que parten más bajo a 10°C y suben o se aplanan hacia
+// temperaturas menores) — se corrigió a 3.5, consistente con ese patrón
+// (probable error de tipeo del "." en el Excel original: 3.5 → 35).
 const TEMPERATURAS = [10, 5, 0, -5, -10, -15, -20];
 const TABLA_CONSUMO_ARTEFACTOS = {
   estufa: {
@@ -20,7 +24,7 @@ const TABLA_CONSUMO_ARTEFACTOS = {
     alto: [7, 14, 20.9, 20.9, 20.9, 20.9, 20.9],
   },
   cocina: {
-    bajo: [35, 4.6, 5.8, 5.8, 5.8, 5.8, 5.8],
+    bajo: [3.5, 4.6, 5.8, 5.8, 5.8, 5.8, 5.8],
     medio: [4.6, 5.8, 7, 7, 7, 7, 7],
     alto: [7, 8.1, 9.3, 9.3, 9.3, 9.3, 9.3],
   },

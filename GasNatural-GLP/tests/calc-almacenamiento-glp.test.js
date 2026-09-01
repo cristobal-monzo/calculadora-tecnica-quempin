@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cilindrosPorVaporizacion, cilindrosPorConsumoDiario, calcularEstanqueGLP } from '../js/calc-almacenamiento-glp.js';
+import { cilindrosPorVaporizacion, cilindrosPorConsumoDiario, calcularEstanqueGLP, consumoArtefacto } from '../js/calc-almacenamiento-glp.js';
 
 function cerca(actual, esperado, tolerancia = 1e-6) {
   assert.ok(
@@ -19,6 +19,13 @@ const resultado = cilindrosPorConsumoDiario({
 });
 cerca(resultado.consumoDiarioKwh, 17.299999999999997); // F18
 assert.equal(resultado.nCilindros, 1); // F20
+
+// Corregido respecto al Excel (2026-09-01, a pedido del usuario):
+// Cocina/Bajo a 10°C tenía K33=35 en la hoja fuente, un valor muchísimo
+// más alto que el resto de la fila y que las filas Medio/Alto de la misma
+// tabla — se corrigió a 3.5 (probable error de tipeo del "."), consistente
+// con el patrón de esa fila y de las filas vecinas.
+cerca(consumoArtefacto({ artefacto: 'cocina', nivel: 'bajo', temperaturaC: 10 }), 3.5);
 
 // Fixtures: MASTER DISEÑO.xlsm, hoja "Estanque GLP", 2026-09-01
 const estanque = calcularEstanqueGLP({ diametroM: 0.76, alturaM: 1.36, capacidadLitros: 500 });

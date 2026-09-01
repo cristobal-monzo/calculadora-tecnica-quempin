@@ -54,37 +54,66 @@ Atmosférico!D38` (columna GN) calcula la "Relación área garganta/
 perforaciones" como `(Dt/(Dh·N))²`, mientras que `H38` (columna GLP)
 usa `(Dt/Dh)²/N` — solo esta última da dimensionalmente una razón de
 áreas correcta (área garganta / área total de perforaciones). El motor
-usa la fórmula de `H38` para ambos gases. **Confirmar con Cristóbal** si
-esto es efectivamente un error de la hoja GN o si hay una razón física
-para la diferencia antes de usar este resultado para una decisión de
-diseño real.
+usa la fórmula de `H38` para ambos gases. Sigue siendo un buen candidato
+para confirmar con Cristóbal (es la única corrección de esta lista que no
+se pudo verificar contra un valor recalculado a mano de forma
+independiente, solo por argumento dimensional), pero ya es el
+comportamiento del código, no algo pendiente.
 
-## Discrepancias del Excel fuente (documentadas, no "corregidas")
+## Correcciones aplicadas (2026-09-01, a pedido del usuario)
+
+Estas cuatro eran inconsistencias del Excel fuente identificadas en el
+análisis inicial. Se corrigieron explícitamente después de que el usuario
+pidiera revisarlas — antes de esto quedaban solo documentadas, sin tocar
+el comportamiento:
+
+- **GN: carbono/hidrógeno ya no mezcla fracción molar con fracción de
+  masa.** `Combustión Gas!F36` (X carbono de GN) ponderaba el término de
+  carbono con fracciones de MASA pero el de hidrógeno con PORCENTAJES
+  MOLARES de entrada — no correspondía a ninguna magnitud física
+  coherente. `js/gas-gn.js` ahora pondera los dos términos con fracción de
+  masa, igual que oxígeno y nitrógeno. Cambia `xCarbono` de 0.7039→0.7058
+  y `xHidrogeno` de 0.2287→0.2267 (composición por defecto), y con eso
+  `aireEsteq` y todo lo que depende de él en Combustión y en Quemador
+  Atmosférico para GN (ver los comentarios en `calc-combustion.js` y en
+  los tests, que documentan cada valor recalculado).
+- **Tabla de consumo de artefactos GLP**: Cocina/Bajo a 10°C tenía
+  `Bases de Cálculo!K33=35` kWh/día, un valor muchísimo más alto que el
+  resto de la fila (3.5–5.8) y que el patrón de las filas Medio/Alto de la
+  misma tabla — corregido a `3.5` en `js/calc-almacenamiento-glp.js`
+  (probable error de tipeo del "." en el Excel original).
+- **"Caudal total" en Combustión ya no depende de qué gas elegiste.** El
+  Excel sumaba el aire con el caudal de combustible en condición normal
+  para GLP (`J10=J9+J6`) pero en condición de referencia para GN
+  (`N9=N8+N6`), sin ninguna razón física para que difiriera según el gas.
+  En vez de elegir una de las dos arbitrariamente, `calc-combustion.js`
+  ahora calcula y expone **las dos** (`caudalTotalNormalNm3H`,
+  `caudalTotalReferenciaM3H`) para los dos gases — la UI muestra ambas.
+- **PCI de GN en "Combustión" y "Quemador Atmosférico" ahora es un campo
+  editable, como en GLP.** El Excel calculaba el flujo de GN siempre desde
+  el PCI derivado de la composición (`Combustión Gas!N4=N2/$F$45`), sin
+  mostrarlo ni dejarlo tocar — mientras que GLP sí tenía un input propio
+  (`J4=48029`). `calcularCombustionGN` y la UI de Quemador ahora reciben
+  `pciKjKg` como parámetro real para los dos gases; se sigue
+  precompletando con el valor derivado de la composición al cambiar de
+  gas, pero el usuario puede editarlo igual que en GLP.
+
+## Discrepancias del Excel fuente que se dejaron como estaban
+
+No todo lo que se ve distinto entre GLP y GN es un error — estas dos
+quedaron así a propósito, porque no hay manera de saber cuál (si alguna)
+está "mal" sin más contexto del Excel original:
 
 - **Dos "densidades relativas" distintas para el mismo gas**:
   `Bases de Cálculo!B18` usa GLP=2 / GN=0.59 en la fórmula de caudal de
   baja presión, mientras que la tabla `Combustión Gas!I44:K47` usa
-  GLP=1.81 / GN=0.62 para el factor Cr de la rama de alta presión. Se
-  preservan ambas, cada una en su fórmula original (`js/calc-red-gas.js`,
-  `PROPIEDADES_RED_GAS.{densidadRelativaBaja,densidadRelativaAlta}`).
-- **PCI del combustible en "Combustión"**: GLP usa un input independiente
-  (`Combustión Gas!J4=48029`, editable, no atado a la composición) — GN en
-  cambio SIEMPRE deriva su PCI de la composición (`N4=N2/$F$45`, sin input
-  propio). El motor replica esa asimetría.
-- **"Caudal total" no suma lo mismo entre GLP y GN**: GLP
-  (`J10=J9+J6`) suma el caudal de combustible en condición normal;
-  GN (`N9=N8+N6`) suma el caudal en condición de referencia (T/P dadas).
-  Ver el comentario `sumarCaudalTotalConRef` en `js/calc-combustion.js`.
-- **GN carbono/hidrógeno mezcla fracción molar y fracción de masa**:
-  `Combustión Gas!F36` (X carbono de GN) pondera el término de carbono con
-  fracciones de MASA y el término de hidrógeno con PORCENTAJES MOLARES de
-  entrada — inconsistente entre sí, transcrito literal en `js/gas-gn.js`
-  y verificado contra el valor cacheado del Excel.
-- **Tabla de consumo de artefactos GLP** (`Bases de Cálculo!K33`, Cocina/
-  Bajo a 10°C) = 35 kWh/día, muy por encima del patrón del resto de la
-  fila (~3.5–5.8) — posible error de tipeo del Excel original (¿"3.5" en
-  vez de "35"?). Transcrito literal en
-  `js/calc-almacenamiento-glp.js`. **Confirmar con Cristóbal.**
+  GLP=1.81 / GN=0.62 para el factor Cr de la rama de alta presión. Son dos
+  fórmulas empíricas distintas (Renouard baja presión vs. el factor Cr de
+  la rama de alta presión) que bien pueden tener cada una su propia
+  referencia de densidad por convención — no hay indicio de que una esté
+  mal y la otra bien. Se preservan ambas, cada una en su fórmula original
+  (`js/calc-red-gas.js`, `PROPIEDADES_RED_GAS.{densidadRelativaBaja,
+  densidadRelativaAlta}`).
 - **Estanque GLP**: la fórmula de capacidad de vaporización
   (`Estanque GLP!B7`) usa las constantes `5` y `26` literales (sin celda
   de temperatura editable en esa hoja) — se preservan como constantes fijas

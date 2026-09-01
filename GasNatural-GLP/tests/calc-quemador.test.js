@@ -66,10 +66,16 @@ const gnLlama = calcularQuemador({
   relacionAire: 0.45, temperaturaGasC: 15, temperaturaAmbienteC: 15,
   diametroGargantaMm: 15, cantidadPerforacionesGarganta: 10,
 });
-cerca(gnLlama.molesAirePremezcla1, 0.24388927516584652, TOL_REDONDEO_FUENTE); // D23
-cerca(gnLlama.racEstequiometricaMasica, 15.685223854932735, TOL_REDONDEO_FUENTE); // D26
-cerca(gnLlama.flujoAirePremezcla1KgS, 0.0006692029063769015, TOL_REDONDEO_FUENTE); // D27
-cerca(gnLlama.caudalGasPorPerforacionM3S, 9.806733440184042e-7); // D39 (no depende de PM/densidad)
-cerca(gnLlama.largoLlamaMm, 1.855189232397877, TOL_REDONDEO_FUENTE); // D40
+// molesAirePremezcla1/racEstequiometricaMasica/flujoAirePremezcla1/
+// largoLlama dependen de aireEsteq, que a su vez depende de xCarbono/
+// xHidrogeno — con la corrección de gas-gn.js (2026-09-01) se alejan del
+// D23/D26/D27/D40 cacheados del Excel más de lo que explica el redondeo
+// de PM/densidad (ver TOL_REDONDEO_FUENTE arriba), así que acá van los
+// valores recalculados con la fórmula corregida, no los del Excel.
+cerca(gnLlama.molesAirePremezcla1, 0.24312970766631023, TOL_REDONDEO_FUENTE);
+cerca(gnLlama.racEstequiometricaMasica, 15.636373874731445, TOL_REDONDEO_FUENTE);
+cerca(gnLlama.flujoAirePremezcla1KgS, 0.0006671187442999365, TOL_REDONDEO_FUENTE);
+cerca(gnLlama.caudalGasPorPerforacionM3S, 9.806733440184042e-7); // D39 (no depende de PM/densidad ni de xCarbono/xHidrogeno)
+cerca(gnLlama.largoLlamaMm, 1.8543804220726559, TOL_REDONDEO_FUENTE);
 
 console.log('calc-quemador.test.js: OK');

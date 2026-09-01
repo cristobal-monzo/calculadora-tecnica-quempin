@@ -2,11 +2,17 @@
 // Fuente: MASTER DISEÑO.xlsm, hoja "Combustión Gas" (columnas E:F, B8:B54,
 // celdas citadas por bloque). Analizado 2026-09-01.
 //
-// Nota fiel al Excel: el numerador de carbono (F36) usa las FRACCIONES DE
-// MASA (metano/etano/propano/butano) mientras que el término de hidrógeno
-// de la misma fórmula usa los PORCENTAJES MOLARES de entrada — no son
-// consistentes entre sí en la hoja fuente. Se transcribe literal (no se
-// "corrige"), verificado contra el valor cacheado del Excel.
+// CORREGIDO respecto al Excel fuente (2026-09-01, a pedido del usuario):
+// el numerador de carbono de F36 pondera con FRACCIONES DE MASA
+// (metano/etano/propano/butano), pero el término de hidrógeno de esa
+// misma fórmula ponderaba con los PORCENTAJES MOLARES de entrada —
+// mezclaba dos bases distintas dentro de un mismo cálculo, sin que
+// corresponda a ninguna magnitud física coherente. Acá el término de
+// hidrógeno usa fracciones de masa también (mismo criterio que carbono/
+// oxígeno/nitrógeno), dando la composición másica real de la mezcla. El
+// valor cambia ligeramente frente al Excel (xCarbono 0.7039→0.7058,
+// xHidrogeno 0.2287→0.2267 con la composición por defecto) — ver
+// GasNatural-GLP/CLAUDE.md.
 
 export const METANO = { C: 1, H: 4, PM: 16.043, PCI: 55050 };  // B9:B13
 export const ETANO = { C: 2, H: 6, PM: 30.07, PCI: 47520 };    // B17:B21
@@ -31,13 +37,13 @@ export function propiedadesGN({ pctMetano, pctEtano, pctPropano, pctButano, pctD
   const r = 8.31447 / pm; // F35
   const densidadNormal = 101.325 / r / 273.15; // F40
 
-  // F36:F39 — puerto literal (ver nota arriba sobre la inconsistencia molar/masa del Excel fuente)
+  // F36:F39 — corregido para ponderar con fracciones de masa consistentemente (ver nota arriba)
   const numCarbono = 12.011 * (
     xMetanoMasa * METANO.C + xEtanoMasa * ETANO.C + xPropanoMasa * PROPANO_GN.C
     + xButanoMasa * BUTANO_GN.C + xDioxidoCMasa
   );
   const numHidrogeno = 1.008 * (
-    pctMetano * METANO.H + pctEtano * ETANO.H + pctPropano * PROPANO_GN.H + pctButano * BUTANO_GN.H
+    xMetanoMasa * METANO.H + xEtanoMasa * ETANO.H + xPropanoMasa * PROPANO_GN.H + xButanoMasa * BUTANO_GN.H
   );
   const numOxigeno = PM_O2 * xDioxidoCMasa;
   const numNitrogeno = xNitrogenoMasa * PM_N2;

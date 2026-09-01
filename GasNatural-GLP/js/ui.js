@@ -2,6 +2,7 @@ import { TABLA_TUBERIA_RED_GAS } from './pipe-network.js';
 import { calcularRedGas } from './calc-red-gas.js';
 import { cilindrosPorVaporizacion, cilindrosPorConsumoDiario, calcularEstanqueGLP } from './calc-almacenamiento-glp.js';
 import { calcularCombustionGLP, calcularCombustionGN } from './calc-combustion.js';
+import { propiedadesGN } from './gas-gn.js';
 import { calcularQuemador } from './calc-quemador.js';
 import { guardar, cargar } from './storage.js';
 import { initSelectorGas } from '../../assets/gas-switcher.js';
@@ -275,7 +276,8 @@ function renderResultadosCombustion(r) {
     tile(`${r.aireEsteq.toFixed(3)} Nm³/kg`, 'Aire estequiométrico'),
     tile(`${r.caudalCombustibleNm3H.toFixed(3)} Nm³/h`, 'Caudal de combustible'),
     tile(`${r.caudalAireNm3H.toFixed(2)} Nm³/h`, 'Caudal de aire'),
-    tile(`${r.caudalTotalNm3H.toFixed(2)} Nm³/h`, 'Caudal total'),
+    tile(`${r.caudalTotalNormalNm3H.toFixed(2)} Nm³/h`, 'Caudal total (condición normal)'),
+    tile(`${r.caudalTotalReferenciaM3H.toFixed(2)} m³/h`, 'Caudal total (condición de referencia)'),
     tile(`${(r.composicion.co2 * 100).toFixed(2)} %`, 'CO₂ en gases de combustión'),
     tile(`${(r.composicion.h2o * 100).toFixed(2)} %`, 'H₂O en gases de combustión'),
     tile(`${(r.composicion.o2 * 100).toFixed(2)} %`, 'O₂ en gases de combustión'),
@@ -293,7 +295,10 @@ function initCombustion() {
     contenedorComposicion.innerHTML = combustible === 'GLP'
       ? marcadoComposicionGLP({ prefijo: 'cb' })
       : marcadoComposicionGN({ prefijo: 'cb' });
-    document.getElementById('campo-pci-glp').style.display = combustible === 'GLP' ? '' : 'none';
+    // El campo de PCI aplica a los dos gases (GN antes lo calculaba
+    // siempre de la composición, sin mostrarlo ni dejarlo editar — ver
+    // GasNatural-GLP/CLAUDE.md). El de PCI simplificado (solo para la
+    // emisión NOx admisible) sigue siendo propio de GN.
     document.getElementById('campo-pci-simplificado-gn').style.display = combustible === 'GN' ? '' : 'none';
 
     const guardados = cargar(`combustion-${combustible}`, null);
@@ -302,6 +307,12 @@ function initCombustion() {
         const el = document.getElementById(id);
         if (el) el.value = valor;
       });
+    } else if (combustible === 'GN') {
+      // Sin estado guardado para GN: precompletar el PCI con el valor
+      // derivado de la composición por defecto, en vez de dejar el 48029
+      // de GLP puesto en el HTML.
+      const pciPorDefecto = propiedadesGN(leerComposicion('cb')).pciMasa;
+      document.getElementById('cb-pci').value = pciPorDefecto.toFixed(2);
     }
 
     contenedorComposicion.querySelectorAll('input').forEach((el) => el.addEventListener('input', recalcular));
@@ -311,14 +322,14 @@ function initCombustion() {
   function recalcular() {
     const num = (id) => Number(document.getElementById(id).value);
     const comunes = {
-      potenciaKw: num('cb-potencia'), lambda: num('cb-lambda'),
+      potenciaKw: num('cb-potencia'), lambda: num('cb-lambda'), pciKjKg: num('cb-pci'),
       presionReferenciaKPa: num('cb-presion-ref'), temperaturaReferenciaC: num('cb-temp-ref'),
       concentracionO2Pct: num('cb-o2-medido') / 100,
     };
     let resultado;
     try {
       if (combustible === 'GLP') {
-        resultado = calcularCombustionGLP({ ...leerComposicion('cb'), ...comunes, pciKjKg: num('cb-pci') });
+        resultado = calcularCombustionGLP({ ...leerComposicion('cb'), ...comunes });
       } else {
         resultado = calcularCombustionGN({ ...leerComposicion('cb'), ...comunes, pciSimplificadoKwhM3: num('cb-pci-simplificado') });
       }
@@ -369,6 +380,11 @@ function initQuemador() {
         const el = document.getElementById(id);
         if (el) el.value = valor;
       });
+    } else if (combustible === 'GN') {
+      // Igual que en Combustión: sin estado guardado para GN, precompletar
+      // el PCI con el valor derivado de la composición por defecto en vez
+      // de dejar el 45990 de GLP puesto en el HTML.
+      document.getElementById('qm-pci').value = propiedadesGN(leerComposicion('qm')).pciMasa.toFixed(2);
     }
 
     contenedorComposicion.querySelectorAll('input').forEach((el) => el.addEventListener('input', recalcular));

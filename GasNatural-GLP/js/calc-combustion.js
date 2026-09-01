@@ -14,7 +14,7 @@ import {
   EMISION_CO_ADMISIBLE_PPM,
 } from './combustion.js';
 
-function calcularCombustionComun({ propiedades, potenciaKw, lambda, pciKjKg, concentracionO2Pct, volSecoTeorico, pciSimplificadoKwhM3, densidadRef, sumarCaudalTotalConRef }) {
+function calcularCombustionComun({ propiedades, potenciaKw, lambda, pciKjKg, concentracionO2Pct, volSecoTeorico, pciSimplificadoKwhM3, densidadRef }) {
   const flujoMasicoKgS = potenciaKw / pciKjKg;
   const caudalCombustibleNm3H = (flujoMasicoKgS / propiedades.densidadNormal) * 3600; // Nm3/h, condición normal
   const caudalCombustibleRefM3H = (flujoMasicoKgS / densidadRef) * 3600; // m3/h, condición de referencia (T/P dadas)
@@ -22,10 +22,14 @@ function calcularCombustionComun({ propiedades, potenciaKw, lambda, pciKjKg, con
   const aireEsteq = aireEstequiometrico(propiedades); // Nm3/kg
   const caudalAireNm3H = caudalAire({ aireEsteq, lambda, flujoMasicoKgS });
   // "Caudal total": el Excel fuente suma el aire con el caudal de
-  // combustible en condición NORMAL para GLP (Combustión Gas!J10=J9+J6),
-  // pero con el caudal en condición de REFERENCIA para GN (N9=N8+N6) — se
-  // replica esa diferencia tal cual, no es un error de transcripción.
-  const caudalTotalNm3H = caudalAireNm3H + (sumarCaudalTotalConRef ? caudalCombustibleRefM3H : caudalCombustibleNm3H);
+  // combustible en condición NORMAL para GLP (Combustión Gas!J10=J9+J6)
+  // pero en condición de REFERENCIA para GN (N9=N8+N6) — sin ninguna razón
+  // física para que difiera según el gas. CORREGIDO respecto al Excel
+  // (2026-09-01, a pedido del usuario): en vez de elegir una de las dos
+  // arbitrariamente, se calculan y muestran ambas para los dos gases —
+  // ver GasNatural-GLP/CLAUDE.md.
+  const caudalTotalNormalNm3H = caudalAireNm3H + caudalCombustibleNm3H;
+  const caudalTotalReferenciaM3H = caudalAireNm3H + caudalCombustibleRefM3H;
 
   const composicion = composicionGasesCombustion({ ...propiedades, aireEsteq, lambda });
   const gases = propiedadesGasesCombustion(composicion);
@@ -36,7 +40,8 @@ function calcularCombustionComun({ propiedades, potenciaKw, lambda, pciKjKg, con
 
   return {
     ...propiedades, flujoMasicoKgS, caudalCombustibleNm3H, caudalCombustibleRefM3H,
-    aireEsteq, caudalAireNm3H, caudalTotalNm3H, composicion, gases, emisionNoxAdmisiblePpm,
+    aireEsteq, caudalAireNm3H, caudalTotalNormalNm3H, caudalTotalReferenciaM3H,
+    composicion, gases, emisionNoxAdmisiblePpm,
     emisionCoAdmisiblePpm: EMISION_CO_ADMISIBLE_PPM, densidadRef,
   };
 }
@@ -58,14 +63,14 @@ export function calcularCombustionGLP(inputs) {
   return calcularCombustionComun({
     propiedades, potenciaKw, lambda, pciKjKg, concentracionO2Pct,
     volSecoTeorico, pciSimplificadoKwhM3: propiedades.pciSimplificadoKwhM3,
-    densidadRef, sumarCaudalTotalConRef: false,
+    densidadRef,
   });
 }
 
 export function calcularCombustionGN(inputs) {
   const {
     pctMetano, pctEtano, pctPropano, pctButano, pctDioxidoC, pctNitrogeno,
-    potenciaKw, lambda, presionReferenciaKPa, temperaturaReferenciaC,
+    potenciaKw, lambda, pciKjKg, presionReferenciaKPa, temperaturaReferenciaC,
     concentracionO2Pct, pciSimplificadoKwhM3,
   } = inputs;
 
@@ -79,11 +84,14 @@ export function calcularCombustionGN(inputs) {
   // real ingresada (ver Combustión Gas!C105=1, A105=B105=D105=0).
   const { volSecoTeorico } = gasesEstequiometricosSecos({ molesMetano: 1 });
 
-  // A diferencia de GLP (que usa un PCI de entrada independiente, J4), el
-  // Excel fuente calcula el flujo de GN directamente desde el PCI derivado
-  // de su composición (Combustión Gas!N4 = N2/$F$45, sin un input propio).
+  // El Excel fuente calculaba el flujo de GN SIEMPRE desde el PCI derivado
+  // de su composición (Combustión Gas!N4 = N2/$F$45), sin un campo propio
+  // editable como el que sí tiene GLP (J4). CORREGIDO (2026-09-01, a
+  // pedido del usuario): acá `pciKjKg` es un input real, igual que en
+  // GLP — la UI lo pre-completa con el valor derivado de la composición
+  // (propiedades.pciMasa) pero el usuario puede editarlo.
   return calcularCombustionComun({
-    propiedades, potenciaKw, lambda, pciKjKg: propiedades.pciMasa, concentracionO2Pct,
-    volSecoTeorico, pciSimplificadoKwhM3, densidadRef, sumarCaudalTotalConRef: true,
+    propiedades, potenciaKw, lambda, pciKjKg, concentracionO2Pct,
+    volSecoTeorico, pciSimplificadoKwhM3, densidadRef,
   });
 }
