@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gas Natural / GLP — Calculadora Técnica QUEMPIN</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%94%A5</text></svg>">
+  <link rel="stylesheet" href="../assets/brand.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="viz-root">
+  <header class="viz-header">
+    <div class="viz-container">
+      <span class="viz-wordmark">QUEMP<span class="in">IN</span></span>
+      <div class="viz-titleblock">
+        <h1>Calculadora de Gas Natural / GLP</h1>
+        <p>Red de gas, almacenamiento GLP, combustión y quemador atmosférico</p>
+      </div>
+      <label for="selector-gas" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Cambiar de gas</label>
+      <select id="selector-gas"></select>
+      <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="selector-combustible">
+      <label for="selector-combustible">Combustible</label>
+      <select id="selector-combustible">
+        <option value="GLP">GLP</option>
+        <option value="GN">Gas Natural</option>
+      </select>
+      <span class="nota" id="nota-combustible"></span>
+    </div>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" role="tab" data-tab="red-gas">Red de Gas</button>
+      <button class="tab" role="tab" data-tab="almacenamiento">Almacenamiento</button>
+      <button class="tab" role="tab" data-tab="combustion">Combustión</button>
+      <button class="tab" role="tab" data-tab="quemador">Quemador Atmosférico</button>
+    </nav>
+
+    <section class="tab-panel active" id="panel-red-gas" data-panel="red-gas">
+      <form id="form-red-gas" class="fila-campos" autocomplete="off">
+        <div class="campo">
+          <label for="rg-regimen">Régimen de presión</label>
+          <select id="rg-regimen">
+            <option value="<10 kPa">Baja presión (&lt;10 kPa)</option>
+            <option value=">10 kPa">Media/alta presión (&gt;10 kPa)</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="rg-material">Material de tubería</label>
+          <select id="rg-material">
+            <option value="Acero Sch40">Acero Sch40</option>
+            <option value="Cobre tipo L">Cobre tipo L</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="rg-diametro">Diámetro nominal</label>
+          <select id="rg-diametro"></select>
+        </div>
+        <div class="campo">
+          <label for="rg-potencia">Potencia objetivo [kW]</label>
+          <input id="rg-potencia" type="number" step="any" value="30" required>
+        </div>
+        <div class="campo">
+          <label for="rg-longitud">Longitud de la línea [m]</label>
+          <input id="rg-longitud" type="number" step="any" value="10" required>
+        </div>
+        <div class="campo">
+          <label for="rg-presion-inicial">Presión inicial [Pa]</label>
+          <input id="rg-presion-inicial" type="number" step="any" value="1000" required>
+        </div>
+        <div class="campo">
+          <label for="rg-temperatura">Temperatura [°C]</label>
+          <input id="rg-temperatura" type="number" step="any" value="15" required>
+        </div>
+      </form>
+      <div class="resultados" id="resultados-red-gas" aria-live="polite"></div>
+    </section>
+
+    <section class="tab-panel" id="panel-almacenamiento" data-panel="almacenamiento">
+      <div id="almacenamiento-contenido"></div>
+    </section>
+
+    <section class="tab-panel" id="panel-combustion" data-panel="combustion">
+      <div id="combustion-campos-composicion"></div>
+      <p class="subtitulo">Condiciones de combustión</p>
+      <form id="form-combustion" class="fila-campos" autocomplete="off">
+        <div class="campo">
+          <label for="cb-potencia">Potencia [kW]</label>
+          <input id="cb-potencia" type="number" step="any" value="60" required>
+        </div>
+        <div class="campo">
+          <label for="cb-lambda">Lambda (exceso de aire)</label>
+          <input id="cb-lambda" type="number" step="any" value="1.2" required>
+        </div>
+        <div class="campo" id="campo-pci-glp">
+          <label for="cb-pci">Poder calorífico [kJ/kg]</label>
+          <input id="cb-pci" type="number" step="any" value="48029" required>
+        </div>
+        <div class="campo">
+          <label for="cb-presion-ref">Presión de referencia [kPa]</label>
+          <input id="cb-presion-ref" type="number" step="any" value="3" required>
+        </div>
+        <div class="campo">
+          <label for="cb-temp-ref">Temperatura de referencia [°C]</label>
+          <input id="cb-temp-ref" type="number" step="any" value="15" required>
+        </div>
+        <div class="campo">
+          <label for="cb-o2-medido">Concentración O₂ medida [%]</label>
+          <input id="cb-o2-medido" type="number" step="any" value="4.92" required>
+        </div>
+        <div class="campo" id="campo-pci-simplificado-gn" style="display:none;">
+          <label for="cb-pci-simplificado">PCI simplificado [kWh/m³] (solo GN)</label>
+          <input id="cb-pci-simplificado" type="number" step="any" value="10">
+        </div>
+      </form>
+      <div class="resultados" id="resultados-combustion" aria-live="polite"></div>
+    </section>
+
+    <section class="tab-panel" id="panel-quemador" data-panel="quemador">
+      <div id="quemador-campos-composicion"></div>
+      <p class="subtitulo">Quemador</p>
+      <form id="form-quemador" class="fila-campos" autocomplete="off">
+        <div class="campo">
+          <label for="qm-potencia">Potencia [kW]</label>
+          <input id="qm-potencia" type="number" step="any" value="25" required>
+        </div>
+        <div class="campo">
+          <label for="qm-pci">Poder calorífico [kJ/kg]</label>
+          <input id="qm-pci" type="number" step="any" value="45990" required>
+        </div>
+        <div class="campo">
+          <label for="qm-cant-perforaciones">Cantidad de perforaciones</label>
+          <input id="qm-cant-perforaciones" type="number" step="1" value="400" required>
+        </div>
+        <div class="campo">
+          <label for="qm-diam-perforacion">Diámetro de perforación [mm]</label>
+          <input id="qm-diam-perforacion" type="number" step="any" value="2" required>
+        </div>
+        <div class="campo">
+          <label for="qm-cd">Coeficiente de descarga</label>
+          <input id="qm-cd" type="number" step="any" value="0.8" required>
+        </div>
+        <div class="campo">
+          <label for="qm-diam-inyector">Diámetro de inyector [mm]</label>
+          <input id="qm-diam-inyector" type="number" step="any" value="1.2" required>
+        </div>
+        <div class="campo">
+          <label for="qm-presion-gas">Presión de gas [mbar]</label>
+          <input id="qm-presion-gas" type="number" step="any" value="29" required>
+        </div>
+        <div class="campo">
+          <label for="qm-relacion-aire">Relación de aire (aireación 1ª)</label>
+          <input id="qm-relacion-aire" type="number" step="any" value="0.45" required>
+        </div>
+        <div class="campo">
+          <label for="qm-temp-gas">Temperatura del gas [°C]</label>
+          <input id="qm-temp-gas" type="number" step="any" value="15" required>
+        </div>
+        <div class="campo">
+          <label for="qm-temp-ambiente">Temperatura ambiente [°C]</label>
+          <input id="qm-temp-ambiente" type="number" step="any" value="15" required>
+        </div>
+        <div class="campo">
+          <label for="qm-diam-garganta">Diámetro de garganta Venturi [mm]</label>
+          <input id="qm-diam-garganta" type="number" step="any" value="28" required>
+        </div>
+        <div class="campo">
+          <label for="qm-cant-perforaciones-garganta">Perforaciones (garganta Venturi)</label>
+          <input id="qm-cant-perforaciones-garganta" type="number" step="1" value="420" required>
+        </div>
+      </form>
+      <div class="resultados" id="resultados-quemador" aria-live="polite"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+  (function () {
+    try {
+      var savedTheme = localStorage.getItem('quempin_h2_theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      }
+    } catch (e) {}
+
+    var themeBtn = document.getElementById('themeToggle');
+    function isDarkNow() {
+      var docEl = document.documentElement;
+      return docEl.getAttribute('data-theme') === 'dark' ||
+        (docEl.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    themeBtn.textContent = isDarkNow() ? 'Modo claro' : 'Modo oscuro';
+    themeBtn.addEventListener('click', function () {
+      var docEl = document.documentElement;
+      var next = isDarkNow() ? 'light' : 'dark';
+      docEl.setAttribute('data-theme', next);
+      themeBtn.textContent = next === 'dark' ? 'Modo claro' : 'Modo oscuro';
+      try { localStorage.setItem('quempin_h2_theme', next); } catch (e) {}
+    });
+  })();
+</script>
+<script type="module" src="js/ui.js"></script>
+</body>
+</html>

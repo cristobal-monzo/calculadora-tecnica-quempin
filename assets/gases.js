@@ -17,8 +17,8 @@ export const GASES = [
     nombre: 'Gas Natural / GLP',
     icono: '🔥',
     ruta: 'GasNatural-GLP/',
-    disponible: false,
-    desc: 'Próximamente — selector de gas compartido entre Gas Natural y GLP.',
+    disponible: true,
+    desc: 'Red de gas, cilindros y estanque GLP, combustión y quemador atmosférico — un selector alterna entre GLP y GN.',
   },
 ];
 
