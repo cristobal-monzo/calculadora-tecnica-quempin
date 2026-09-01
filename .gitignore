@@ -1,0 +1,9 @@
+# Acceso directo local a la fuente Excel (ruta absoluta de este equipo, no se versiona)
+*.lnk
+
+# Referencia visual del hub de Finanzas QUEMPIN (otro proyecto, solo consulta local)
+/_reference-finanzas-quempin/
+
+# Artefactos de SO
+Thumbs.db
+.DS_Store
