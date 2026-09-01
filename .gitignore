@@ -1,6 +1,16 @@
 # Acceso directo local a la fuente Excel (ruta absoluta de este equipo, no se versiona)
 *.lnk
 
+# Hojas de cálculo fuente (Calculos H2.xlsx vive fuera del repo, pero
+# Libro11111111.xlsx y MASTER DISEÑO.xlsm quedaron puestas directamente acá)
+# — nunca se publican: tienen fórmulas propietarias y, en el caso de
+# MASTER DISEÑO.xlsm, una hoja "Proveedores" con precios reales de
+# proveedores (información comercial privada). El sitio publicado nunca
+# las lee directamente (ver CLAUDE.md raíz); las fórmulas ya se portaron a
+# GasNatural-GLP/js/.
+*.xlsx
+*.xlsm
+
 # Referencia visual del hub de Finanzas QUEMPIN (otro proyecto, solo consulta local)
 /_reference-finanzas-quempin/
 
