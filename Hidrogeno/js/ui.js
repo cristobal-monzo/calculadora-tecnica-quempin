@@ -3,6 +3,7 @@ import { calcularAlmacenamiento, formatearHoras } from './calc-almacenamiento.js
 import { calcularRed } from './calc-memoria.js';
 import { TABLA_TUBERIA } from './gas-h2.js';
 import { guardar, cargar, exportarJSON, importarJSON } from './storage.js';
+import { initSelectorGas } from '../../assets/gas-switcher.js';
 
 function initTabs() {
   const botones = document.querySelectorAll('.tab');
@@ -317,3 +318,4 @@ initTabs();
 initTeoriaFlujo();
 initAlmacenamiento();
 initMemoria();
+initSelectorGas({ actualId: 'hidrogeno', profundidad: 1 });

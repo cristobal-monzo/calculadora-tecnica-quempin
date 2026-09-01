@@ -138,3 +138,21 @@
     flex: 0 0 auto;
   }
   .viz-theme-toggle:hover { background: rgba(255,255,255,0.2); }
+
+  /* Selector "Cambiar de gas" — mueve entre módulos sin pasar por el hub.
+     Mismo peso visual que .viz-theme-toggle, para que ambos convivan en la
+     cabecera. Ver assets/gas-switcher.js. */
+  #selector-gas {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.28);
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  #selector-gas:hover { background: rgba(255,255,255,0.2); }
+  #selector-gas option { color: #000000; }

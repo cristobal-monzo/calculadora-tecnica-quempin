@@ -61,21 +61,7 @@
     </div>
 
     <h2 class="hub-section-title">Gases</h2>
-    <div class="hub-grid">
-      <article class="hub-card">
-        <div class="icon" aria-hidden="true">🧪</div>
-        <h3>Hidrógeno</h3>
-        <p class="desc">Tubería y flujo (ASME B31.12), almacenamiento (PV=ZnRT) y memoria de cálculo de redes ramificadas.</p>
-        <a class="btn" href="Hidrogeno/" target="_blank" rel="noopener">Abrir calculadora →</a>
-      </article>
-
-      <article class="hub-card proximamente">
-        <div class="icon" aria-hidden="true">🔥</div>
-        <h3>Gas Natural / GLP</h3>
-        <p class="desc">Próximamente — selector de gas compartido entre Gas Natural y GLP.</p>
-        <a class="btn" href="#" aria-disabled="true">Próximamente</a>
-      </article>
-    </div>
+    <div class="hub-grid" id="hub-grid"></div>
 
     <p class="hub-footnote">Publicado en GitHub Pages, código abierto en
       <a href="https://github.com/cristobal-monzo/calculadora-tecnica-quempin" target="_blank" rel="noopener">cristobal-monzo/calculadora-tecnica-quempin</a>.</p>
@@ -106,6 +92,20 @@
       try { localStorage.setItem('quempin_h2_theme', next); } catch (e) {}
     });
   })();
+</script>
+<script type="module">
+  import { GASES, enlaceGas } from './assets/gases.js';
+
+  document.getElementById('hub-grid').innerHTML = GASES.map((gas) => `
+    <article class="hub-card${gas.disponible ? '' : ' proximamente'}">
+      <div class="icon" aria-hidden="true">${gas.icono}</div>
+      <h3>${gas.nombre}</h3>
+      <p class="desc">${gas.desc}</p>
+      ${gas.disponible
+        ? `<a class="btn" href="${enlaceGas(gas, 0)}" target="_blank" rel="noopener">Abrir calculadora →</a>`
+        : `<a class="btn" href="#" aria-disabled="true">Próximamente</a>`}
+    </article>
+  `).join('');
 </script>
 </body>
 </html>

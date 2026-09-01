@@ -42,8 +42,16 @@ calculadora-tecnica-quempin/
 ```
 
 Cada módulo de gas es autocontenido (su propio motor de cálculo, su propia
-UI) salvo el sistema de marca, que siempre se comparte vía
-`assets/brand.css`. La decisión de "un sitio por gas vs. un selector
+UI) salvo dos cosas que siempre se comparten desde `assets/`:
+- `assets/brand.css` — sistema de marca (fuentes, paleta, tema).
+- `assets/gases.js` + `assets/gas-switcher.js` — el registro único de
+  módulos y el selector "Cambiar de gas" de la cabecera, que permite
+  moverse entre herramientas sin volver al hub. Al agregar un módulo nuevo:
+  agregarlo a `GASES` en `assets/gases.js` (una sola vez — el hub y el
+  selector de cada módulo lo leen de ahí), y en el `index.html` del módulo
+  nuevo agregar `<select id="selector-gas">` en la cabecera + llamar
+  `initSelectorGas({ actualId: '<id-del-gas>', profundidad: 1 })` desde su
+  `ui.js` (ver `Hidrogeno/js/ui.js` como referencia). La decisión de "un sitio por gas vs. un selector
 compartido entre gases" se toma módulo por módulo — Hidrógeno tiene su
 propio sitio; Gas Natural y GLP (cuando se construyan) compartirán uno con
 selector interno, porque son más similares entre sí en normativa aplicable
