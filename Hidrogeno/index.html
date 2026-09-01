@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hidrógeno — Calculadora Técnica QUEMPIN</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%A7%AA</text></svg>">
+  <link rel="stylesheet" href="../assets/brand.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="viz-root">
+  <header class="viz-header">
+    <div class="viz-container">
+      <span class="viz-wordmark">QUEMP<span class="in">IN</span></span>
+      <div class="viz-titleblock">
+        <h1>Calculadora de Hidrógeno</h1>
+        <p>Dimensionamiento de tuberías, almacenamiento y memoria de cálculo — ASME B31.12 / NFPA 2</p>
+      </div>
+      <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" role="tab" data-tab="flujo">Tubería y Flujo</button>
+    <button class="tab" role="tab" data-tab="almacenamiento">Almacenamiento</button>
+    <button class="tab" role="tab" data-tab="memoria">Memoria de Cálculo</button>
+  </nav>
+
+  <main>
+    <section class="tab-panel active" id="panel-flujo" data-panel="flujo">
+      <form id="form-flujo" class="fila-campos" autocomplete="off">
+        <div class="campo">
+          <label for="flujo-presion">Presión manométrica [bar]</label>
+          <input id="flujo-presion" type="number" step="any" value="0.8" required>
+        </div>
+        <div class="campo">
+          <label for="flujo-temperatura">Temperatura [°C]</label>
+          <input id="flujo-temperatura" type="number" step="any" value="20" required>
+        </div>
+        <div class="campo">
+          <label for="flujo-potencia">Potencia combustión [kW]</label>
+          <input id="flujo-potencia" type="number" step="any" value="60" required>
+        </div>
+        <div class="campo">
+          <label for="flujo-tuberia">Tubería utilizada</label>
+          <select id="flujo-tuberia" required></select>
+        </div>
+        <div class="campo">
+          <label for="flujo-presion-min">Presión manométrica mínima [bar]</label>
+          <input id="flujo-presion-min" type="number" step="any" value="29.5" required>
+        </div>
+        <div class="campo">
+          <label for="flujo-largo">Largo de la línea [m]</label>
+          <input id="flujo-largo" type="number" step="any" value="20" required>
+        </div>
+        <div class="campo">
+          <label for="flujo-codos">Codos</label>
+          <input id="flujo-codos" type="number" step="1" min="0" value="0">
+        </div>
+        <div class="campo">
+          <label for="flujo-tees">Tee</label>
+          <input id="flujo-tees" type="number" step="1" min="0" value="0">
+        </div>
+        <div class="campo">
+          <label for="flujo-valvulas">Válvulas</label>
+          <input id="flujo-valvulas" type="number" step="1" min="0" value="0">
+        </div>
+        <div class="campo">
+          <label for="flujo-factor-diseno">Factor de diseño F (ASME B31.12)</label>
+          <input id="flujo-factor-diseno" type="number" step="any" value="0.4" required>
+        </div>
+        <div class="campo">
+          <label for="flujo-factor-union">Factor de uniones longitudinales E</label>
+          <input id="flujo-factor-union" type="number" step="any" value="1" required>
+        </div>
+        <div class="campo">
+          <label for="flujo-unidad-normalizado">Unidad flujo normalizado</label>
+          <select id="flujo-unidad-normalizado">
+            <option value="[Nm3/h]">[Nm3/h]</option>
+            <option value="[sL/min]" selected>[sL/min]</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label for="flujo-unidad-h2">Unidad flujo H2</label>
+          <select id="flujo-unidad-h2">
+            <option value="[m3/h]" selected>[m3/h]</option>
+            <option value="[L/min]">[L/min]</option>
+          </select>
+        </div>
+      </form>
+
+      <div class="resultados" id="resultados-flujo" aria-live="polite"></div>
+
+      <details class="no-imprimir">
+        <summary>Tabla de tubería (referencia)</summary>
+        <table id="tabla-tuberia-flujo"></table>
+      </details>
+    </section>
+
+    <section class="tab-panel" id="panel-almacenamiento" data-panel="almacenamiento">
+      <form id="form-almacenamiento" class="fila-campos" autocomplete="off">
+        <div class="campo">
+          <label for="alm-potencia">Potencia quemador [kW]</label>
+          <input id="alm-potencia" type="number" step="any" value="60" required>
+        </div>
+        <div class="campo">
+          <label for="alm-temperatura">Temperatura [°C]</label>
+          <input id="alm-temperatura" type="number" step="any" value="20" required>
+        </div>
+        <div class="campo">
+          <label for="alm-presion">Presión de almacenamiento [bar abs]</label>
+          <input id="alm-presion" type="number" step="any" value="200" required>
+        </div>
+        <div class="campo">
+          <label for="alm-volumen">Volumen del estanque [m³]</label>
+          <input id="alm-volumen" type="number" step="any" value="0.19" required>
+        </div>
+        <div class="campo">
+          <label for="alm-unidad-caudal">Unidad caudal de referencia</label>
+          <select id="alm-unidad-caudal">
+            <option value="[m³/h]" selected>[m³/h]</option>
+            <option value="[L/min]">[L/min]</option>
+          </select>
+        </div>
+      </form>
+      <div class="resultados" id="resultados-almacenamiento" aria-live="polite"></div>
+    </section>
+
+    <section class="tab-panel" id="panel-memoria" data-panel="memoria">
+      <div class="no-imprimir" style="display:flex; gap:8px; flex-wrap:wrap; margin: 20px 0 16px;">
+        <button type="button" id="memoria-agregar-tramo">+ Agregar tramo</button>
+        <button type="button" id="memoria-exportar">Exportar proyecto (.json)</button>
+        <label style="display:inline-flex; align-items:center; gap:6px; font-size: 12.5px; color: var(--text-secondary);">
+          Importar proyecto
+          <input type="file" id="memoria-importar" accept="application/json">
+        </label>
+        <button type="button" id="memoria-imprimir">Imprimir / Guardar PDF</button>
+      </div>
+
+      <svg id="memoria-arbol" width="100%" height="220" role="img" aria-label="Diagrama de la red de tramos"></svg>
+
+      <div style="overflow-x:auto;">
+        <table id="memoria-tabla" class="no-imprimir">
+          <thead>
+            <tr>
+              <th>Tramo</th><th>Continúa desde</th><th>Presión [MPa]</th><th>Longitud [m]</th>
+              <th>Potencia [kW]</th><th>Diámetro</th><th>Material</th><th>Temp. [°C]</th>
+              <th>Densidad [kg/m³]</th><th>Velocidad [m/s]</th><th>Pérdida parcial [mbar]</th>
+              <th>Pérdida acumulada [mbar]</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="memoria-tabla-cuerpo"></tbody>
+        </table>
+      </div>
+
+      <table id="memoria-tabla-impresion" style="display:none;">
+        <caption>Memoria de Cálculo — Red de Hidrógeno — QUEMPIN</caption>
+        <thead>
+          <tr><th>Tramo</th><th>Continúa desde</th><th>Presión [MPa]</th><th>Longitud [m]</th><th>Diámetro</th><th>Pérdida acumulada [mbar]</th></tr>
+        </thead>
+        <tbody id="memoria-tabla-impresion-cuerpo"></tbody>
+      </table>
+    </section>
+  </main>
+</div>
+
+<script>
+  (function () {
+    try {
+      var savedTheme = localStorage.getItem('quempin_h2_theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      }
+    } catch (e) {}
+
+    var themeBtn = document.getElementById('themeToggle');
+    function isDarkNow() {
+      var docEl = document.documentElement;
+      return docEl.getAttribute('data-theme') === 'dark' ||
+        (docEl.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    themeBtn.textContent = isDarkNow() ? 'Modo claro' : 'Modo oscuro';
+    themeBtn.addEventListener('click', function () {
+      var docEl = document.documentElement;
+      var next = isDarkNow() ? 'light' : 'dark';
+      docEl.setAttribute('data-theme', next);
+      themeBtn.textContent = next === 'dark' ? 'Modo claro' : 'Modo oscuro';
+      try { localStorage.setItem('quempin_h2_theme', next); } catch (e) {}
+    });
+  })();
+</script>
+<script type="module" src="js/ui.js"></script>
+</body>
+</html>

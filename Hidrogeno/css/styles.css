@@ -1,0 +1,92 @@
+/* Estilos específicos de la app de Hidrógeno (pestañas, formularios,
+   resultados, impresión). El sistema de marca (tipografía, paleta, tema,
+   cabecera, el wrapper .viz-root) vive en assets/brand.css y se enlaza
+   aparte en index.html — todo el contenido visible debe ir dentro de un
+   <div class="viz-root"> para heredar la paleta y la tipografía Lato. */
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 20px 60px;
+}
+
+/* --- Estructura de pestañas --- */
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--gridline);
+  margin: 24px auto 20px;
+  max-width: 1100px;
+  padding: 0 20px;
+  flex-wrap: wrap;
+}
+.tab {
+  font: inherit;
+  font-weight: 700;
+  font-size: 13.5px;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.tab:hover { color: var(--text-primary); }
+.tab.active { color: var(--brand-orange-ink, var(--brand-orange)); border-bottom-color: var(--brand-orange); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* --- Formularios --- */
+.campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.campo label { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+.campo input, .campo select {
+  font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 6px;
+  border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary);
+}
+.campo input:focus-visible, .campo select:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+.fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0 20px; padding-top: 20px; }
+
+/* --- Resultados --- */
+.resultados { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 20px; }
+.resultado-tile {
+  background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px;
+  padding: 14px 16px;
+}
+.resultado-tile .valor { font-size: 22px; font-weight: 900; color: var(--text-primary); }
+.resultado-tile .etiqueta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.resultado-tile.alerta { border-color: var(--brand-orange); }
+.resultado-tile.alerta .valor { color: var(--brand-orange-ink, var(--brand-orange)); }
+
+/* --- Tabla de referencia de tubería --- */
+details { margin-top: 20px; }
+summary { cursor: pointer; font-weight: 700; font-size: 13px; color: var(--text-secondary); }
+table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); }
+th { color: var(--text-secondary); font-size: 12px; }
+
+/* --- Memoria de Cálculo: barra de acciones y tabla editable --- */
+#panel-memoria .campo,
+#panel-memoria .fila-campos { padding-top: 0; }
+#memoria-agregar-tramo, #memoria-exportar, #memoria-imprimir {
+  font: inherit; font-size: 12.5px; font-weight: 700; padding: 8px 14px;
+  border-radius: 6px; border: 1px solid var(--gridline); background: var(--surface-card);
+  color: var(--text-primary); cursor: pointer;
+}
+#memoria-agregar-tramo:hover, #memoria-exportar:hover, #memoria-imprimir:hover { border-color: var(--brand-orange); }
+#memoria-tabla input, #memoria-tabla select {
+  font: inherit; font-size: 12.5px; padding: 4px 6px; border-radius: 4px;
+  border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary); width: 100%;
+}
+.mem-eliminar { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
+.mem-eliminar:hover { color: var(--brand-orange); }
+#memoria-arbol { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px; margin-bottom: 16px; }
+
+/* --- Impresión (Memoria de Cálculo) --- */
+@media print {
+  .tabs, .no-imprimir, .viz-theme-toggle { display: none !important; }
+  body { background: #ffffff; color: #000000; }
+  /* Solo se imprime la pestaña activa (evita que las 3 pestañas queden
+     apiladas en el PDF) — el default ya oculta .tab-panel sin .active. */
+  .tab-panel.active { display: block !important; }
+  #memoria-tabla-impresion { display: table !important; }
+}
