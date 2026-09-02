@@ -15,6 +15,19 @@ function formatearNumero(valor) {
   return FORMATO_NUMERO.format(valor);
 }
 
+// Parseo de las cajas de ingreso manual (2026-09-02, a pedido del usuario):
+// son <input type="text" inputmode="decimal"> en vez de type="number" para
+// que "," y "." funcionen indistintamente como separador decimal — con
+// type="number" el navegador aplica el separador de su locale y descarta el
+// otro carácter en silencio, lo que en la práctica impedía tipear cualquier
+// decimal (y por lo tanto cualquier valor menor a 1) según la configuración
+// regional del navegador/SO. Igual que un <input type="number"> vacío o
+// inválido, un valor no numérico se trata como 0.
+function numeroFlexible(valor) {
+  const n = Number(String(valor).trim().replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
+
 // Igual que formatearPresion() de unidades-presion.js pero con el formato
 // de arriba en vez del string de precisión fija que usa esa función (que
 // se deja intacta porque unidades-presion.test.js depende de poder
@@ -59,7 +72,7 @@ function initSelectorUnidadCampo(inputId, selectId) {
   if (select.dataset.unidadCableada) return;
   select.dataset.unidadCableada = '1';
   select.addEventListener('input', () => {
-    const valorPa = aPa(Number(input.value) || 0, select.dataset.unidadAnterior);
+    const valorPa = aPa(numeroFlexible(input.value), select.dataset.unidadAnterior);
     input.value = Number(desdePa(valorPa, select.value).toPrecision(6));
     select.dataset.unidadAnterior = select.value;
   });
@@ -68,7 +81,7 @@ function initSelectorUnidadCampo(inputId, selectId) {
 // Lee un campo de presión (input + select de unidad) convertido a la unidad
 // que espera el motor de cálculo correspondiente.
 function leerPresion(inputId, selectId, unidadDestino) {
-  const valor = Number(document.getElementById(inputId).value);
+  const valor = numeroFlexible(document.getElementById(inputId).value);
   const unidadOrigen = document.getElementById(selectId).value;
   return desdePa(aPa(valor, unidadOrigen), unidadDestino);
 }
@@ -164,7 +177,7 @@ let unidadNormalizadoFlujo = '[sL/min]';
 let unidadH2Flujo = '[m3/h]';
 
 function leerFlujoForm() {
-  const num = (id) => Number(document.getElementById(id).value);
+  const num = (id) => numeroFlexible(document.getElementById(id).value);
   const tuberiaSeleccionada = document.getElementById('flujo-tuberia').value;
   const esManual = tuberiaSeleccionada === 'manual';
   return {
@@ -290,7 +303,7 @@ const OPCIONES_UNIDAD_CAUDAL_ALM = ['[m³/h]', '[L/min]'];
 let unidadCaudalAlm = '[m³/h]';
 
 function leerAlmacenamientoForm() {
-  const num = (id) => Number(document.getElementById(id).value);
+  const num = (id) => numeroFlexible(document.getElementById(id).value);
   return {
     potenciaKw: num('alm-potencia'),
     temperaturaC: num('alm-temperatura'),
@@ -359,6 +372,7 @@ function tramoPorDefecto() {
   contadorId += 1;
   return {
     id: `t${contadorId}`, nombre: `Tramo ${contadorId}`, continuaDesdeId: null,
+    reseteaAcumulada: false,
     presionMPa: 0.5, longitudM: 5, potenciaKw: 12, tuberiaPulgadas: 0.25,
     material: 'AISI 316L', temperaturaC: 20,
   };
@@ -381,23 +395,24 @@ function renderTablaMemoria(resultado) {
     <tr data-id="${t.id}">
       <td><input type="text" class="mem-nombre" value="${t.nombre}"></td>
       <td><select class="mem-padre">${opcionesPadre(t.id)}</select></td>
-      <td><input type="number" step="any" class="mem-presion" value="${Number(desdePa(aPa(t.presionMPa, 'MPa'), unidadPresion).toPrecision(6))}"></td>
-      <td><input type="number" step="any" class="mem-largo" value="${t.longitudM}"></td>
-      <td><input type="number" step="any" class="mem-potencia" value="${t.potenciaKw}"></td>
+      <td style="text-align:center;"><input type="checkbox" class="mem-reset"${t.reseteaAcumulada ? ' checked' : ''} title="Reinicia la pérdida de carga acumulada desde este tramo (ej. después de un regulador de presión)"></td>
+      <td><input type="text" inputmode="decimal" class="mem-presion" value="${Number(desdePa(aPa(t.presionMPa, 'MPa'), unidadPresion).toPrecision(6))}"></td>
+      <td><input type="text" inputmode="decimal" class="mem-largo" value="${t.longitudM}"></td>
+      <td><input type="text" inputmode="decimal" class="mem-potencia" value="${t.potenciaKw}"></td>
       <td>
         <select class="mem-tuberia">
           ${TABLA_TUBERIA.map((f) => `<option value="${f.pulgadas}"${f.pulgadas === t.tuberiaPulgadas ? ' selected' : ''}>${formatearPulgadas(f.pulgadas)}</option>`).join('')}
           <option value="manual"${t.tuberiaPulgadas === 'manual' ? ' selected' : ''}>Manual (mm)</option>
         </select>
         <div class="mem-tuberia-manual"${t.tuberiaPulgadas === 'manual' ? '' : ' style="display:none;"'}>
-          <input type="number" step="any" class="mem-tuberia-manual-di" value="${t.tuberiaManual?.diMm ?? 12.7}" title="Diámetro interior [mm]">
-          <input type="number" step="any" class="mem-tuberia-manual-espesor" value="${t.tuberiaManual?.espesorMm ?? 1.2}" title="Espesor de pared [mm]">
-          <input type="number" step="any" class="mem-tuberia-manual-limite" value="${t.tuberiaManual?.limiteElasticoMPa ?? 170}" title="Límite elástico [MPa]">
-          <input type="number" step="any" class="mem-tuberia-manual-rugosidad" value="${t.tuberiaManual?.rugosidadMm ?? 0.002}" title="Rugosidad [mm]">
+          <input type="text" inputmode="decimal" class="mem-tuberia-manual-di" value="${t.tuberiaManual?.diMm ?? 12.7}" title="Diámetro interior [mm]">
+          <input type="text" inputmode="decimal" class="mem-tuberia-manual-espesor" value="${t.tuberiaManual?.espesorMm ?? 1.2}" title="Espesor de pared [mm]">
+          <input type="text" inputmode="decimal" class="mem-tuberia-manual-limite" value="${t.tuberiaManual?.limiteElasticoMPa ?? 170}" title="Límite elástico [MPa]">
+          <input type="text" inputmode="decimal" class="mem-tuberia-manual-rugosidad" value="${t.tuberiaManual?.rugosidadMm ?? 0.002}" title="Rugosidad [mm]">
         </div>
       </td>
       <td><input type="text" class="mem-material" value="${t.material}"></td>
-      <td><input type="number" step="any" class="mem-temp" value="${t.temperaturaC}"></td>
+      <td><input type="text" inputmode="decimal" class="mem-temp" value="${t.temperaturaC}"></td>
       <td>${formatearNumero(t.densidadKgM3)}</td>
       <td>${formatearNumero(t.velocidadFlujoMS)}</td>
       <td>${formatearPresionBonita(aPa(t.perdidaParcialMbar, 'mbar'), unidadPerdidaParcial)}</td>
@@ -436,8 +451,9 @@ function renderArbol(resultado) {
   }).join('');
   const circulos = nodos.map((n) => `
     <g>
+      ${n.t.reseteaAcumulada ? `<circle cx="${n.nivel * anchoNivel + 60}" cy="${n.fila * altoFila + 20}" r="12" fill="none" stroke="var(--text-primary)" stroke-width="2"/>` : ''}
       <circle cx="${n.nivel * anchoNivel + 60}" cy="${n.fila * altoFila + 20}" r="8" fill="var(--brand-orange)"/>
-      <title>${n.t.nombre} — ${formatearNumero(n.t.perdidaAcumuladaMbar)} mbar acumulados, ${formatearNumero(n.t.velocidadFlujoMS)} m/s</title>
+      <title>${n.t.nombre} — ${formatearNumero(n.t.perdidaAcumuladaMbar)} mbar acumulados, ${formatearNumero(n.t.velocidadFlujoMS)} m/s${n.t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</title>
       <text x="${n.nivel * anchoNivel + 74}" y="${n.fila * altoFila + 24}" font-size="12" fill="var(--text-primary)">${n.t.nombre}</text>
     </g>`).join('');
   svg.setAttribute('height', String(Math.max(...porNivel.values(), 1) * altoFila + 20));
@@ -454,7 +470,7 @@ function recalcularMemoria() {
     resultado = calcularRed(tramos);
   } catch (error) {
     document.getElementById('memoria-tabla-cuerpo').innerHTML =
-      `<tr><td colspan="13" class="resultado-tile alerta">${error.message}</td></tr>`;
+      `<tr><td colspan="14" class="resultado-tile alerta">${error.message}</td></tr>`;
     return;
   }
   renderTablaMemoria(resultado);
@@ -465,7 +481,7 @@ function recalcularMemoria() {
   document.getElementById('memoria-impresion-th-presion').textContent = `Presión [${unidadPresion}]`;
   document.getElementById('memoria-impresion-th-perdida').textContent = `Pérdida acumulada [${unidadPerdidaAcumulada}]`;
   document.getElementById('memoria-tabla-impresion-cuerpo').innerHTML = resultado.map((t) => `
-    <tr><td>${t.nombre}</td><td>${porNombreTramo(t.continuaDesdeId)}</td><td>${formatearPresionBonita(aPa(t.presionMPa, 'MPa'), unidadPresion)}</td><td>${t.longitudM}</td><td>${etiquetaTuberia(t)}</td><td>${formatearPresionBonita(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td></tr>
+    <tr><td>${t.nombre}</td><td>${porNombreTramo(t.continuaDesdeId)}${t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</td><td>${formatearPresionBonita(aPa(t.presionMPa, 'MPa'), unidadPresion)}</td><td>${t.longitudM}</td><td>${etiquetaTuberia(t)}</td><td>${formatearPresionBonita(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td></tr>
   `).join('');
   guardar('memoria', tramos);
 }
@@ -480,16 +496,17 @@ function leerFilaMemoria(fila) {
     id,
     nombre: val('mem-nombre'),
     continuaDesdeId: val('mem-padre') || null,
-    presionMPa: desdePa(aPa(Number(val('mem-presion')), unidadPresion), 'MPa'),
-    longitudM: Number(val('mem-largo')),
-    potenciaKw: Number(val('mem-potencia')),
+    reseteaAcumulada: fila.querySelector('.mem-reset').checked,
+    presionMPa: desdePa(aPa(numeroFlexible(val('mem-presion')), unidadPresion), 'MPa'),
+    longitudM: numeroFlexible(val('mem-largo')),
+    potenciaKw: numeroFlexible(val('mem-potencia')),
     tuberiaPulgadas: esManual ? 'manual' : Number(tuberiaSeleccionada),
     tuberiaManual: esManual ? {
-      diMm: Number(val('mem-tuberia-manual-di')), espesorMm: Number(val('mem-tuberia-manual-espesor')),
-      limiteElasticoMPa: Number(val('mem-tuberia-manual-limite')), rugosidadMm: Number(val('mem-tuberia-manual-rugosidad')),
+      diMm: numeroFlexible(val('mem-tuberia-manual-di')), espesorMm: numeroFlexible(val('mem-tuberia-manual-espesor')),
+      limiteElasticoMPa: numeroFlexible(val('mem-tuberia-manual-limite')), rugosidadMm: numeroFlexible(val('mem-tuberia-manual-rugosidad')),
     } : undefined,
     material: val('mem-material'),
-    temperaturaC: Number(val('mem-temp')),
+    temperaturaC: numeroFlexible(val('mem-temp')),
   };
 }
 

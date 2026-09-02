@@ -35,7 +35,7 @@
         <div class="campo">
           <label for="flujo-presion">Presión manométrica</label>
           <div class="campo-con-unidad">
-            <input id="flujo-presion" type="number" step="any" value="0.8" required>
+            <input id="flujo-presion" type="text" inputmode="decimal" value="0.8" required>
             <select id="flujo-presion-unidad" class="select-unidad" aria-label="Unidad de presión manométrica">
               <option value="Pa">Pa</option>
               <option value="kPa">kPa</option>
@@ -48,11 +48,11 @@
         </div>
         <div class="campo">
           <label for="flujo-temperatura">Temperatura [°C]</label>
-          <input id="flujo-temperatura" type="number" step="any" value="20" required>
+          <input id="flujo-temperatura" type="text" inputmode="decimal" value="20" required>
         </div>
         <div class="campo">
           <label for="flujo-potencia">Potencia combustión [kW]</label>
-          <input id="flujo-potencia" type="number" step="any" value="60" required>
+          <input id="flujo-potencia" type="text" inputmode="decimal" value="60" required>
         </div>
         <div class="campo">
           <label for="flujo-tuberia">Tubería utilizada</label>
@@ -61,16 +61,16 @@
         <div class="campo campo-ancho" id="campo-flujo-tuberia-manual" style="display:none;">
           <label for="flujo-tuberia-manual-di">Tubería manual — DI [mm] / espesor [mm] / límite elástico [MPa] / rugosidad [mm]</label>
           <div class="fila-campos" style="padding-top:0; grid-template-columns:repeat(4, 1fr);">
-            <input id="flujo-tuberia-manual-di" type="number" step="any" value="12.7" required aria-label="Diámetro interior manual [mm]">
-            <input id="flujo-tuberia-manual-espesor" type="number" step="any" value="1.2" required aria-label="Espesor de pared manual [mm]">
-            <input id="flujo-tuberia-manual-limite" type="number" step="any" value="170" required aria-label="Límite elástico manual [MPa]">
-            <input id="flujo-tuberia-manual-rugosidad" type="number" step="any" value="0.002" required aria-label="Rugosidad manual [mm]">
+            <input id="flujo-tuberia-manual-di" type="text" inputmode="decimal" value="12.7" required aria-label="Diámetro interior manual [mm]">
+            <input id="flujo-tuberia-manual-espesor" type="text" inputmode="decimal" value="1.2" required aria-label="Espesor de pared manual [mm]">
+            <input id="flujo-tuberia-manual-limite" type="text" inputmode="decimal" value="170" required aria-label="Límite elástico manual [MPa]">
+            <input id="flujo-tuberia-manual-rugosidad" type="text" inputmode="decimal" value="0.002" required aria-label="Rugosidad manual [mm]">
           </div>
         </div>
         <div class="campo">
           <label for="flujo-presion-min">Presión manométrica mínima</label>
           <div class="campo-con-unidad">
-            <input id="flujo-presion-min" type="number" step="any" value="29.5" required>
+            <input id="flujo-presion-min" type="text" inputmode="decimal" value="29.5" required>
             <select id="flujo-presion-min-unidad" class="select-unidad" aria-label="Unidad de presión manométrica mínima">
               <option value="Pa">Pa</option>
               <option value="kPa">kPa</option>
@@ -83,7 +83,7 @@
         </div>
         <div class="campo">
           <label for="flujo-largo">Largo de la línea [m]</label>
-          <input id="flujo-largo" type="number" step="any" value="20" required>
+          <input id="flujo-largo" type="text" inputmode="decimal" value="20" required>
         </div>
         <div class="campo">
           <label for="flujo-factor-diseno">Factor de diseño F (ASME B31.12)</label>
@@ -121,16 +121,16 @@
       <form id="form-almacenamiento" class="fila-campos" autocomplete="off">
         <div class="campo">
           <label for="alm-potencia">Potencia de consumo [kW]</label>
-          <input id="alm-potencia" type="number" step="any" value="60" required>
+          <input id="alm-potencia" type="text" inputmode="decimal" value="60" required>
         </div>
         <div class="campo">
           <label for="alm-temperatura">Temperatura [°C]</label>
-          <input id="alm-temperatura" type="number" step="any" value="20" required>
+          <input id="alm-temperatura" type="text" inputmode="decimal" value="20" required>
         </div>
         <div class="campo">
           <label for="alm-presion">Presión de almacenamiento [abs]</label>
           <div class="campo-con-unidad">
-            <input id="alm-presion" type="number" step="any" value="200" required>
+            <input id="alm-presion" type="text" inputmode="decimal" value="200" required>
             <select id="alm-presion-unidad" class="select-unidad" aria-label="Unidad de presión de almacenamiento">
               <option value="Pa">Pa</option>
               <option value="kPa">kPa</option>
@@ -143,7 +143,7 @@
         </div>
         <div class="campo">
           <label for="alm-volumen">Volumen del estanque [m³]</label>
-          <input id="alm-volumen" type="number" step="any" value="0.19" required>
+          <input id="alm-volumen" type="text" inputmode="decimal" value="0.19" required>
         </div>
       </form>
       <div class="resultados" id="resultados-almacenamiento" aria-live="polite"></div>
@@ -167,6 +167,7 @@
           <thead>
             <tr>
               <th>Tramo</th><th>Continúa desde</th>
+              <th title="Reinicia la pérdida de carga acumulada desde este tramo (ej. después de un regulador de presión)">Reinicia acum.</th>
               <th>Presión <select id="memoria-presion-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa" selected>MPa</option><option value="psi">psi</option></select></th>
               <th>Longitud [m]</th>
               <th>Potencia [kW]</th><th>Diámetro</th><th>Material</th><th>Temp. [°C]</th>

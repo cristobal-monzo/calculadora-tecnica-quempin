@@ -67,4 +67,31 @@ assert.throws(
   /no existe/
 );
 
+// Reseteo de pérdida acumulada (2026-09-02, a pedido del usuario): un tramo
+// con reseteaAcumulada=true ignora la acumulada heredada de su padre — igual
+// que después de un regulador de presión, que reinicia la referencia. Todo lo
+// que continúa aguas abajo de ese tramo hereda desde el nuevo punto de
+// partida (su propia parcial), no desde la raíz original. Cadena A-B-C-D,
+// reseteo en C.
+const tramosReset = [
+  { id: 'A', nombre: 'A', continuaDesdeId: null, presionMPa: 0.5, longitudM: 10, potenciaKw: 12, tuberiaPulgadas: 0.25, material: '-', temperaturaC: 20 },
+  { id: 'B', nombre: 'B', continuaDesdeId: 'A', presionMPa: 0.5, longitudM: 10, potenciaKw: 12, tuberiaPulgadas: 0.25, material: '-', temperaturaC: 20 },
+  { id: 'C', nombre: 'C', continuaDesdeId: 'B', reseteaAcumulada: true, presionMPa: 0.1, longitudM: 3, potenciaKw: 12, tuberiaPulgadas: 0.25, material: '-', temperaturaC: 20 },
+  { id: 'D', nombre: 'D', continuaDesdeId: 'C', presionMPa: 0.1, longitudM: 3, potenciaKw: 12, tuberiaPulgadas: 0.25, material: '-', temperaturaC: 20 },
+];
+const resultadoReset = calcularRed(tramosReset);
+const porIdReset = Object.fromEntries(resultadoReset.map((t) => [t.id, t]));
+
+// B acumula normalmente sobre A (sin reseteo de por medio)
+cerca(porIdReset.B.perdidaAcumuladaMbar, porIdReset.B.perdidaParcialMbar + porIdReset.A.perdidaAcumuladaMbar);
+
+// C tiene reseteaAcumulada=true: su acumulada es SOLO su propia parcial,
+// ignora la acumulada heredada de B
+cerca(porIdReset.C.perdidaAcumuladaMbar, porIdReset.C.perdidaParcialMbar);
+assert.notEqual(porIdReset.C.perdidaAcumuladaMbar, porIdReset.C.perdidaParcialMbar + porIdReset.B.perdidaAcumuladaMbar);
+
+// D continúa desde C con normalidad, heredando desde el nuevo punto de
+// partida (C) en vez de la raíz original (A)
+cerca(porIdReset.D.perdidaAcumuladaMbar, porIdReset.D.perdidaParcialMbar + porIdReset.C.perdidaAcumuladaMbar);
+
 console.log('calc-memoria.test.js: OK');

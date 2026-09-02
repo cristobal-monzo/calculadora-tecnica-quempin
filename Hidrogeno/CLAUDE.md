@@ -219,6 +219,27 @@ parámetro, pero `ui.js` ahora lo pasa hardcodeado en vez de leerlo de un
 campo). No cambia ningún resultado, porque el input eliminado ya tenía 1
 como único valor usado en la práctica.
 
+## Separador decimal flexible en cajas de ingreso manual (`ui.js`, 2026-09-02, a pedido del usuario)
+
+Todos los `<input>` de ingreso manual de valores continuos (presión,
+temperatura, potencia, largo, tubería manual, y las filas de la Memoria de
+Cálculo) pasaron de `type="number" step="any"` a `type="text"
+inputmode="decimal"`. Motivo: un `<input type="number">` aplica el
+separador decimal según el locale del navegador/SO y descarta en silencio
+el carácter que no coincide — en la práctica eso impedía tipear cualquier
+decimal (y por lo tanto cualquier valor menor a 1) según cómo estuviera
+configurado el navegador. `numeroFlexible()` (nueva función en `ui.js`)
+reemplaza "," por "." antes de `Number(...)` y trata lo no numérico como 0
+(mismo fallback que tenía un `type="number"` vacío/inválido); reemplaza a
+`Number(...)` en todos los sitios que leen esas cajas (`leerFlujoForm`,
+`leerAlmacenamientoForm`, `leerFilaMemoria`, `leerPresion`,
+`initSelectorUnidadCampo`). Los contadores enteros (Codos/Tee/Válvulas)
+quedan como `type="number"` — no tienen el problema de separador decimal.
+No afecta cómo se muestran los resultados (`formatearNumero()`, sección
+siguiente) ni los valores que la propia UI escribe de vuelta al campo
+(conversión de unidad, siempre con punto — `numeroFlexible()` los lee bien
+igual).
+
 ## Formato numérico y unidades en los resultados (`ui.js`, 2026-09-02, a pedido del usuario)
 
 Todos los números mostrados en tiles de resultado (las 3 pestañas) pasan
@@ -276,6 +297,21 @@ que el guardado en localStorage los agrega a mano (ver
   diseño (PL-3.7.1)" (antes "...(Barlow, ASME B31.12)") y "Velocidad
   erosión (I-3.4.5)" (antes "...(límite)") — provistas por el usuario, no
   verificadas independientemente contra el texto de la norma.
+
+## Punto de reseteo de pérdida acumulada (`calc-memoria.js`/`ui.js`, 2026-09-02, a pedido del usuario)
+
+No viene del Excel fuente (la hoja `MC` no modela reguladores de presión).
+Cada tramo tiene ahora un campo `reseteaAcumulada` (checkbox "Reinicia
+acum." en la tabla, con tooltip); si está activo, `perdidaAcumulada()` en
+`calc-memoria.js` ignora la acumulada heredada del padre y arranca en 0
+para ese tramo, igual que un regulador de presión reinicia la referencia
+aguas abajo. Como el cálculo es recursivo por `continuaDesdeId`, todo lo
+que continúa desde un tramo con reseteo hereda automáticamente desde ese
+nuevo punto de partida — no hace falta ningún cambio adicional en la
+propagación. Se refleja en la tabla de impresión (`(reinicia acumulada)`
+junto a "Continúa desde") y en el diagrama de árbol (anillo alrededor del
+nodo). Ver el caso de prueba de cadena A-B-C-D con reseteo en C en
+`calc-memoria.test.js`.
 
 ## Fuera de alcance (v1)
 

@@ -72,24 +72,24 @@
         <div class="campo campo-ancho" id="campo-rg-diametro-manual" style="display:none;">
           <label for="rg-diametro-manual-mm">Diámetro interior manual</label>
           <div class="campo-con-unidad">
-            <input id="rg-diametro-manual-mm" type="number" step="any" value="50" required>
+            <input id="rg-diametro-manual-mm" type="text" inputmode="decimal" value="50" required>
             <span class="select-unidad unidad-fija">mm</span>
           </div>
           <label for="rg-diametro-manual-k" style="margin-top:6px;">Factor K (rugosidad, solo baja presión)</label>
-          <input id="rg-diametro-manual-k" type="number" step="any" value="1800" required>
+          <input id="rg-diametro-manual-k" type="text" inputmode="decimal" value="1800" required>
         </div>
         <div class="campo">
           <label for="rg-potencia">Potencia objetivo [kW]</label>
-          <input id="rg-potencia" type="number" step="any" value="30" required>
+          <input id="rg-potencia" type="text" inputmode="decimal" value="30" required>
         </div>
         <div class="campo">
           <label for="rg-longitud">Longitud de la línea [m]</label>
-          <input id="rg-longitud" type="number" step="any" value="10" required>
+          <input id="rg-longitud" type="text" inputmode="decimal" value="10" required>
         </div>
         <div class="campo">
           <label for="rg-presion-inicial">Presión inicial</label>
           <div class="campo-con-unidad">
-            <input id="rg-presion-inicial" type="number" step="any" value="1000" required>
+            <input id="rg-presion-inicial" type="text" inputmode="decimal" value="1000" required>
             <select id="rg-presion-inicial-unidad" class="select-unidad" aria-label="Unidad de presión inicial">
               <option value="Pa" selected>Pa</option>
               <option value="kPa">kPa</option>
@@ -101,7 +101,7 @@
         </div>
         <div class="campo">
           <label for="rg-temperatura">Temperatura [°C]</label>
-          <input id="rg-temperatura" type="number" step="any" value="15" required>
+          <input id="rg-temperatura" type="text" inputmode="decimal" value="15" required>
         </div>
       </form>
       <div class="resultados" id="resultados-red-gas" aria-live="polite"></div>
@@ -117,20 +117,20 @@
       <form id="form-combustion" class="fila-campos" autocomplete="off">
         <div class="campo">
           <label for="cb-potencia">Potencia [kW]</label>
-          <input id="cb-potencia" type="number" step="any" value="60" required>
+          <input id="cb-potencia" type="text" inputmode="decimal" value="60" required>
         </div>
         <div class="campo">
           <label for="cb-lambda">Lambda (exceso de aire)</label>
-          <input id="cb-lambda" type="number" step="any" value="1.2" required>
+          <input id="cb-lambda" type="text" inputmode="decimal" value="1.2" required>
         </div>
         <div class="campo" id="campo-pci">
           <label for="cb-pci">Poder calorífico [kJ/kg]</label>
-          <input id="cb-pci" type="number" step="any" value="48029" required>
+          <input id="cb-pci" type="text" inputmode="decimal" value="48029" required>
         </div>
         <div class="campo">
           <label for="cb-presion-ref">Presión de referencia</label>
           <div class="campo-con-unidad">
-            <input id="cb-presion-ref" type="number" step="any" value="3" required>
+            <input id="cb-presion-ref" type="text" inputmode="decimal" value="3" required>
             <select id="cb-presion-ref-unidad" class="select-unidad" aria-label="Unidad de presión de referencia">
               <option value="Pa">Pa</option>
               <option value="kPa" selected>kPa</option>
@@ -142,15 +142,15 @@
         </div>
         <div class="campo">
           <label for="cb-temp-ref">Temperatura de referencia [°C]</label>
-          <input id="cb-temp-ref" type="number" step="any" value="15" required>
+          <input id="cb-temp-ref" type="text" inputmode="decimal" value="15" required>
         </div>
         <div class="campo">
           <label for="cb-o2-medido">Concentración O₂ medida [%]</label>
-          <input id="cb-o2-medido" type="number" step="any" value="4.92" required>
+          <input id="cb-o2-medido" type="text" inputmode="decimal" value="4.92" required>
         </div>
         <div class="campo" id="campo-pci-simplificado-gn" style="display:none;">
           <label for="cb-pci-simplificado">PCI simplificado [kWh/m³] (solo GN)</label>
-          <input id="cb-pci-simplificado" type="number" step="any" value="10">
+          <input id="cb-pci-simplificado" type="text" inputmode="decimal" value="10">
         </div>
       </form>
       <div class="resultados" id="resultados-combustion" aria-live="polite"></div>
@@ -162,11 +162,11 @@
       <form id="form-quemador" class="fila-campos" autocomplete="off">
         <div class="campo">
           <label for="qm-potencia">Potencia [kW]</label>
-          <input id="qm-potencia" type="number" step="any" value="25" required>
+          <input id="qm-potencia" type="text" inputmode="decimal" value="25" required>
         </div>
         <div class="campo">
           <label for="qm-pci">Poder calorífico [kJ/kg]</label>
-          <input id="qm-pci" type="number" step="any" value="45990" required>
+          <input id="qm-pci" type="text" inputmode="decimal" value="45990" required>
         </div>
         <div class="campo">
           <label for="qm-cant-perforaciones">Cantidad de perforaciones</label>
@@ -174,20 +174,20 @@
         </div>
         <div class="campo">
           <label for="qm-diam-perforacion">Diámetro de perforación [mm]</label>
-          <input id="qm-diam-perforacion" type="number" step="any" value="2" required>
+          <input id="qm-diam-perforacion" type="text" inputmode="decimal" value="2" required>
         </div>
         <div class="campo">
           <label for="qm-cd">Coeficiente de descarga</label>
-          <input id="qm-cd" type="number" step="any" value="0.8" required>
+          <input id="qm-cd" type="text" inputmode="decimal" value="0.8" required>
         </div>
         <div class="campo">
           <label for="qm-diam-inyector">Diámetro de inyector [mm]</label>
-          <input id="qm-diam-inyector" type="number" step="any" value="1.2" required>
+          <input id="qm-diam-inyector" type="text" inputmode="decimal" value="1.2" required>
         </div>
         <div class="campo">
           <label for="qm-presion-gas">Presión de gas</label>
           <div class="campo-con-unidad">
-            <input id="qm-presion-gas" type="number" step="any" value="29" required>
+            <input id="qm-presion-gas" type="text" inputmode="decimal" value="29" required>
             <select id="qm-presion-gas-unidad" class="select-unidad" aria-label="Unidad de presión de gas">
               <option value="Pa">Pa</option>
               <option value="kPa">kPa</option>
@@ -199,19 +199,19 @@
         </div>
         <div class="campo">
           <label for="qm-relacion-aire">Relación de aire (aireación 1ª)</label>
-          <input id="qm-relacion-aire" type="number" step="any" value="0.45" required>
+          <input id="qm-relacion-aire" type="text" inputmode="decimal" value="0.45" required>
         </div>
         <div class="campo">
           <label for="qm-temp-gas">Temperatura del gas [°C]</label>
-          <input id="qm-temp-gas" type="number" step="any" value="15" required>
+          <input id="qm-temp-gas" type="text" inputmode="decimal" value="15" required>
         </div>
         <div class="campo">
           <label for="qm-temp-ambiente">Temperatura ambiente [°C]</label>
-          <input id="qm-temp-ambiente" type="number" step="any" value="15" required>
+          <input id="qm-temp-ambiente" type="text" inputmode="decimal" value="15" required>
         </div>
         <div class="campo">
           <label for="qm-diam-garganta">Diámetro de garganta Venturi [mm]</label>
-          <input id="qm-diam-garganta" type="number" step="any" value="28" required>
+          <input id="qm-diam-garganta" type="text" inputmode="decimal" value="28" required>
         </div>
         <div class="campo">
           <label for="qm-cant-perforaciones-garganta">Perforaciones (garganta Venturi)</label>

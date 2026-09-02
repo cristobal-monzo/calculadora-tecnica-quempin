@@ -64,7 +64,13 @@ export function calcularRed(tramos) {
     }
     enProgreso.add(id);
     const tramo = porId.get(id);
-    const base = tramo.continuaDesdeId ? perdidaAcumulada(tramo.continuaDesdeId) : 0;
+    // Punto de reseteo (2026-09-02, a pedido del usuario): un tramo con
+    // reseteaAcumulada=true ignora la acumulada heredada de su padre, como
+    // si fuera raíz — modela un regulador de presión que reinicia la
+    // referencia. Todo lo que continúa aguas abajo hereda desde este nuevo
+    // punto de partida porque la recursión vuelve a pasar por acá.
+    const heredaBase = tramo.continuaDesdeId && !tramo.reseteaAcumulada;
+    const base = heredaBase ? perdidaAcumulada(tramo.continuaDesdeId) : 0;
     const total = tramo.perdidaParcialMbar + base;
     enProgreso.delete(id);
     acumuladaCache.set(id, total);

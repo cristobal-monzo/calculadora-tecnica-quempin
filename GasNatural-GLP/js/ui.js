@@ -10,6 +10,21 @@ import { aPa, desdePa, formatearPresion, opcionesUnidadPresion } from './unidade
 
 let combustible = cargar('combustible', 'GLP');
 
+// Parseo de las cajas de ingreso manual (2026-09-02, a pedido del usuario):
+// son <input type="text" inputmode="decimal"> en vez de type="number" para
+// que "," y "." funcionen indistintamente como separador decimal — con
+// type="number" el navegador aplica el separador de su locale y descarta el
+// otro carácter en silencio, lo que en la práctica impedía tipear cualquier
+// decimal (y por lo tanto cualquier valor menor a 1) según la configuración
+// regional del navegador/SO. Igual que un <input type="number"> vacío o
+// inválido, un valor no numérico se trata como 0. Copia funcional de la
+// misma función en Hidrogeno/js/ui.js (ver su CLAUDE.md) — sin dependencia
+// cruzada entre módulos, mismo criterio que unidades-presion.js.
+function numeroFlexible(valor) {
+  const n = Number(String(valor).trim().replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
+
 function initTabs() {
   const botones = document.querySelectorAll('.tab');
   const paneles = document.querySelectorAll('.tab-panel');
@@ -44,7 +59,7 @@ function initSelectorUnidadCampo(inputId, selectId) {
   if (select.dataset.unidadCableada) return;
   select.dataset.unidadCableada = '1';
   select.addEventListener('input', () => {
-    const valorPa = aPa(Number(input.value) || 0, select.dataset.unidadAnterior);
+    const valorPa = aPa(numeroFlexible(input.value), select.dataset.unidadAnterior);
     input.value = Number(desdePa(valorPa, select.value).toPrecision(6));
     select.dataset.unidadAnterior = select.value;
   });
@@ -53,7 +68,7 @@ function initSelectorUnidadCampo(inputId, selectId) {
 // Lee un campo de presión (input + select de unidad) convertido a la unidad
 // que espera el motor de cálculo correspondiente.
 function leerPresion(inputId, selectId, unidadDestino) {
-  const valor = Number(document.getElementById(inputId).value);
+  const valor = numeroFlexible(document.getElementById(inputId).value);
   const unidadOrigen = document.getElementById(selectId).value;
   return desdePa(aPa(valor, unidadOrigen), unidadDestino);
 }
@@ -96,7 +111,7 @@ function poblarSelectDiametro(select) {
 }
 
 function leerRedGasForm() {
-  const num = (id) => Number(document.getElementById(id).value);
+  const num = (id) => numeroFlexible(document.getElementById(id).value);
   const diametroSeleccionado = document.getElementById('rg-diametro').value;
   const esManual = diametroSeleccionado === 'manual';
   return {
@@ -223,8 +238,8 @@ function marcadoAlmacenamientoGLP() {
   return `
     <p class="subtitulo">Cilindros — por razón de vaporización</p>
     <form id="form-cilindros-vap" class="fila-campos" autocomplete="off">
-      <div class="campo"><label for="cv-potencia">Potencia total [kW]</label><input id="cv-potencia" type="number" step="any" value="90" required></div>
-      <div class="campo"><label for="cv-razon">Razón de vaporización [kW/cilindro]</label><input id="cv-razon" type="number" step="any" value="30" required></div>
+      <div class="campo"><label for="cv-potencia">Potencia total [kW]</label><input id="cv-potencia" type="text" inputmode="decimal" value="90" required></div>
+      <div class="campo"><label for="cv-razon">Razón de vaporización [kW/cilindro]</label><input id="cv-razon" type="text" inputmode="decimal" value="30" required></div>
     </form>
     <div class="resultados" id="resultados-cilindros-vap"></div>
 
@@ -251,9 +266,9 @@ function marcadoAlmacenamientoGLP() {
     <p class="subtitulo">Estanque GLP</p>
     <form id="form-estanque" autocomplete="off">
       <div class="fila-campos">
-        <div class="campo"><label for="es-diametro">Diámetro [m]</label><input id="es-diametro" type="number" step="any" value="0.76" required></div>
-        <div class="campo"><label for="es-altura">Altura [m]</label><input id="es-altura" type="number" step="any" value="1.36" required></div>
-        <div class="campo"><label for="es-capacidad">Capacidad nominal [L]</label><input id="es-capacidad" type="number" step="any" value="500" required></div>
+        <div class="campo"><label for="es-diametro">Diámetro [m]</label><input id="es-diametro" type="text" inputmode="decimal" value="0.76" required></div>
+        <div class="campo"><label for="es-altura">Altura [m]</label><input id="es-altura" type="text" inputmode="decimal" value="1.36" required></div>
+        <div class="campo"><label for="es-capacidad">Capacidad nominal [L]</label><input id="es-capacidad" type="text" inputmode="decimal" value="500" required></div>
       </div>
       ${marcadoComposicionGLP({ prefijo: 'es' })}
     </form>
@@ -285,8 +300,8 @@ function initAlmacenamiento() {
     }
 
     function recalcularVap() {
-      const potenciaTotalKw = Number(document.getElementById('cv-potencia').value);
-      const razonVaporizacionKw = Number(document.getElementById('cv-razon').value);
+      const potenciaTotalKw = numeroFlexible(document.getElementById('cv-potencia').value);
+      const razonVaporizacionKw = numeroFlexible(document.getElementById('cv-razon').value);
       const n = cilindrosPorVaporizacion({ potenciaTotalKw, razonVaporizacionKw });
       document.getElementById('resultados-cilindros-vap').innerHTML = tile(n, 'N° de cilindros necesarios');
       guardarEstado();
@@ -310,9 +325,9 @@ function initAlmacenamiento() {
 
     function recalcularEstanque() {
       const resultado = calcularEstanqueGLP({
-        diametroM: Number(document.getElementById('es-diametro').value),
-        alturaM: Number(document.getElementById('es-altura').value),
-        capacidadLitros: Number(document.getElementById('es-capacidad').value),
+        diametroM: numeroFlexible(document.getElementById('es-diametro').value),
+        alturaM: numeroFlexible(document.getElementById('es-altura').value),
+        capacidadLitros: numeroFlexible(document.getElementById('es-capacidad').value),
         ...leerComposicion('es'),
       });
       document.getElementById('resultados-estanque').innerHTML = [
@@ -346,8 +361,8 @@ function marcadoComposicionGLP(valores) {
   return `
     <p class="subtitulo">Composición GLP</p>
     <div class="fila-campos">
-      <div class="campo"><label for="${valores.prefijo}-pct-butano">% Butano (molar)</label><input id="${valores.prefijo}-pct-butano" type="number" step="any" value="0.3"></div>
-      <div class="campo"><label for="${valores.prefijo}-pct-propano">% Propano (molar)</label><input id="${valores.prefijo}-pct-propano" type="number" step="any" value="0.7"></div>
+      <div class="campo"><label for="${valores.prefijo}-pct-butano">% Butano (molar)</label><input id="${valores.prefijo}-pct-butano" type="text" inputmode="decimal" value="0.3"></div>
+      <div class="campo"><label for="${valores.prefijo}-pct-propano">% Propano (molar)</label><input id="${valores.prefijo}-pct-propano" type="text" inputmode="decimal" value="0.7"></div>
     </div>
   `;
 }
@@ -356,18 +371,18 @@ function marcadoComposicionGN(valores) {
   return `
     <p class="subtitulo">Composición GN</p>
     <div class="fila-campos">
-      <div class="campo"><label for="${valores.prefijo}-pct-metano">% Metano (molar)</label><input id="${valores.prefijo}-pct-metano" type="number" step="any" value="0.97"></div>
-      <div class="campo"><label for="${valores.prefijo}-pct-etano">% Etano (molar)</label><input id="${valores.prefijo}-pct-etano" type="number" step="any" value="0.011"></div>
-      <div class="campo"><label for="${valores.prefijo}-pct-propano">% Propano (molar)</label><input id="${valores.prefijo}-pct-propano" type="number" step="any" value="0.001"></div>
-      <div class="campo"><label for="${valores.prefijo}-pct-butano">% Butano (molar)</label><input id="${valores.prefijo}-pct-butano" type="number" step="any" value="0.001"></div>
-      <div class="campo"><label for="${valores.prefijo}-pct-dioxido">% Dióxido de carbono (molar)</label><input id="${valores.prefijo}-pct-dioxido" type="number" step="any" value="0.01"></div>
-      <div class="campo"><label for="${valores.prefijo}-pct-nitrogeno">% Nitrógeno (molar)</label><input id="${valores.prefijo}-pct-nitrogeno" type="number" step="any" value="0.007"></div>
+      <div class="campo"><label for="${valores.prefijo}-pct-metano">% Metano (molar)</label><input id="${valores.prefijo}-pct-metano" type="text" inputmode="decimal" value="0.97"></div>
+      <div class="campo"><label for="${valores.prefijo}-pct-etano">% Etano (molar)</label><input id="${valores.prefijo}-pct-etano" type="text" inputmode="decimal" value="0.011"></div>
+      <div class="campo"><label for="${valores.prefijo}-pct-propano">% Propano (molar)</label><input id="${valores.prefijo}-pct-propano" type="text" inputmode="decimal" value="0.001"></div>
+      <div class="campo"><label for="${valores.prefijo}-pct-butano">% Butano (molar)</label><input id="${valores.prefijo}-pct-butano" type="text" inputmode="decimal" value="0.001"></div>
+      <div class="campo"><label for="${valores.prefijo}-pct-dioxido">% Dióxido de carbono (molar)</label><input id="${valores.prefijo}-pct-dioxido" type="text" inputmode="decimal" value="0.01"></div>
+      <div class="campo"><label for="${valores.prefijo}-pct-nitrogeno">% Nitrógeno (molar)</label><input id="${valores.prefijo}-pct-nitrogeno" type="text" inputmode="decimal" value="0.007"></div>
     </div>
   `;
 }
 
 function leerComposicion(prefijo) {
-  const num = (id) => Number(document.getElementById(id).value);
+  const num = (id) => numeroFlexible(document.getElementById(id).value);
   if (combustible === 'GLP') {
     return { pctButano: num(`${prefijo}-pct-butano`), pctPropano: num(`${prefijo}-pct-propano`) };
   }
@@ -430,7 +445,7 @@ function initCombustion() {
   }
 
   function recalcular() {
-    const num = (id) => Number(document.getElementById(id).value);
+    const num = (id) => numeroFlexible(document.getElementById(id).value);
     const comunes = {
       potenciaKw: num('cb-potencia'), lambda: num('cb-lambda'), pciKjKg: num('cb-pci'),
       presionReferenciaKPa: leerPresion('cb-presion-ref', 'cb-presion-ref-unidad', 'kPa'), temperaturaReferenciaC: num('cb-temp-ref'),
@@ -503,7 +518,7 @@ function initQuemador() {
   }
 
   function recalcular() {
-    const num = (id) => Number(document.getElementById(id).value);
+    const num = (id) => numeroFlexible(document.getElementById(id).value);
     try {
       const resultado = calcularQuemador({
         gas: combustible,

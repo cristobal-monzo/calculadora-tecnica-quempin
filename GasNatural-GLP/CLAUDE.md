@@ -30,6 +30,24 @@ publican. Diseño completo en
 Propiedades de gas: `js/gas-glp.js`, `js/gas-gn.js` (composición → PM, R,
 densidad, fracciones de carbono/hidrógeno para combustión).
 
+## Separador decimal flexible en cajas de ingreso manual (`ui.js`, 2026-09-02, a pedido del usuario)
+
+Mismo cambio que en `Hidrogeno/js/ui.js` (ver su `CLAUDE.md`), copiado acá
+sin dependencia cruzada: todos los `<input>` de ingreso manual de valores
+continuos (Red de Gas, Combustión, Quemador, Almacenamiento GLP,
+composición molar GLP/GN) pasaron de `type="number" step="any"` a
+`type="text" inputmode="decimal"`, y sus lecturas (`num()`/`leerPresion()`
+en cada cierre de `ui.js`) usan la función nueva `numeroFlexible()` en vez
+de `Number(...)` directo — reemplaza "," por "." antes de convertir, y
+trata lo no numérico como 0. Motivo: un `<input type="number">` aplica el
+separador decimal según el locale del navegador/SO y descarta en silencio
+el carácter que no coincide, lo que impedía tipear cualquier decimal (y
+por lo tanto valores menores a 1, como varios de los porcentajes molares
+de composición GLP/GN que traen default <1). Quedan como `type="number"`
+los contadores enteros que no tienen ese problema: `cd-calefont`/
+`cd-cocinas`/`cd-estufas` (Almacenamiento) y `qm-cant-perforaciones`/
+`qm-cant-perforaciones-garganta` (Quemador).
+
 ## Unidades de presión (2026-09-02, a pedido del usuario)
 
 Los 3 campos de ingreso manual de presión (`rg-presion-inicial` en Red de
