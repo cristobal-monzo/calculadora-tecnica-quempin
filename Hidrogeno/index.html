@@ -33,8 +33,18 @@
     <section class="tab-panel active" id="panel-flujo" data-panel="flujo">
       <form id="form-flujo" class="fila-campos" autocomplete="off">
         <div class="campo">
-          <label for="flujo-presion">Presión manométrica [bar]</label>
-          <input id="flujo-presion" type="number" step="any" value="0.8" required>
+          <label for="flujo-presion">Presión manométrica</label>
+          <div class="campo-con-unidad">
+            <input id="flujo-presion" type="number" step="any" value="0.8" required>
+            <select id="flujo-presion-unidad" class="select-unidad" aria-label="Unidad de presión manométrica">
+              <option value="Pa">Pa</option>
+              <option value="kPa">kPa</option>
+              <option value="mbar">mbar</option>
+              <option value="bar" selected>bar</option>
+              <option value="MPa">MPa</option>
+              <option value="psi">psi</option>
+            </select>
+          </div>
         </div>
         <div class="campo">
           <label for="flujo-temperatura">Temperatura [°C]</label>
@@ -49,8 +59,18 @@
           <select id="flujo-tuberia" required></select>
         </div>
         <div class="campo">
-          <label for="flujo-presion-min">Presión manométrica mínima [bar]</label>
-          <input id="flujo-presion-min" type="number" step="any" value="29.5" required>
+          <label for="flujo-presion-min">Presión manométrica mínima</label>
+          <div class="campo-con-unidad">
+            <input id="flujo-presion-min" type="number" step="any" value="29.5" required>
+            <select id="flujo-presion-min-unidad" class="select-unidad" aria-label="Unidad de presión manométrica mínima">
+              <option value="Pa">Pa</option>
+              <option value="kPa">kPa</option>
+              <option value="mbar">mbar</option>
+              <option value="bar" selected>bar</option>
+              <option value="MPa">MPa</option>
+              <option value="psi">psi</option>
+            </select>
+          </div>
         </div>
         <div class="campo">
           <label for="flujo-largo">Largo de la línea [m]</label>
@@ -111,8 +131,18 @@
           <input id="alm-temperatura" type="number" step="any" value="20" required>
         </div>
         <div class="campo">
-          <label for="alm-presion">Presión de almacenamiento [bar abs]</label>
-          <input id="alm-presion" type="number" step="any" value="200" required>
+          <label for="alm-presion">Presión de almacenamiento [abs]</label>
+          <div class="campo-con-unidad">
+            <input id="alm-presion" type="number" step="any" value="200" required>
+            <select id="alm-presion-unidad" class="select-unidad" aria-label="Unidad de presión de almacenamiento">
+              <option value="Pa">Pa</option>
+              <option value="kPa">kPa</option>
+              <option value="mbar">mbar</option>
+              <option value="bar" selected>bar</option>
+              <option value="MPa">MPa</option>
+              <option value="psi">psi</option>
+            </select>
+          </div>
         </div>
         <div class="campo">
           <label for="alm-volumen">Volumen del estanque [m³]</label>
@@ -146,10 +176,14 @@
         <table id="memoria-tabla" class="no-imprimir">
           <thead>
             <tr>
-              <th>Tramo</th><th>Continúa desde</th><th>Presión [MPa]</th><th>Longitud [m]</th>
+              <th>Tramo</th><th>Continúa desde</th>
+              <th>Presión <select id="memoria-presion-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa" selected>MPa</option><option value="psi">psi</option></select></th>
+              <th>Longitud [m]</th>
               <th>Potencia [kW]</th><th>Diámetro</th><th>Material</th><th>Temp. [°C]</th>
-              <th>Densidad [kg/m³]</th><th>Velocidad [m/s]</th><th>Pérdida parcial [mbar]</th>
-              <th>Pérdida acumulada [mbar]</th><th></th>
+              <th>Densidad [kg/m³]</th><th>Velocidad [m/s]</th>
+              <th>Pérdida parcial <select id="memoria-perdida-parcial-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida parcial"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar" selected>mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th>Pérdida acumulada <select id="memoria-perdida-acumulada-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida acumulada"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar" selected>mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="memoria-tabla-cuerpo"></tbody>
@@ -159,7 +193,7 @@
       <table id="memoria-tabla-impresion" style="display:none;">
         <caption>Memoria de Cálculo — Red de Hidrógeno — QUEMPIN</caption>
         <thead>
-          <tr><th>Tramo</th><th>Continúa desde</th><th>Presión [MPa]</th><th>Longitud [m]</th><th>Diámetro</th><th>Pérdida acumulada [mbar]</th></tr>
+          <tr><th>Tramo</th><th>Continúa desde</th><th id="memoria-impresion-th-presion">Presión [MPa]</th><th>Longitud [m]</th><th>Diámetro</th><th id="memoria-impresion-th-perdida">Pérdida acumulada [mbar]</th></tr>
         </thead>
         <tbody id="memoria-tabla-impresion-cuerpo"></tbody>
       </table>

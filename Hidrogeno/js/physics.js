@@ -17,9 +17,12 @@ export function densidadReal({ presionAbsPa, temperaturaC, masaMolar, constanteR
   return (presionAbsPa * masaMolar) / (z * constanteR * (temperaturaC + 273.15));
 }
 
-export function presionMaximaDiseno({ limiteElasticoMPa, espesorMm, diametroMm, factorDiseno, factorUnion }) {
+export function presionMaximaDiseno({ limiteElasticoMPa, espesorMm, diametroMm, factorDiseno, factorUnion, factorHf = 1 }) {
   // Cálculo!C10 = 10*((2*$K$3*$J$3)/$I$3)*$C$28*$C$29*1*1  (Barlow, ASME B31.12)
-  return 10 * ((2 * limiteElasticoMPa * espesorMm) / diametroMm) * factorDiseno * factorUnion;
+  // factorHf (Tabla IX-5A de ASME B31.12, derating por fragilización de
+  // hidrógeno) AGREGADO respecto al Excel fuente (2026-09-02, a pedido del
+  // usuario): el Excel no lo aplicaba en absoluto. Ver Hidrogeno/CLAUDE.md.
+  return 10 * ((2 * limiteElasticoMPa * espesorMm) / diametroMm) * factorDiseno * factorUnion * factorHf;
 }
 
 export function velocidadErosion({ zErosion, temperaturaC, presionMinBarG, gravedadEspecifica }) {
@@ -36,14 +39,23 @@ export function reynolds({ densidad, velocidad, diametroM, viscosidad }) {
 }
 
 export function rugosidadRelativa({ rugosidadAbsoluta, diametroM }) {
-  // Cálculo!C31 = L3/($I$3/1000) — puerto literal (rugosidadAbsoluta ya en
-  // la misma escala numérica que la tabla fuente, no se reconvierte).
-  return rugosidadAbsoluta / diametroM;
+  // Cálculo!C31 = L3/($I$3/1000) — CORREGIDO respecto al Excel fuente
+  // (2026-09-02, a pedido del usuario): el Excel dividía la rugosidad
+  // (rugosidadMm, en milímetros) por el diámetro ya convertido a METROS,
+  // sin reconvertir — da una "rugosidad relativa" ~1000x más alta que la
+  // real (ej. 0.157 en vez de 0.000157 para tubería estirada, físicamente
+  // imposible: implicaría una rugosidad del 16% del diámetro). Acá se
+  // reconvierte el diámetro a mm antes de dividir. Ver Hidrogeno/CLAUDE.md.
+  return rugosidadAbsoluta / (diametroM * 1000);
 }
 
 export function factorFriccionHaaland({ rugosidadRelativa, reynolds }) {
-  // Cálculo!C32 = 1/((-1.8*LOG(($C$31/3.7)^1.11)+(6.9/$C$30)))^2
-  const termino = -1.8 * Math.log10(Math.pow(rugosidadRelativa / 3.7, 1.11)) + 6.9 / reynolds;
+  // Cálculo!C32 = 1/((-1.8*LOG(($C$31/3.7)^1.11)+(6.9/$C$30)))^2 —
+  // CORREGIDO respecto al Excel fuente (2026-09-02, a pedido del usuario):
+  // la ecuación de Haaland (1983) publicada suma ambos términos DENTRO del
+  // logaritmo (1/√f = -1.8·log10[(ε/D/3.7)^1.11 + 6.9/Re]); el Excel sumaba
+  // 6.9/Re fuera del logaritmo. Ver Hidrogeno/CLAUDE.md.
+  const termino = -1.8 * Math.log10(Math.pow(rugosidadRelativa / 3.7, 1.11) + 6.9 / reynolds);
   return 1 / Math.pow(termino, 2);
 }
 

@@ -71,7 +71,13 @@ export function calcularQuemador(inputs) {
   const caudalPerforacionPremezcla1Nm3S = caudalPremezcla1Nm3S / cantidadPerforaciones;
   const molesAire2 = (gasProps.aireEsteq / 22.4) * (1 - relacionAire);
   const racMolarEstequiometrica = molesAire2 / (molesGas + molesAirePremezcla1);
-  const caudalGasPorPerforacionM3S = (flujoCombustibleKgS * 101.325) / gasProps.r / (temperaturaGasC + 273.15) / cantidadPerforaciones;
+  // CORREGIDO respecto al Excel fuente (2026-09-02, a pedido del usuario):
+  // la hoja fuente tenía T y P invertidas — calculaba ṁ·P/(r·T) (masa ×
+  // densidad) en vez del caudal volumétrico de gas ideal ṁ·r·T/P (masa ÷
+  // densidad), el mismo patrón que corregirCaudalTP (combustion.js) y
+  // caudalPremezcla1Nm3S (unas líneas más arriba en este archivo) ya usan
+  // bien. Subestimaba el largo de llama en ~2x — ver GasNatural-GLP/CLAUDE.md.
+  const caudalGasPorPerforacionM3S = (flujoCombustibleKgS * gasProps.r * (temperaturaGasC + 273.15) / 101.325) / cantidadPerforaciones;
   const largoLlamaMm = 1330 * caudalGasPorPerforacionM3S * (temperaturaAmbienteC + 273.15) / (temperaturaGasC + 273.15)
     / Math.log(1 + 1 / racMolarEstequiometrica) * 1000;
 

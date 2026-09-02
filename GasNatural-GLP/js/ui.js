@@ -230,10 +230,13 @@ function marcadoAlmacenamientoGLP() {
     <div class="resultados" id="resultados-cilindros-diario"></div>
 
     <p class="subtitulo">Estanque GLP</p>
-    <form id="form-estanque" class="fila-campos" autocomplete="off">
-      <div class="campo"><label for="es-diametro">Diámetro [m]</label><input id="es-diametro" type="number" step="any" value="0.76" required></div>
-      <div class="campo"><label for="es-altura">Altura [m]</label><input id="es-altura" type="number" step="any" value="1.36" required></div>
-      <div class="campo"><label for="es-capacidad">Capacidad nominal [L]</label><input id="es-capacidad" type="number" step="any" value="500" required></div>
+    <form id="form-estanque" autocomplete="off">
+      <div class="fila-campos">
+        <div class="campo"><label for="es-diametro">Diámetro [m]</label><input id="es-diametro" type="number" step="any" value="0.76" required></div>
+        <div class="campo"><label for="es-altura">Altura [m]</label><input id="es-altura" type="number" step="any" value="1.36" required></div>
+        <div class="campo"><label for="es-capacidad">Capacidad nominal [L]</label><input id="es-capacidad" type="number" step="any" value="500" required></div>
+      </div>
+      ${marcadoComposicionGLP({ prefijo: 'es' })}
     </form>
     <div class="resultados" id="resultados-estanque"></div>
   `;
@@ -258,7 +261,7 @@ function initAlmacenamiento() {
     }
 
     function guardarEstado() {
-      const campos = ['cv-potencia', 'cv-razon', 'cd-calefont', 'cd-cocinas', 'cd-estufas', 'cd-nivel', 'cd-temperatura', 'cd-peso-cilindro', 'es-diametro', 'es-altura', 'es-capacidad'];
+      const campos = ['cv-potencia', 'cv-razon', 'cd-calefont', 'cd-cocinas', 'cd-estufas', 'cd-nivel', 'cd-temperatura', 'cd-peso-cilindro', 'es-diametro', 'es-altura', 'es-capacidad', 'es-pct-butano', 'es-pct-propano'];
       guardar('almacenamiento-glp', Object.fromEntries(campos.map((id) => [id, document.getElementById(id).value])));
     }
 
@@ -291,11 +294,13 @@ function initAlmacenamiento() {
         diametroM: Number(document.getElementById('es-diametro').value),
         alturaM: Number(document.getElementById('es-altura').value),
         capacidadLitros: Number(document.getElementById('es-capacidad').value),
+        ...leerComposicion('es'),
       });
       document.getElementById('resultados-estanque').innerHTML = [
         tile(`${resultado.capacidadRealLitros.toFixed(0)} L`, 'Capacidad real (80%)'),
         tile(`${resultado.superficieM2.toFixed(3)} m²`, 'Superficie'),
         tile(`${resultado.qKgH.toFixed(2)} kg/h`, 'Capacidad de vaporización'),
+        tile(`${resultado.pciKjKg.toFixed(0)} kJ/kg`, 'PCI del GLP (según composición)'),
         tile(`${resultado.qKw.toFixed(2)} kW`, 'Capacidad de vaporización'),
         tile(`${resultado.qMcalH.toFixed(2)} Mcal/h`, 'Capacidad de vaporización'),
       ].join('');

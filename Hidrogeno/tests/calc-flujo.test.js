@@ -25,7 +25,8 @@ const r = calcularFlujo({
   unidadH2: '[m3/h]',
 });
 
-cerca(r.presionMaxDisenoBar, 128.50393700787401);   // C10
+cerca(r.presionMaxDisenoBar, 128.50393700787401);   // C10 — Hf=1 en este caso (presión cae en la zona plana de la Tabla IX-5A, ≤2000 psig)
+assert.equal(r.factorHfAplicado, 1);                 // factorHf, AGREGADO 2026-09-02
 cerca(r.flujoMasicoKgH, 1.8);                        // C13
 cerca(r.zDiseno, 1.0004759430898928);                // C26
 cerca(r.densidadKgM3, 0.14881834275071656);          // C20
@@ -35,8 +36,22 @@ assert.equal(r.zErosion, 1.02);                       // C27
 cerca(r.velocidadErosionMS, 77.56390222440128);       // C14
 cerca(r.velocidadFlujoMS, 26.522607427443383);        // C15
 cerca(r.reynolds, 5012.754113130562);                 // C30
-cerca(r.rugosidadRelativa, 0.15748031496062992);      // C31
-cerca(r.factorFriccion, 0.13314145810934921);         // C32
-cerca(r.perdidaCargaMbar, 109.74847294168545);        // C16
+// C31/C32/C16 CORREGIDOS respecto al Excel fuente (2026-09-02, a pedido del
+// usuario) — ver Hidrogeno/CLAUDE.md y physics.test.js.
+cerca(r.rugosidadRelativa, 0.00015748031496062994);
+cerca(r.factorFriccion, 0.03781741551718751);
+cerca(r.perdidaCargaMbar, 31.17288681188844);
+
+// factorHf, AGREGADO 2026-09-02 — caso sintético con factorDiseno=1.0
+// (tubería 1.25", F=1) para forzar una presión de diseño por encima de la
+// zona plana de la Tabla IX-5A (>2000 psig) y ejercitar la interpolación +
+// iteración real (no solo el caso trivial Hf=1 de arriba).
+const rAltaPresion = calcularFlujo({
+  presionBarG: 0.8, temperaturaC: 20, potenciaKw: 60, tuberiaPulgadas: 1.25,
+  presionMinBarG: 29.5, largoM: 20, codos: 0, tees: 0, valvulas: 0,
+  factorDiseno: 1.0, factorUnion: 1, unidadNormalizado: '[sL/min]', unidadH2: '[m3/h]',
+});
+cerca(rAltaPresion.presionMaxDisenoBar, 156.7518365893937);
+cerca(rAltaPresion.factorHfAplicado, 0.9378315009620852);
 
 console.log('calc-flujo.test.js: OK');

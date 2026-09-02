@@ -46,16 +46,27 @@ main {
 .campo input:focus-visible, .campo select:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
 .fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0 20px; padding-top: 20px; }
 
+/* --- Campo de presión con selector de unidad propio --- */
+.campo-con-unidad { display: flex; gap: 6px; }
+.campo-con-unidad > *:first-child { flex: 1; min-width: 0; }
+.campo-con-unidad > .select-unidad { flex: 0 0 auto; width: 76px; padding: 8px 4px; }
+
 /* --- Resultados --- */
 .resultados { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 20px; }
 .resultado-tile {
   background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px;
   padding: 14px 16px;
 }
-.resultado-tile .valor { font-size: 22px; font-weight: 900; color: var(--text-primary); }
+.resultado-tile .valor { font-size: 22px; font-weight: 900; color: var(--text-primary); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .resultado-tile .etiqueta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .resultado-tile.alerta { border-color: var(--brand-orange); }
 .resultado-tile.alerta .valor { color: var(--brand-orange-ink, var(--brand-orange)); }
+
+/* --- Selector de unidad inline dentro de un tile de resultado de presión --- */
+.select-unidad-inline {
+  font-size: 12px; font-weight: 700; color: var(--text-secondary); padding: 2px 4px;
+  border-radius: 4px; border: 1px solid var(--gridline); background: var(--page-plane);
+}
 
 /* --- Tabla de referencia de tubería --- */
 details { margin-top: 20px; }
@@ -77,6 +88,7 @@ th { color: var(--text-secondary); font-size: 12px; }
   font: inherit; font-size: 12.5px; padding: 4px 6px; border-radius: 4px;
   border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary); width: 100%;
 }
+#memoria-tabla th .select-unidad-columna { width: auto; font-weight: 700; padding: 2px 4px; margin-left: 4px; }
 .mem-eliminar { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
 .mem-eliminar:hover { color: var(--brand-orange); }
 #memoria-arbol { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px; margin-bottom: 16px; }

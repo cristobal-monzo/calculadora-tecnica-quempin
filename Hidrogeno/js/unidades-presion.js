@@ -4,7 +4,7 @@
 // (Pa/kPa/mbar/bar/MPa según el caso); la conversión ocurre solo en ui.js al
 // leer el formulario y al mostrar resultados.
 //
-// Copia funcional también en Hidrogeno/js/unidades-presion.js (mismo
+// Copia funcional también en GasNatural-GLP/js/unidades-presion.js (mismo
 // contrato, sin dependencia cruzada entre sitios — ver CLAUDE.md raíz,
 // mismo patrón que storage.js).
 

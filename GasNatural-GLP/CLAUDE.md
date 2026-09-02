@@ -125,6 +125,44 @@ el comportamiento:
   precompletando con el valor derivado de la composición al cambiar de
   gas, pero el usuario puede editarlo igual que en GLP.
 
+## Correcciones aplicadas (2026-09-02, a pedido del usuario)
+
+Auditoría física de Combustión/Quemador y Almacenamiento contra
+estequiometría de combustión y balances de energía. Dos correcciones,
+verificadas con la regresión completa (`node GasNatural-GLP/tests/run-all.js`):
+
+- **Quemador Atmosférico — caudal por perforación tenía temperatura y
+  presión invertidas (`js/calc-quemador.js`, `caudalGasPorPerforacionM3S`,
+  usado en la verificación de largo de llama).** La hoja fuente calculaba
+  algebraicamente ṁ·P/(r·T) — masa × densidad — en vez del caudal
+  volumétrico de gas ideal ṁ·r·T/P (masa ÷ densidad), el mismo patrón que
+  `corregirCaudalTP` (`combustion.js`) y `caudalPremezcla1Nm3S` (unas
+  líneas más arriba en el mismo archivo) ya calculaban bien. Esto
+  subestimaba el largo de llama reportado (`largoLlamaMm`) en ~2x — un
+  chequeo de seguridad contra impingement de llama, así que subestimarlo es
+  la dirección insegura del error. Para el caso GN cacheado del Excel
+  (`gnLlama` en `calc-quemador.test.js`): `caudalGasPorPerforacionM3S` pasó
+  de 9.806733440184042e-7 a 1.982288998888557e-6 m³/s, `largoLlamaMm` de
+  1.8543804220726559 a 3.7483611977934608 mm.
+- **Estanque GLP — la conversión de capacidad de vaporización a kW/Mcal
+  usaba el PCI de Gas Natural, no el de GLP (`js/calc-almacenamiento-glp.js`,
+  `calcularEstanqueGLP`).** La hoja fuente (`Estanque GLP!B8`) usaba la
+  constante `52737` kJ/kg — que es exactamente el PCI por defecto de GAS
+  NATURAL en este mismo código (ver `pciMasa` en `gas-gn.test.js`), pese a
+  que este módulo es exclusivamente GLP. Casi con certeza una referencia
+  cruzada de hoja en el Excel fuente (`Estanque GLP!B8` apuntando a la
+  celda de PCI de GN de `Combustión Gas` en vez de la de GLP). `qKgH` (la
+  superficie de vaporización en kg/h) no estaba afectado, solo la
+  conversión a kW/Mcal — que es justo lo que se compara contra la demanda
+  térmica del proyecto para decidir si el estanque alcanza.
+  `calcularEstanqueGLP` ahora recibe `pctButano`/`pctPropano` y deriva el
+  PCI real de la composición vía `propiedadesGLP` (igual que el resto del
+  módulo); la UI del formulario de Estanque agregó los campos de
+  composición correspondientes (`es-pct-butano`, `es-pct-propano`). Para el
+  caso cacheado del Excel (composición por defecto 30% butano / 70%
+  propano): `qKw` pasó de 66.84853724682291 a 58.29596160247766,
+  `qMcalH` de 57.493127738678986 a 50.13747951859133 (~13% más bajo).
+
 ## Discrepancias del Excel fuente que se dejaron como estaban
 
 No todo lo que se ve distinto entre GLP y GN es un error — estas dos

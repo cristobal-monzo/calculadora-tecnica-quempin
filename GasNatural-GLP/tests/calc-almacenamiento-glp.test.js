@@ -27,12 +27,20 @@ assert.equal(resultado.nCilindros, 1); // F20
 // con el patrón de esa fila y de las filas vecinas.
 cerca(consumoArtefacto({ artefacto: 'cocina', nivel: 'bajo', temperaturaC: 10 }), 3.5);
 
-// Fixtures: MASTER DISEÑO.xlsm, hoja "Estanque GLP", 2026-09-01
-const estanque = calcularEstanqueGLP({ diametroM: 0.76, alturaM: 1.36, capacidadLitros: 500 });
+// Fixtures: MASTER DISEÑO.xlsm, hoja "Estanque GLP", 2026-09-01. B8/B9
+// CORREGIDOS respecto al Excel fuente (2026-09-02, a pedido del usuario):
+// usaban la constante 52737 kJ/kg, que es el PCI de GAS NATURAL (ver
+// gas-gn.test.js), no el de GLP — casi con certeza una referencia cruzada
+// de hoja en el Excel fuente. Ahora usan el PCI real del GLP, derivado de
+// la composición (30% butano / 70% propano, igual que el resto del
+// módulo). Antes de la corrección: qKw=66.84853724682291,
+// qMcalH=57.493127738678986 (con el PCI de GN, ~13% más alto).
+const estanque = calcularEstanqueGLP({ diametroM: 0.76, alturaM: 1.36, capacidadLitros: 500, pctButano: 0.3, pctPropano: 0.7 });
 cerca(estanque.capacidadRealLitros, 400);              // B5
 cerca(estanque.superficieM2, 4.154442125107143);       // B6
 cerca(estanque.qKgH, 4.563299658466779);                // B7
-cerca(estanque.qKw, 66.84853724682291);                 // B8
-cerca(estanque.qMcalH, 57.493127738678986);              // B9
+cerca(estanque.pciKjKg, 45989.84889794246);             // PCI real de GLP (30/70), no el de GN
+cerca(estanque.qKw, 58.29596160247766);                 // B8
+cerca(estanque.qMcalH, 50.13747951859133);               // B9
 
 console.log('calc-almacenamiento-glp.test.js: OK');

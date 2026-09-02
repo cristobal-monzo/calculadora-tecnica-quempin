@@ -2,6 +2,7 @@
 // Cada archivo importado lanza (throw) si alguna aserción falla, lo que
 // aborta este script con código de salida distinto de 0.
 
+await import('./unidades-presion.test.js');
 await import('./physics.test.js');
 await import('./gas-h2.test.js');
 await import('./calc-flujo.test.js');

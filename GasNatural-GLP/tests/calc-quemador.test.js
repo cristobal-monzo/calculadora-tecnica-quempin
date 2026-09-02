@@ -75,7 +75,13 @@ const gnLlama = calcularQuemador({
 cerca(gnLlama.molesAirePremezcla1, 0.24312970766631023, TOL_REDONDEO_FUENTE);
 cerca(gnLlama.racEstequiometricaMasica, 15.636373874731445, TOL_REDONDEO_FUENTE);
 cerca(gnLlama.flujoAirePremezcla1KgS, 0.0006671187442999365, TOL_REDONDEO_FUENTE);
-cerca(gnLlama.caudalGasPorPerforacionM3S, 9.806733440184042e-7); // D39 (no depende de PM/densidad ni de xCarbono/xHidrogeno)
-cerca(gnLlama.largoLlamaMm, 1.8543804220726559, TOL_REDONDEO_FUENTE);
+// D39/D40 CORREGIDOS respecto al Excel fuente (2026-09-02, a pedido del
+// usuario): la hoja fuente tenía T y P invertidas en el caudal por
+// perforación (calculaba masa×densidad en vez de masa÷densidad), lo que
+// subestimaba el largo de llama en ~2x — ver GasNatural-GLP/CLAUDE.md.
+// Antes de la corrección: caudalGasPorPerforacionM3S=9.806733440184042e-7,
+// largoLlamaMm=1.8543804220726559 (valores cacheados del Excel, con el error).
+cerca(gnLlama.caudalGasPorPerforacionM3S, 0.000001982288998888557);
+cerca(gnLlama.largoLlamaMm, 3.7483611977934608, TOL_REDONDEO_FUENTE);
 
 console.log('calc-quemador.test.js: OK');

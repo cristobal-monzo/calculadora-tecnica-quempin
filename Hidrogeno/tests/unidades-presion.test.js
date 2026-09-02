@@ -27,5 +27,6 @@ UNIDADES_PRESION.forEach((unidad) => {
 cerca(Number(formatearPresion(100000, 'bar')), 1);
 cerca(Number(formatearPresion(100000, 'kPa')), 100);
 cerca(Number(formatearPresion(100000, 'mbar')), 1000);
+cerca(Number(formatearPresion(500000, 'MPa')), 0.5);
 
 console.log('unidades-presion.test.js: OK');

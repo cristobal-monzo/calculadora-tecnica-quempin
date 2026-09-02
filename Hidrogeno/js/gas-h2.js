@@ -58,12 +58,22 @@ export function factorZErosion(presionMinBarG) {
   throw new Error('Presión mínima fuera del rango de la correlación Z (< 300 bar)');
 }
 
-// Tabla de referencia ASME B31.12 — Cálculo!A55:I59. Solo de consulta: el
-// Excel fuente no deriva el factor de diseño (C28) automáticamente de esta
-// tabla, el usuario lo elige a mano; esta app replica ese mismo
-// comportamiento (ver Hidrogeno/CLAUDE.md, sección "Tabla ASME B31.12").
-export const TABLA_REFERENCIA_ASME_B31_12 = {
-  columnasBar: [69, 138, 207, 276, 345, 414, 483], // Cálculo!C55:I55
+// Tabla Hf — ASME B31.12, Tabla IX-5A "Carbon Steel Pipeline Materials
+// Performance Factor". CORREGIDA respecto a la versión anterior de este
+// archivo (2026-09-02, a pedido del usuario, con la tabla oficial de la
+// norma como fuente): antes se leía como "tabla de referencia genérica"
+// (puerto de Cálculo!A55:I59, columnas rotuladas 69-483 bar = 1000-7000 psi
+// en pasos redondos de 1000 psi) sin poder confirmar su significado exacto
+// contra la norma. Es en realidad la tabla de Hf (derating por
+// fragilización de hidrógeno) — las columnas reales de presión de diseño
+// del sistema llegan solo hasta 3000 psig, en pasos de 200 psi por encima
+// de 2000 (1000, 2000, 2200, 2400, 2600, 2800, 3000). Los factores de cada
+// fila no cambiaron: coincidían exactamente con la tabla real, solo el
+// rótulo de las columnas estaba mal. Fila elegida por límite de fluencia
+// mínimo especificado del material (nota (b) de la tabla); interpolación
+// lineal en presión entre columnas (nota (c)). Ver Hidrogeno/CLAUDE.md.
+export const TABLA_HF_ASME_B31_12 = {
+  columnasPsig: [1000, 2000, 2200, 2400, 2600, 2800, 3000],
   filas: [
     { resistenciaTensionMPa: 455.07, limiteFluenciaMPa: 358.55, factores: [1.0, 1.0, 0.954, 0.91, 0.88, 0.84, 0.78] },
     { resistenciaTensionMPa: 517.11, limiteFluenciaMPa: 413.69, factores: [0.874, 0.874, 0.834, 0.796, 0.77, 0.734, 0.682] },
@@ -71,3 +81,28 @@ export const TABLA_REFERENCIA_ASME_B31_12 = {
     { resistenciaTensionMPa: 620.53, limiteFluenciaMPa: 551.58, factores: [0.694, 0.694, 0.662, 0.632, 0.61, 0.584, 0.542] },
   ],
 };
+
+const PSIG_POR_BAR = 14.5037737797;
+
+// Factor Hf en función del material (por límite de fluencia) y la presión
+// de diseño del sistema — AGREGADO respecto al Excel fuente (2026-09-02, a
+// pedido del usuario): el Excel no aplicaba Hf en la fórmula de Barlow en
+// absoluto. Ver Hidrogeno/CLAUDE.md y physics.js (presionMaximaDiseno).
+export function factorHf({ limiteFluenciaMPa, presionDisenoBarG }) {
+  const fila = TABLA_HF_ASME_B31_12.filas.find((f) => limiteFluenciaMPa <= f.limiteFluenciaMPa);
+  if (!fila) {
+    const maxMPa = TABLA_HF_ASME_B31_12.filas[TABLA_HF_ASME_B31_12.filas.length - 1].limiteFluenciaMPa;
+    throw new Error(`Límite de fluencia ${limiteFluenciaMPa} MPa fuera del rango de la Tabla IX-5A (máx ${maxMPa} MPa).`);
+  }
+  const { columnasPsig } = TABLA_HF_ASME_B31_12;
+  const presionPsig = presionDisenoBarG * PSIG_POR_BAR;
+  const ultimo = columnasPsig.length - 1;
+  if (presionPsig <= columnasPsig[0]) return fila.factores[0];
+  if (presionPsig >= columnasPsig[ultimo]) return fila.factores[ultimo];
+  for (let i = 0; i < ultimo; i++) {
+    if (presionPsig >= columnasPsig[i] && presionPsig <= columnasPsig[i + 1]) {
+      const t = (presionPsig - columnasPsig[i]) / (columnasPsig[i + 1] - columnasPsig[i]);
+      return fila.factores[i] + t * (fila.factores[i + 1] - fila.factores[i]);
+    }
+  }
+}

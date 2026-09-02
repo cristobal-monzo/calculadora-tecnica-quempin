@@ -2,6 +2,8 @@
 // estanque). Fuente: Libro11111111.xlsx!"Bases de Cálculo" (cilindros) y
 // MASTER DISEÑO.xlsm!"Estanque GLP" (estanque). Celdas citadas por bloque.
 
+import { propiedadesGLP } from './gas-glp.js';
+
 // Bases de Cálculo!K26:Q35 — consumo de artefactos [kWh/día] por nivel de
 // uso y temperatura ambiente.
 //
@@ -54,11 +56,22 @@ export function cilindrosPorConsumoDiario({ nCalefont, nCocinas, nEstufas, nivel
 // Las constantes (5, 26, 0.336, 0.0116, 0.11) son literales del Excel
 // fuente (no hay celda de temperatura editable en esa hoja) — se
 // preservan tal cual.
-export function calcularEstanqueGLP({ diametroM, alturaM, capacidadLitros }) {
+//
+// CORREGIDO respecto al Excel fuente (2026-09-02, a pedido del usuario):
+// B8/B9 convertían qKgH a kW/Mcal con la constante 52737 — que es el PCI de
+// GAS NATURAL (ver pciMasa por defecto en gas-gn.js), no el de GLP, pese a
+// que este módulo es exclusivamente GLP. Casi con certeza una referencia
+// cruzada de hoja en el Excel fuente (Estanque GLP!B8 apuntando a la celda
+// de PCI de GN de "Combustión Gas" en vez de la de GLP). Ahora usa el PCI
+// real del GLP, derivado de la composición %butano/%propano ingresada (el
+// mismo criterio que el resto del módulo usa vía el selector de gas) — ver
+// GasNatural-GLP/CLAUDE.md.
+export function calcularEstanqueGLP({ diametroM, alturaM, capacidadLitros, pctButano, pctPropano }) {
   const capacidadRealLitros = capacidadLitros * 0.8; // B5
   const superficieM2 = Math.PI * diametroM * alturaM + (2 * Math.PI * diametroM ** 2) / 4; // B6
   const qKgH = 0.336 * superficieM2 * 0.0116 * (5 + 26) / 0.11; // B7
-  const qKw = (52737 * qKgH) / 3600; // B8
-  const qMcalH = (qKgH * 52737) / 4.1858 / 1000; // B9
-  return { capacidadRealLitros, superficieM2, qKgH, qKw, qMcalH };
+  const pciKjKg = propiedadesGLP({ pctButano, pctPropano }).pciMasa;
+  const qKw = (pciKjKg * qKgH) / 3600; // B8
+  const qMcalH = (qKgH * pciKjKg) / 4.1858 / 1000; // B9
+  return { capacidadRealLitros, superficieM2, qKgH, pciKjKg, qKw, qMcalH };
 }
