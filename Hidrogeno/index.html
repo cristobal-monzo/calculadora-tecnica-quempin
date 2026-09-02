@@ -58,6 +58,15 @@
           <label for="flujo-tuberia">Tubería utilizada</label>
           <select id="flujo-tuberia" required></select>
         </div>
+        <div class="campo campo-ancho" id="campo-flujo-tuberia-manual" style="display:none;">
+          <label for="flujo-tuberia-manual-di">Tubería manual — DI [mm] / espesor [mm] / límite elástico [MPa] / rugosidad [mm]</label>
+          <div class="fila-campos" style="padding-top:0; grid-template-columns:repeat(4, 1fr);">
+            <input id="flujo-tuberia-manual-di" type="number" step="any" value="12.7" required aria-label="Diámetro interior manual [mm]">
+            <input id="flujo-tuberia-manual-espesor" type="number" step="any" value="1.2" required aria-label="Espesor de pared manual [mm]">
+            <input id="flujo-tuberia-manual-limite" type="number" step="any" value="170" required aria-label="Límite elástico manual [MPa]">
+            <input id="flujo-tuberia-manual-rugosidad" type="number" step="any" value="0.002" required aria-label="Rugosidad manual [mm]">
+          </div>
+        </div>
         <div class="campo">
           <label for="flujo-presion-min">Presión manométrica mínima</label>
           <div class="campo-con-unidad">

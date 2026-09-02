@@ -91,16 +91,22 @@ function formatearPulgadas(valor) {
 }
 
 function poblarSelectDiametro(select) {
-  select.innerHTML = TABLA_TUBERIA_RED_GAS.map((f) => `<option value="${f.pulgadas}">${formatearPulgadas(f.pulgadas)}</option>`).join('');
+  select.innerHTML = TABLA_TUBERIA_RED_GAS.map((f) => `<option value="${f.pulgadas}">${formatearPulgadas(f.pulgadas)}</option>`).join('')
+    + '<option value="manual">Manual (ingresar mm)</option>';
 }
 
 function leerRedGasForm() {
   const num = (id) => Number(document.getElementById(id).value);
+  const diametroSeleccionado = document.getElementById('rg-diametro').value;
+  const esManual = diametroSeleccionado === 'manual';
   return {
     gas: combustible,
     regimenPresion: document.getElementById('rg-regimen').value,
     material: document.getElementById('rg-material').value,
-    pulgadas: Number(document.getElementById('rg-diametro').value),
+    pulgadas: esManual ? null : Number(diametroSeleccionado),
+    tuberiaManual: esManual ? {
+      diametroMm: num('rg-diametro-manual-mm'), k: num('rg-diametro-manual-k'),
+    } : undefined,
     potenciaKw: num('rg-potencia'),
     longitudM: num('rg-longitud'),
     presionInicialPa: leerPresion('rg-presion-inicial', 'rg-presion-inicial-unidad', 'Pa'),
@@ -151,6 +157,19 @@ function initRedGas() {
   } else {
     selectDiametro.value = '0.75';
   }
+
+  // Diámetro manual (2026-09-02, a pedido del usuario): "Material de
+  // tubería" no aplica cuando el diámetro es manual (acero/cobre son solo
+  // dos DI distintos de la misma fila tabulada; con un DI propio no hay
+  // fila que elegir), así que se oculta junto con mostrar los campos
+  // manuales — ver leerRedGasForm().
+  function actualizarVisibilidadDiametroManual() {
+    const esManual = selectDiametro.value === 'manual';
+    document.getElementById('campo-rg-diametro-manual').style.display = esManual ? '' : 'none';
+    document.getElementById('campo-rg-material').style.display = esManual ? 'none' : '';
+  }
+  actualizarVisibilidadDiametroManual();
+  selectDiametro.addEventListener('input', actualizarVisibilidadDiametroManual);
 
   initSelectorUnidadCampo('rg-presion-inicial', 'rg-presion-inicial-unidad');
 

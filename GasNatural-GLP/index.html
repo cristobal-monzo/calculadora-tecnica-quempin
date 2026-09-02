@@ -58,7 +58,7 @@
             </select>
           </div>
         </div>
-        <div class="campo">
+        <div class="campo" id="campo-rg-material">
           <label for="rg-material">Material de tubería</label>
           <select id="rg-material">
             <option value="Acero Sch40">Acero Sch40</option>
@@ -68,6 +68,15 @@
         <div class="campo">
           <label for="rg-diametro">Diámetro nominal</label>
           <select id="rg-diametro"></select>
+        </div>
+        <div class="campo campo-ancho" id="campo-rg-diametro-manual" style="display:none;">
+          <label for="rg-diametro-manual-mm">Diámetro interior manual</label>
+          <div class="campo-con-unidad">
+            <input id="rg-diametro-manual-mm" type="number" step="any" value="50" required>
+            <span class="select-unidad unidad-fija">mm</span>
+          </div>
+          <label for="rg-diametro-manual-k" style="margin-top:6px;">Factor K (rugosidad, solo baja presión)</label>
+          <input id="rg-diametro-manual-k" type="number" step="any" value="1800" required>
         </div>
         <div class="campo">
           <label for="rg-potencia">Potencia objetivo [kW]</label>

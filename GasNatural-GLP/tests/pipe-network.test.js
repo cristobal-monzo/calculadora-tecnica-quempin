@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   buscarTuberiaRedGas, caudalBajaPresion, perdidaPresionBajaPresion,
   caudalMediaAltaPresion, perdidaPresionMediaAltaPresion, factorZPengRobinson,
+  TABLA_TUBERIA_RED_GAS,
 } from '../js/pipe-network.js';
 
 function cerca(actual, esperado, tolerancia = 1e-6) {
@@ -48,5 +49,23 @@ cerca(
   factorZPengRobinson({ presionBarG: 0.01, temperaturaCriticaK: 190.6, presionCriticaBar: 45.99, factorAcentrico: 0.011 }),
   0.9999765036980676
 ); // R41 (GN)
+
+// Filas agregadas (2026-09-02, "listado más amplio de tuberías", no
+// vienen del Excel — ver comentario en TABLA_TUBERIA_RED_GAS): 1/8", 5",
+// 6", 8". Se verifica que el DI (de ASME B36.10 / ASTM B88) crece
+// monótonamente con la pulgada nominal en toda la tabla, y que para estas
+// filas nuevas específicamente d5 SÍ es DI^5 exacto (a diferencia de las
+// filas del Excel, donde d5 viene de otra tabla y NO es DI^5).
+for (let i = 1; i < TABLA_TUBERIA_RED_GAS.length; i++) {
+  assert.ok(TABLA_TUBERIA_RED_GAS[i].diAceroMm > TABLA_TUBERIA_RED_GAS[i - 1].diAceroMm,
+    `DI acero debe crecer con la pulgada: fila ${i}`);
+  assert.ok(TABLA_TUBERIA_RED_GAS[i].diCobreMm > TABLA_TUBERIA_RED_GAS[i - 1].diCobreMm,
+    `DI cobre debe crecer con la pulgada: fila ${i}`);
+}
+['0.125', '5', '6', '8'].forEach((p) => {
+  const fila = buscarTuberiaRedGas(Number(p));
+  cerca(fila.d5Acero, fila.diAceroMm ** 5, 1e-4);
+  cerca(fila.d5Cobre, fila.diCobreMm ** 5, 1e-4);
+});
 
 console.log('pipe-network.test.js: OK');

@@ -89,6 +89,8 @@ th { color: var(--text-secondary); font-size: 12px; }
   border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary); width: 100%;
 }
 #memoria-tabla th .select-unidad-columna { width: auto; font-weight: 700; padding: 2px 4px; margin-left: 4px; }
+.mem-tuberia-manual { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 4px; min-width: 90px; }
+.mem-tuberia-manual input { width: 100%; font-size: 11px !important; padding: 2px 3px !important; }
 .mem-eliminar { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
 .mem-eliminar:hover { color: var(--brand-orange); }
 #memoria-arbol { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px; margin-bottom: 16px; }

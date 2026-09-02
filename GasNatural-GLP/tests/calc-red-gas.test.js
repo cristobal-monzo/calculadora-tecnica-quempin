@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { calcularRedGas } from '../js/calc-red-gas.js';
+import { perdidaPresionBajaPresion } from '../js/pipe-network.js';
 
 function cerca(actual, esperado, tolerancia = 1e-6) {
   assert.ok(
@@ -46,5 +47,31 @@ const glpCobre = calcularRedGas({
   potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15,
 });
 assert.equal(glpCobre.diametroMm, 13.84);
+
+// Diámetro manual [mm] (2026-09-02, a pedido del usuario) — rama >10 kPa
+// no usa k/diametro5, solo diametroMm, así que un manual con el mismo DI
+// que una fila tabulada debe dar exactamente el mismo resultado.
+const gnManualAlta = calcularRedGas({
+  gas: 'GN', regimenPresion: '>10 kPa', pulgadas: null, tuberiaManual: { diametroMm: 52.5 },
+  potenciaKw: 200, longitudM: 30, presionInicialPa: 200000, temperaturaC: 15,
+});
+assert.equal(gnManualAlta.diametroMm, 52.5);
+cerca(gnManualAlta.perdidaPresionRequeridaPa, gn.perdidaPresionRequeridaPa);
+assert.equal(gnManualAlta.tuberia, null); // sin fila de tabla
+
+// Rama <10 kPa SÍ usa k y diametro5 (=DI^5 en el manual, no el de la tabla
+// — ver comentario en calc-red-gas.js) — con el mismo DI y k que la fila
+// tabulada de 1/2" acero (15.8mm, k=1800), el resultado difiere del caso
+// "glp" de arriba porque diametro5 no es igual: 15.8^5 ≠ 630000 (el valor
+// de la tabla). Se verifica contra un cálculo independiente con la misma
+// fórmula, no contra "glp".
+const glpManualBaja = calcularRedGas({
+  gas: 'GLP', regimenPresion: '<10 kPa', pulgadas: null,
+  tuberiaManual: { diametroMm: 15.8, k: 1800 },
+  potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15,
+});
+cerca(glpManualBaja.perdidaPresionRequeridaPa, perdidaPresionBajaPresion({
+  k: 1800, diametro5: 15.8 ** 5, caudalM3H: glp.caudalObjetivoM3H, densidadRelativa: 2, longitudM: 10,
+}));
 
 console.log('calc-red-gas.test.js: OK');

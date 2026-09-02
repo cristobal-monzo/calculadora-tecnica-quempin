@@ -54,4 +54,18 @@ const rAltaPresion = calcularFlujo({
 cerca(rAltaPresion.presionMaxDisenoBar, 156.7518365893937);
 cerca(rAltaPresion.factorHfAplicado, 0.9378315009620852);
 
+// Tubería manual (2026-09-02, a pedido del usuario) — con los mismos
+// datos que la fila tabulada de 1/2" (diMm:12.7, espesorMm:1.2,
+// limiteElasticoMPa:170, rugosidadMm:0.002), debe dar exactamente el mismo
+// resultado que el caso "r" de arriba, tuberiaPulgadas se ignora.
+const rManual = calcularFlujo({
+  presionBarG: 0.8, temperaturaC: 20, potenciaKw: 60, tuberiaPulgadas: null,
+  tuberiaManual: { diMm: 12.7, espesorMm: 1.2, limiteElasticoMPa: 170, rugosidadMm: 0.002 },
+  presionMinBarG: 29.5, largoM: 20, codos: 0, tees: 0, valvulas: 0,
+  factorDiseno: 0.4, factorUnion: 1, unidadNormalizado: '[sL/min]', unidadH2: '[m3/h]',
+});
+cerca(rManual.presionMaxDisenoBar, r.presionMaxDisenoBar);
+cerca(rManual.perdidaCargaMbar, r.perdidaCargaMbar);
+cerca(rManual.velocidadFlujoMS, r.velocidadFlujoMS);
+
 console.log('calc-flujo.test.js: OK');

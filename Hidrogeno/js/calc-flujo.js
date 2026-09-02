@@ -32,11 +32,18 @@ function presionMaximaConHf({ limiteElasticoMPa, espesorMm, diametroMm, factorDi
 export function calcularFlujo(inputs) {
   const {
     presionBarG, temperaturaC, potenciaKw, tuberiaPulgadas, presionMinBarG,
-    largoM, codos, tees, valvulas, factorDiseno, factorUnion,
+    largoM, codos, tees, valvulas, factorDiseno, factorUnion, tuberiaManual,
     unidadNormalizado = '[Nm3/h]', unidadH2 = '[m3/h]', pciKjKg = H2.pciKjKg,
   } = inputs;
 
-  const tuberia = buscarTuberia(tuberiaPulgadas);
+  // Tubería manual (2026-09-02, a pedido del usuario, "listado más amplio
+  // de tuberías... ingresar manualmente un valor de diámetro"): sin fila de
+  // tabla no hay espesor/límite elástico/rugosidad que buscar — a
+  // diferencia de Red de Gas (GasNatural-GLP), acá esos tres datos SÍ
+  // determinan un resultado de seguridad (presión máxima de diseño, Barlow)
+  // y la fricción (Haaland), así que se piden explícitamente al usuario en
+  // vez de asumir un valor — ver Hidrogeno/CLAUDE.md.
+  const tuberia = tuberiaManual ?? buscarTuberia(tuberiaPulgadas);
   const diametroM = tuberia.diMm / 1000;
 
   // Cálculo!C10

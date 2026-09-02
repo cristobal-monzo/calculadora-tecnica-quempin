@@ -57,6 +57,29 @@ puramente para mostrar el umbral de 10 kPa en la unidad elegida (el
   guardado/restauración de Combustión y Quemador, que antes solo incluían
   `input` porque esos formularios no tenían ningún `<select>` propio).
 
+## Tabla de tuberías ampliada + diámetro manual (2026-09-02, a pedido del usuario)
+
+`TABLA_TUBERIA_RED_GAS` (`js/pipe-network.js`) tenía 11 filas (1/4"–4"),
+todas literales de `Bases de Cálculo!I3:N13`. Se agregaron 4 filas más
+(1/8", 5", 6", 8") **que no vienen del Excel**: DI de acero desde ASME
+B36.10 Schedule 40, DI de cobre desde ASTM B88 tipo L — normas publicadas
+que, verificado, coinciden con las 11 filas del Excel dentro de ~0.5%
+(confirma que esas 11 filas ya seguían esas mismas normas). Para las filas
+nuevas, `d5 = DI^5` calculado directo — a diferencia de las filas del
+Excel, donde `d5` viene de otra tabla de referencia que el Excel no expone
+y por eso NO es exactamente DI^5 (ver comentario en el archivo). El factor
+`k` de las 3 filas nuevas se dejó igual al de 4" (2420, el mayor conocido)
+por no tener base para extrapolarlo — antes de diseñar en baja presión con
+esos tamaños, confirmar `k` con Cristóbal.
+
+El selector "Diámetro nominal" de Red de Gas también tiene una opción
+**"Manual (ingresar mm)"**: revela un campo de diámetro interior [mm] y
+uno de factor K (usado solo en baja presión); "Material de tubería" se
+oculta porque deja de tener efecto (acero/cobre son solo dos DI de la
+misma fila tabulada — con diámetro manual hay un único DI). `d5` se
+calcula como DI^5 igual que en las filas nuevas de la tabla. Ver
+`tuberiaManual` en `js/calc-red-gas.js`.
+
 ## Decisiones de reconciliación (no son bugs silenciados)
 
 **Red de Gas — Goal Seek manual reemplazado por álgebra**: en el Excel,

@@ -50,6 +50,11 @@ main {
 .campo-con-unidad { display: flex; gap: 6px; }
 .campo-con-unidad > *:first-child { flex: 1; min-width: 0; }
 .campo-con-unidad > .select-unidad { flex: 0 0 auto; width: 76px; padding: 8px 4px; }
+.unidad-fija {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: var(--text-secondary); border-radius: 6px;
+  border: 1px solid var(--gridline); background: var(--surface-card);
+}
 .subtitulo { font-size: 13px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin: 24px 0 4px; }
 .subtitulo:first-child { margin-top: 0; }
 

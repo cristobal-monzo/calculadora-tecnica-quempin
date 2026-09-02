@@ -15,7 +15,10 @@ import { H2, buscarTuberia, factorZDiseno } from './gas-h2.js';
 
 function calcularTramoIndividual(tramo) {
   const presionBarG = tramo.presionMPa * 10;
-  const tuberia = buscarTuberia(tramo.tuberiaPulgadas);
+  // Tubería manual por tramo (2026-09-02, a pedido del usuario) — mismo
+  // criterio que calc-flujo.js: sin fila de tabla, espesor/límite
+  // elástico/rugosidad los da el usuario, no se asumen.
+  const tuberia = tramo.tuberiaManual ?? buscarTuberia(tramo.tuberiaPulgadas);
   const diametroM = tuberia.diMm / 1000;
 
   const flujoMasicoKgH = (tramo.potenciaKw / H2.pciKjKg) * 3600;

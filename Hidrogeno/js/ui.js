@@ -95,7 +95,7 @@ function formatearPulgadas(valor) {
 function poblarSelectTuberia(select) {
   select.innerHTML = TABLA_TUBERIA.map(
     (f) => `<option value="${f.pulgadas}">${formatearPulgadas(f.pulgadas)} — DI ${f.diMm} mm</option>`
-  ).join('');
+  ).join('') + '<option value="manual">Manual (ingresar mm)</option>';
 }
 
 /* ---------------------------------------------------------------------- */
@@ -104,11 +104,17 @@ function poblarSelectTuberia(select) {
 
 function leerFlujoForm() {
   const num = (id) => Number(document.getElementById(id).value);
+  const tuberiaSeleccionada = document.getElementById('flujo-tuberia').value;
+  const esManual = tuberiaSeleccionada === 'manual';
   return {
     presionBarG: leerPresion('flujo-presion', 'flujo-presion-unidad', 'bar'),
     temperaturaC: num('flujo-temperatura'),
     potenciaKw: num('flujo-potencia'),
-    tuberiaPulgadas: Number(document.getElementById('flujo-tuberia').value),
+    tuberiaPulgadas: esManual ? null : Number(tuberiaSeleccionada),
+    tuberiaManual: esManual ? {
+      diMm: num('flujo-tuberia-manual-di'), espesorMm: num('flujo-tuberia-manual-espesor'),
+      limiteElasticoMPa: num('flujo-tuberia-manual-limite'), rugosidadMm: num('flujo-tuberia-manual-rugosidad'),
+    } : undefined,
     presionMinBarG: leerPresion('flujo-presion-min', 'flujo-presion-min-unidad', 'bar'),
     largoM: num('flujo-largo'),
     codos: num('flujo-codos'),
@@ -164,6 +170,12 @@ function initTeoriaFlujo() {
   } else {
     select.value = '0.5';
   }
+
+  function actualizarVisibilidadTuberiaManual() {
+    document.getElementById('campo-flujo-tuberia-manual').style.display = select.value === 'manual' ? '' : 'none';
+  }
+  actualizarVisibilidadTuberiaManual();
+  select.addEventListener('input', actualizarVisibilidadTuberiaManual);
 
   initSelectorUnidadCampo('flujo-presion', 'flujo-presion-unidad');
   initSelectorUnidadCampo('flujo-presion-min', 'flujo-presion-min-unidad');
@@ -272,7 +284,18 @@ function renderTablaMemoria(resultado) {
       <td><input type="number" step="any" class="mem-presion" value="${Number(desdePa(aPa(t.presionMPa, 'MPa'), unidadPresion).toPrecision(6))}"></td>
       <td><input type="number" step="any" class="mem-largo" value="${t.longitudM}"></td>
       <td><input type="number" step="any" class="mem-potencia" value="${t.potenciaKw}"></td>
-      <td><select class="mem-tuberia">${TABLA_TUBERIA.map((f) => `<option value="${f.pulgadas}"${f.pulgadas === t.tuberiaPulgadas ? ' selected' : ''}>${formatearPulgadas(f.pulgadas)}</option>`).join('')}</select></td>
+      <td>
+        <select class="mem-tuberia">
+          ${TABLA_TUBERIA.map((f) => `<option value="${f.pulgadas}"${f.pulgadas === t.tuberiaPulgadas ? ' selected' : ''}>${formatearPulgadas(f.pulgadas)}</option>`).join('')}
+          <option value="manual"${t.tuberiaPulgadas === 'manual' ? ' selected' : ''}>Manual (mm)</option>
+        </select>
+        <div class="mem-tuberia-manual"${t.tuberiaPulgadas === 'manual' ? '' : ' style="display:none;"'}>
+          <input type="number" step="any" class="mem-tuberia-manual-di" value="${t.tuberiaManual?.diMm ?? 12.7}" title="Diámetro interior [mm]">
+          <input type="number" step="any" class="mem-tuberia-manual-espesor" value="${t.tuberiaManual?.espesorMm ?? 1.2}" title="Espesor de pared [mm]">
+          <input type="number" step="any" class="mem-tuberia-manual-limite" value="${t.tuberiaManual?.limiteElasticoMPa ?? 170}" title="Límite elástico [MPa]">
+          <input type="number" step="any" class="mem-tuberia-manual-rugosidad" value="${t.tuberiaManual?.rugosidadMm ?? 0.002}" title="Rugosidad [mm]">
+        </div>
+      </td>
       <td><input type="text" class="mem-material" value="${t.material}"></td>
       <td><input type="number" step="any" class="mem-temp" value="${t.temperaturaC}"></td>
       <td>${t.densidadKgM3.toFixed(4)}</td>
@@ -342,7 +365,7 @@ function recalcularMemoria() {
   document.getElementById('memoria-impresion-th-presion').textContent = `Presión [${unidadPresion}]`;
   document.getElementById('memoria-impresion-th-perdida').textContent = `Pérdida acumulada [${unidadPerdidaAcumulada}]`;
   document.getElementById('memoria-tabla-impresion-cuerpo').innerHTML = resultado.map((t) => `
-    <tr><td>${t.nombre}</td><td>${porNombreTramo(t.continuaDesdeId)}</td><td>${formatearPresion(aPa(t.presionMPa, 'MPa'), unidadPresion)}</td><td>${t.longitudM}</td><td>${formatearPulgadas(t.tuberiaPulgadas)}</td><td>${formatearPresion(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td></tr>
+    <tr><td>${t.nombre}</td><td>${porNombreTramo(t.continuaDesdeId)}</td><td>${formatearPresion(aPa(t.presionMPa, 'MPa'), unidadPresion)}</td><td>${t.longitudM}</td><td>${etiquetaTuberia(t)}</td><td>${formatearPresion(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td></tr>
   `).join('');
   guardar('memoria', tramos);
 }
@@ -351,6 +374,8 @@ function leerFilaMemoria(fila) {
   const id = fila.dataset.id;
   const val = (clase) => fila.querySelector(`.${clase}`).value;
   const unidadPresion = document.getElementById('memoria-presion-unidad').value;
+  const tuberiaSeleccionada = val('mem-tuberia');
+  const esManual = tuberiaSeleccionada === 'manual';
   return {
     id,
     nombre: val('mem-nombre'),
@@ -358,10 +383,18 @@ function leerFilaMemoria(fila) {
     presionMPa: desdePa(aPa(Number(val('mem-presion')), unidadPresion), 'MPa'),
     longitudM: Number(val('mem-largo')),
     potenciaKw: Number(val('mem-potencia')),
-    tuberiaPulgadas: Number(val('mem-tuberia')),
+    tuberiaPulgadas: esManual ? 'manual' : Number(tuberiaSeleccionada),
+    tuberiaManual: esManual ? {
+      diMm: Number(val('mem-tuberia-manual-di')), espesorMm: Number(val('mem-tuberia-manual-espesor')),
+      limiteElasticoMPa: Number(val('mem-tuberia-manual-limite')), rugosidadMm: Number(val('mem-tuberia-manual-rugosidad')),
+    } : undefined,
     material: val('mem-material'),
     temperaturaC: Number(val('mem-temp')),
   };
+}
+
+function etiquetaTuberia(t) {
+  return t.tuberiaPulgadas === 'manual' ? `Manual ${t.tuberiaManual.diMm} mm` : formatearPulgadas(t.tuberiaPulgadas);
 }
 
 function initMemoria() {

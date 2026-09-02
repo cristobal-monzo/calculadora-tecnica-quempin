@@ -47,6 +47,30 @@ la Memoria de Cálculo lo necesita (el Excel fuente usa MPa en `MC`).
   las mismas unidades vigentes en pantalla, actualizando sus cabeceras y
   celdas al vuelo en `recalcularMemoria()`.
 
+## Diámetro de tubería manual (2026-09-02, a pedido del usuario)
+
+A diferencia de `GasNatural-GLP`, **no se amplió** `TABLA_TUBERIA` (sigue
+con las 6 filas de 1/4" a 1-1/4" de `Cálculo!H33:L38`): a diferencia de la
+tabla de Red de Gas, no se pudo confirmar contra ninguna norma publicada
+qué serie de tubería es esta (ni ASME B36.10 Schedule 40 ni ASTM B88 tipo
+L coinciden con sus DI) — inventar filas nuevas sin esa confirmación
+habría sido fabricar espesor/límite elástico, que acá sí son datos de
+seguridad (fórmula de Barlow). Si Cristóbal tiene la tabla/catálogo de
+origen, se puede ampliar con confianza.
+
+En cambio, tanto el selector de "Tubería y Flujo" como el de cada tramo de
+"Memoria de Cálculo" tienen una opción **"Manual (ingresar mm)"** que pide
+los 4 datos que la tabla normalmente provee — diámetro interior, espesor
+de pared, límite elástico y rugosidad — en vez de asumir un valor
+(a diferencia de Red de Gas en GasNatural-GLP, acá la presión máxima de
+diseño depende directamente del espesor/límite elástico, así que no hay
+manera segura de adivinarlos). En Memoria de Cálculo la unidad es por
+tramo (cada fila puede tener su propia tubería, tabulada o manual), con un
+sub-bloque de 4 campos compactos que aparece en la celda "Diámetro" al
+elegir manual — ver `tuberiaManual` en `js/calc-flujo.js` y
+`js/calc-memoria.js`, y `etiquetaTuberia()` en `js/ui.js` (usada también en
+la tabla de impresión).
+
 ## Discrepancias del Excel fuente (decisiones tomadas, no bugs silenciados)
 
 **Corregidas en la app (2026-09-02, a pedido del usuario)** — auditoría

@@ -29,11 +29,29 @@ export const PROPIEDADES_RED_GAS = {
 };
 
 export function calcularRedGas(inputs) {
-  const { gas, regimenPresion, material, pulgadas, potenciaKw, longitudM, presionInicialPa, temperaturaC } = inputs;
+  const { gas, regimenPresion, material, pulgadas, potenciaKw, longitudM, presionInicialPa, temperaturaC, tuberiaManual } = inputs;
   const propiedades = PROPIEDADES_RED_GAS[gas];
-  const tuberia = buscarTuberiaRedGas(pulgadas);
-  const diametroMm = material === 'Acero Sch40' ? tuberia.diAceroMm : tuberia.diCobreMm;
-  const diametro5 = material === 'Acero Sch40' ? tuberia.d5Acero : tuberia.d5Cobre;
+
+  // Diámetro manual [mm] (2026-09-02, a pedido del usuario, "listado más
+  // amplio de tuberías... ingresar manualmente un valor de diámetro"): sin
+  // fila de tabla no hay material (acero/cobre son solo dos DI distintos de
+  // la misma fila) — el usuario da un único DI, y d5 se calcula directo
+  // como DI^5 (no viene de la tabla de referencia que sí explica el resto,
+  // ver pipe-network.js). k (factor de rugosidad, solo usado en baja
+  // presión) también lo da el usuario, ya que no hay forma de derivarlo del
+  // diámetro solo.
+  let tuberia = null;
+  let diametroMm, diametro5, k;
+  if (tuberiaManual) {
+    diametroMm = tuberiaManual.diametroMm;
+    diametro5 = diametroMm ** 5;
+    k = tuberiaManual.k;
+  } else {
+    tuberia = buscarTuberiaRedGas(pulgadas);
+    diametroMm = material === 'Acero Sch40' ? tuberia.diAceroMm : tuberia.diCobreMm;
+    diametro5 = material === 'Acero Sch40' ? tuberia.d5Acero : tuberia.d5Cobre;
+    k = tuberia.k;
+  }
 
   // Bases de Cálculo!B21 = B20*B19/3.6, invertido: caudal objetivo = Potencia*3.6/PCI
   const caudalObjetivoM3H = (potenciaKw * 3.6) / propiedades.pciVolumetricoMJm3;
@@ -43,7 +61,7 @@ export function calcularRedGas(inputs) {
 
   if (regimenPresion === '<10 kPa') {
     perdidaPresionRequeridaPa = perdidaPresionBajaPresion({
-      k: tuberia.k, diametro5, caudalM3H: caudalObjetivoM3H,
+      k, diametro5, caudalM3H: caudalObjetivoM3H,
       densidadRelativa: propiedades.densidadRelativaBaja, longitudM,
     });
   } else {
