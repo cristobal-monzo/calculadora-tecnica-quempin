@@ -21,3 +21,30 @@ export function cargar(clave, porDefecto) {
     return porDefecto;
   }
 }
+
+export function exportarJSON(nombreArchivo, datos) {
+  const blob = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  URL.revokeObjectURL(url);
+}
+
+export function importarJSON(archivo) {
+  return new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onload = () => {
+      try {
+        resolve(JSON.parse(lector.result));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    lector.onerror = () => reject(lector.error);
+    lector.readAsText(archivo);
+  });
+}
