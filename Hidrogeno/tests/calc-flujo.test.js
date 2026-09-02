@@ -27,6 +27,8 @@ const r = calcularFlujo({
 
 cerca(r.presionMaxDisenoBar, 128.50393700787401);   // C10 — Hf=1 en este caso (presión cae en la zona plana de la Tabla IX-5A, ≤2000 psig)
 assert.equal(r.factorHfAplicado, 1);                 // factorHf, AGREGADO 2026-09-02
+assert.equal(r.factorTAplicado, 1);                  // factorT, AGREGADO 2026-09-02 — 20°C=68°F, bajo el umbral de 250°F
+assert.equal(r.tuberiaAdecuada, true);               // tuberiaAdecuada, AGREGADO 2026-09-02 — presionBarG(0.8) <= presionMaxDisenoBar
 cerca(r.flujoMasicoKgH, 1.8);                        // C13
 cerca(r.zDiseno, 1.0004759430898928);                // C26
 cerca(r.densidadKgM3, 0.14881834275071656);          // C20
@@ -67,5 +69,16 @@ const rManual = calcularFlujo({
 cerca(rManual.presionMaxDisenoBar, r.presionMaxDisenoBar);
 cerca(rManual.perdidaCargaMbar, r.perdidaCargaMbar);
 cerca(rManual.velocidadFlujoMS, r.velocidadFlujoMS);
+
+// tuberiaAdecuada, AGREGADO 2026-09-02 — rama "No adecuada": presión de
+// operación deliberadamente muy por encima de la máxima de diseño (tubería
+// más delgada de la tabla, 1/4").
+const rInadecuada = calcularFlujo({
+  presionBarG: 500, temperaturaC: 20, potenciaKw: 60, tuberiaPulgadas: 0.25,
+  presionMinBarG: 29.5, largoM: 20, codos: 0, tees: 0, valvulas: 0,
+  factorDiseno: 0.4, factorUnion: 1, unidadNormalizado: '[sL/min]', unidadH2: '[m3/h]',
+});
+assert.ok(rInadecuada.presionMaxDisenoBar < 500);
+assert.equal(rInadecuada.tuberiaAdecuada, false);
 
 console.log('calc-flujo.test.js: OK');

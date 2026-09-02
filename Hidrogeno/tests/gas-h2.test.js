@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { H2, TABLA_TUBERIA, buscarTuberia, factorZDiseno, factorZErosion, factorHf } from '../js/gas-h2.js';
+import { H2, TABLA_TUBERIA, buscarTuberia, factorZDiseno, factorZErosion, factorHf, factorT } from '../js/gas-h2.js';
 
 function cerca(actual, esperado, tolerancia = 1e-9) {
   assert.ok(
@@ -42,5 +42,17 @@ cerca(factorHf({ limiteFluenciaMPa: 170, presionDisenoBarG: 5000 / 14.5037737797
 // Fila 2 (413.69 MPa, material de mayor resistencia) en el mismo punto de interpolación
 cerca(factorHf({ limiteFluenciaMPa: 400, presionDisenoBarG: 2100 / 14.5037737797 }), 0.854);
 assert.throws(() => factorHf({ limiteFluenciaMPa: 600, presionDisenoBarG: 100 }), /rango/);
+
+// factorT (Tabla PL-3.7.1(b)(8) ASME B31.12), AGREGADO 2026-09-02 — tabla
+// oficial provista por el usuario. Completa la fórmula de Barlow
+// P=2·S·t·F·E·Hf·T/D (Hidrogeno/CLAUDE.md ya la documentaba con T
+// pendiente de implementar). La tabla está en °F; factorT() convierte
+// desde °C.
+cerca(factorT({ temperaturaC: 20 }), 1); // 68°F, bajo el umbral de 250°F -> T=1 plano
+cerca(factorT({ temperaturaC: (250 - 32) * 5 / 9 }), 1); // borde exacto 250°F
+// Interpolación entre 350°F (0.933) y 400°F (0.900): 200°C = 392°F,
+// t=(392-350)/(400-350)=0.84 -> 0.933+0.84*(0.900-0.933)=0.90528
+cerca(factorT({ temperaturaC: 200 }), 0.90528);
+cerca(factorT({ temperaturaC: 300 }), 0.867); // 572°F, sobre el máximo de la tabla (450°F) -> satura en el último factor
 
 console.log('gas-h2.test.js: OK');

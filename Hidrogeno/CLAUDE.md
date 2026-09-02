@@ -112,6 +112,18 @@ completa (`node Hidrogeno/tests/run-all.js`):
   psig), así que el resultado numérico no cambia — pero para diseños con F
   más alto o tuberías de mayor diámetro/espesor que superen esa presión,
   Hf reduce la presión máxima admisible, como corresponde a la norma.
+- **Factor T (Tabla PL-3.7.1(b)(8), derating por temperatura) AGREGADO
+  2026-09-02, a pedido del usuario, completando la fórmula de Barlow**
+  (`P = 2·S·t·F·E·Hf·T/D` — el Excel tampoco lo aplicaba, igual que Hf
+  arriba). A diferencia de Hf, T no depende de la presión que se está
+  resolviendo (solo de la temperatura, que ya pedía el formulario), así
+  que `factorT()` se calcula una sola vez en `calcularFlujo` y se pasa
+  como parámetro adicional a `presionMaximaDiseno` (por defecto 1,
+  retrocompatible). Ver la tabla oficial en la sección siguiente. Para el
+  caso por defecto de la app (20°C = 68°F) T=1 (tabla plana hasta 250°F),
+  así que el resultado numérico no cambia respecto a antes de este
+  agregado — pero para diseños a mayor temperatura, T reduce la presión
+  máxima admisible.
 
 **Corregida en la app (2026-09-01)** — `js/calc-almacenamiento.js`, "Densidad real": el
 Excel tiene `Sheet3!H7 = Cálculo!C20`, es decir, la hoja de almacenamiento
@@ -160,6 +172,95 @@ tramo, así que `factorHf` selecciona la fila únicamente por límite elástico
 habrá que extender la selección de fila con el material, no solo el
 límite elástico.
 
+## Factor de diseño F y factor de temperatura T (`gas-h2.js`, 2026-09-02, a pedido del usuario)
+
+`TABLA_FACTOR_DISENO_F` — puerto de la Tabla PL-3.7.1(b)(6)-1 "Basic
+Design Factor, F (Used With Option A)" de ASME B31.12 (provista por el
+usuario). Reemplaza el input numérico libre que tenía "Tubería y Flujo"
+(un número cualquiera, default 0.4, sin relación explícita con la norma)
+por un `<select>` de Clase de Ubicación (`poblarSelectFactorDiseno()` en
+`ui.js`): 1 División 2 / 2 / 3 → F=0.50, Clase 4 → F=0.40. El `value` de
+cada opción es directamente el factor F (varias clases comparten 0.50,
+igual que la tabla oficial); default Clase 4, igual que el input anterior.
+Elegir la clase de ubicación correcta del proyecto sigue siendo criterio
+del usuario — lo que cambia es que ahora está anclado a la tabla de la
+norma en vez de a un número arbitrario.
+
+`TABLA_FACTOR_TEMPERATURA_T` / `factorT()` — puerto de la Tabla
+PL-3.7.1(b)(8) "Temperature Derating Factor, T, for Steel Pipe" (provista
+por el usuario). No agrega ningún campo nuevo: `factorT()` convierte la
+temperatura en °C que ya pedía "Tubería y Flujo" a °F y busca/interpola en
+la tabla (nota general de la norma: interpolación lineal en temperaturas
+intermedias). Mismo criterio de saturación plana en los extremos que
+`factorHf` (por debajo de 250°F, T=1; por encima de 450°F, se satura en el
+último factor de la tabla en vez de lanzar error — la norma no dice qué
+hacer fuera de rango, y lanzar error ahí rompería la app para cualquier
+diseño a alta temperatura sin aviso previo del usuario).
+
+## Indicador "Tubería adecuada" y factor E (`calc-flujo.js`/`ui.js`, 2026-09-02, a pedido del usuario)
+
+Mirroring el indicador de `GasNatural-GLP` (`calcularRedGas`,
+`tuberiaAdecuada`): "Tubería y Flujo" ahora expone `tuberiaAdecuada` en el
+resultado de `calcularFlujo`, con su propio tile verde ("Sí")/naranja
+("No — usar tubería de mayor espesor o menor diámetro") en `ui.js` — se
+agregó la clase CSS `.resultado-tile.ok` (antes solo existía `.alerta`) al
+stylesheet del módulo, copiada de `GasNatural-GLP`. El criterio acá es
+**estructural, no de pérdida de carga** (a diferencia de Red de Gas): la
+tubería es adecuada si la presión de operación (`presionBarG`) no supera
+la presión máxima de diseño (Barlow, con F/E/Hf/T ya aplicados,
+`presionMaxDisenoBar`). El chequeo de velocidad de erosión existente
+(tile "Velocidad de flujo" en naranja si supera el 80% del límite) sigue
+siendo una advertencia aparte, no se fusionó con este indicador.
+
+Factor E de uniones longitudinales: **siempre 1**, ya no es un input
+editable ni se muestra en la UI (a pedido explícito del usuario — el
+Excel fuente y `calc-flujo.js`/`physics.js` seguían aceptándolo como
+parámetro, pero `ui.js` ahora lo pasa hardcodeado en vez de leerlo de un
+campo). No cambia ningún resultado, porque el input eliminado ya tenía 1
+como único valor usado en la práctica.
+
+## Formato numérico y unidades en los resultados (`ui.js`, 2026-09-02, a pedido del usuario)
+
+Todos los números mostrados en tiles de resultado (las 3 pestañas) pasan
+por `formatearNumero()` (`Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 })`):
+coma decimal, punto de miles, hasta 2 decimales (recorta ceros de más). El
+cálculo interno sigue con precisión completa — esto solo cambia cómo se
+muestran. Nota: esto aplana factores adimensionales de verificación como
+"Factor Z (diseño)" (`1,0004759...` → `1,00`) o "Factor de fricción"
+(`0,03782` → `0,04`) a una resolución más gruesa que antes; si en el
+futuro hace falta más precisión visible para contrastar contra el Excel,
+esos tiles puntuales son buenos candidatos a una excepción explícita.
+`unidades-presion.js` NO se tocó (sigue con `formatearPresion()`, string
+de precisión fija) porque `unidades-presion.test.js` depende de poder
+`Number()`-earlo; `ui.js` tiene su propio `formatearPresionBonita()` que
+envuelve `desdePa()` + `formatearNumero()` para mostrar, y es lo único que
+cambió de `formatearPresion` a esto en las 3 pestañas.
+
+Los selectores de unidad que alimentan un resultado del motor (a
+diferencia de los de presión, que solo redibujan un valor ya calculado)
+—`flujo-unidad-normalizado`/`flujo-unidad-h2` en Tubería y Flujo,
+`alm-unidad-caudal` en Almacenamiento— se movieron del formulario de
+ingreso manual a un `<select>` inline dentro del tile del resultado que
+afectan (mismo patrón visual que los selectores de presión, pero SÍ
+disparan un recálculo al cambiar, ya que el motor recibe la unidad
+elegida). Como viven fuera del `<form>` (se regeneran en cada render, dentro
+de `#resultados-flujo`/`#resultados-almacenamiento`), se seleccionan por
+`id` y se cablean con un listener de delegación aparte en el contenedor de
+resultados — no se suman a `form.querySelectorAll('input, select')`, así
+que el guardado en localStorage los agrega a mano (ver
+`unidadNormalizadoFlujo`/`unidadH2Flujo`/`unidadCaudalAlm` en `ui.js`).
+
+## Otros ajustes de UI (2026-09-02, a pedido del usuario)
+
+- Los 3 campos "Codos"/"Tee"/"Válvulas" de "Tubería y Flujo" ahora viven
+  dentro de un `<fieldset class="subseccion">` propio (misma pestaña, sin
+  ser una pestaña aparte) — clase nueva en `css/styles.css`, sin cambio de
+  comportamiento.
+- La etiqueta "Potencia quemador [kW]" de Almacenamiento (`alm-potencia`)
+  pasó a "Potencia de consumo [kW]" — es la única ocurrencia de esa frase
+  en el módulo; no confundir con "Potencia combustión [kW]" de Tubería y
+  Flujo (`flujo-potencia`), que es un campo distinto y no cambió de nombre.
+
 ## Fuera de alcance (v1)
 
 - Gas Natural / GLP — sitio separado con selector de gas, otro ciclo de
@@ -167,9 +268,12 @@ límite elástico.
 - Pérdidas locales por accesorios (codos/tees/válvulas) por tramo en la
   Memoria de Cálculo — si existe en "Tubería y Flujo" (`Cálculo!I6:K6`),
   no en la red ramificada, porque la hoja `MC` tampoco las lista por tramo.
-- Derivar el factor de diseño F automáticamente (sigue siendo un input
-  manual, igual que el Excel) — a diferencia de Hf (Tabla IX-5A), que sí se
-  deriva automáticamente desde 2026-09-02, ver arriba.
+- Derivar el factor de diseño F automáticamente a partir de datos del
+  proyecto — sigue siendo una elección manual del usuario (ahora un
+  selector de Clase de Ubicación anclado a la Tabla PL-3.7.1(b)(6)-1, ver
+  arriba, en vez de un número libre) — a diferencia de Hf (Tabla IX-5A) y T
+  (Tabla PL-3.7.1(b)(8)), que sí se derivan automáticamente desde
+  2026-09-02, ver arriba.
 - Chequeo de velocidad de erosión por tramo en la Memoria de Cálculo (sí
   existe en "Tubería y Flujo").
 - Autenticación / gate de acceso.

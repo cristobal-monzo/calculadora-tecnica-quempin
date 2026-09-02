@@ -25,6 +25,13 @@ cerca(
   102.80314960629921
 );
 
+// factorT (ASME B31.12 Tabla PL-3.7.1(b)(8)) AGREGADO 2026-09-02 —
+// recomputado a mano: 10*((2*170*1.2)/12.7)*0.4*1*1*0.9 = 128.50393700787401*0.9
+cerca(
+  presionMaximaDiseno({ limiteElasticoMPa: 170, espesorMm: 1.2, diametroMm: 12.7, factorDiseno: 0.4, factorUnion: 1, factorT: 0.9 }),
+  115.65354330708661
+);
+
 cerca(barGaugeAPaAbs(0.8), 180000);
 cerca(barAbsAPaAbs(200), 20000000);
 

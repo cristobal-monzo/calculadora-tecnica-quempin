@@ -5,7 +5,7 @@ import {
   barGaugeAPaAbs, densidadReal, presionMaximaDiseno, velocidadErosion,
   reynolds, rugosidadRelativa, factorFriccionHaaland, perdidaCargaTramo,
 } from './physics.js';
-import { H2, buscarTuberia, factorZDiseno, factorZErosion, factorHf } from './gas-h2.js';
+import { H2, buscarTuberia, factorZDiseno, factorZErosion, factorHf, factorT } from './gas-h2.js';
 
 const FACTOR_SL_MIN = 17.5817; // constante fuente (Cálculo!C11/C12/C15)
 
@@ -15,12 +15,12 @@ const FACTOR_SL_MIN = 17.5817; // constante fuente (Cálculo!C11/C12/C15)
 // fórmula calcula, así que se resuelve por iteración con relajación (Hf es
 // monótono no-creciente en presión: converge sin necesidad de más de unas
 // pocas decenas de pasadas incluso en el peor caso).
-function presionMaximaConHf({ limiteElasticoMPa, espesorMm, diametroMm, factorDiseno, factorUnion }) {
-  let presionBarG = presionMaximaDiseno({ limiteElasticoMPa, espesorMm, diametroMm, factorDiseno, factorUnion, factorHf: 1 });
+function presionMaximaConHf({ limiteElasticoMPa, espesorMm, diametroMm, factorDiseno, factorUnion, factorTAplicado }) {
+  let presionBarG = presionMaximaDiseno({ limiteElasticoMPa, espesorMm, diametroMm, factorDiseno, factorUnion, factorHf: 1, factorT: factorTAplicado });
   let hf = 1;
   for (let i = 0; i < 100; i++) {
     hf = factorHf({ limiteFluenciaMPa: limiteElasticoMPa, presionDisenoBarG: presionBarG });
-    const presionConHf = presionMaximaDiseno({ limiteElasticoMPa, espesorMm, diametroMm, factorDiseno, factorUnion, factorHf: hf });
+    const presionConHf = presionMaximaDiseno({ limiteElasticoMPa, espesorMm, diametroMm, factorDiseno, factorUnion, factorHf: hf, factorT: factorTAplicado });
     const siguiente = (presionBarG + presionConHf) / 2; // relajación, evita oscilación
     if (Math.abs(siguiente - presionBarG) < 1e-10) { presionBarG = siguiente; break; }
     presionBarG = siguiente;
@@ -46,11 +46,24 @@ export function calcularFlujo(inputs) {
   const tuberia = tuberiaManual ?? buscarTuberia(tuberiaPulgadas);
   const diametroM = tuberia.diMm / 1000;
 
+  // Cálculo!C10, con el factor T (ASME B31.12 Tabla PL-3.7.1(b)(8), derating
+  // por temperatura) AGREGADO (2026-09-02, a pedido del usuario — ver
+  // Hidrogeno/CLAUDE.md). A diferencia de Hf, T no depende de la presión de
+  // diseño que se está resolviendo, así que se calcula una sola vez.
+  const factorTAplicado = factorT({ temperaturaC });
+
   // Cálculo!C10
   const { presionMaxDisenoBar, factorHfAplicado } = presionMaximaConHf({
     limiteElasticoMPa: tuberia.limiteElasticoMPa, espesorMm: tuberia.espesorMm,
-    diametroMm: tuberia.diMm, factorDiseno, factorUnion,
+    diametroMm: tuberia.diMm, factorDiseno, factorUnion, factorTAplicado,
   });
+
+  // Indicador "tubería adecuada" (AGREGADO 2026-09-02, a pedido del
+  // usuario, mirroring el mismo indicador de GasNatural-GLP/js/calc-red-gas.js
+  // "tuberiaAdecuada"): acá el criterio es estructural, no de pérdida de
+  // carga — la tubería es adecuada si la presión de operación no supera la
+  // presión máxima de diseño (Barlow, con F/E/Hf/T ya aplicados).
+  const tuberiaAdecuada = presionBarG <= presionMaxDisenoBar;
 
   // Cálculo!C13
   const flujoMasicoKgH = (potenciaKw / pciKjKg) * 3600;
@@ -103,7 +116,8 @@ export function calcularFlujo(inputs) {
   });
 
   return {
-    tuberia, presionMaxDisenoBar, factorHfAplicado, flujoMasicoKgH, zDiseno, densidadKgM3,
+    tuberia, presionMaxDisenoBar, factorHfAplicado, factorTAplicado, tuberiaAdecuada,
+    flujoMasicoKgH, zDiseno, densidadKgM3,
     flujoVolNormalizado, flujoVolH2, zErosion, velocidadErosionMS,
     velocidadFlujoMS, reynolds: reynoldsNum, rugosidadRelativa: rugosidadRel,
     factorFriccion, perdidaCargaMbar,

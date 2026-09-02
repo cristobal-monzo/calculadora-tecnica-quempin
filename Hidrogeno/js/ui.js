@@ -1,10 +1,27 @@
 import { calcularFlujo } from './calc-flujo.js';
 import { calcularAlmacenamiento, formatearHoras } from './calc-almacenamiento.js';
 import { calcularRed } from './calc-memoria.js';
-import { TABLA_TUBERIA } from './gas-h2.js';
+import { TABLA_TUBERIA, TABLA_FACTOR_DISENO_F } from './gas-h2.js';
 import { guardar, cargar, exportarJSON, importarJSON } from './storage.js';
 import { initSelectorGas } from '../../assets/gas-switcher.js';
-import { aPa, desdePa, formatearPresion, opcionesUnidadPresion } from './unidades-presion.js';
+import { aPa, desdePa, opcionesUnidadPresion } from './unidades-presion.js';
+
+// Formato numérico de todos los resultados (2026-09-02, a pedido del
+// usuario): coma decimal / punto de miles (es-CL), hasta 2 decimales
+// (recorta ceros de más). Solo afecta cómo se MUESTRAN los valores — el
+// cálculo interno sigue con precisión completa.
+const FORMATO_NUMERO = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
+function formatearNumero(valor) {
+  return FORMATO_NUMERO.format(valor);
+}
+
+// Igual que formatearPresion() de unidades-presion.js pero con el formato
+// de arriba en vez del string de precisión fija que usa esa función (que
+// se deja intacta porque unidades-presion.test.js depende de poder
+// Number()-earla).
+function formatearPresionBonita(valorPa, unidad) {
+  return formatearNumero(desdePa(valorPa, unidad));
+}
 
 function initTabs() {
   const botones = document.querySelectorAll('.tab');
@@ -19,8 +36,12 @@ function initTabs() {
   });
 }
 
-function tile(valor, etiqueta, alerta = false) {
-  return `<div class="resultado-tile${alerta ? ' alerta' : ''}"><div class="valor">${valor}</div><div class="etiqueta">${etiqueta}</div></div>`;
+// `variante` acepta un booleano (compatibilidad con los usos existentes,
+// true -> 'alerta') o un string ('ok' | 'alerta', mismo patrón que
+// GasNatural-GLP/js/ui.js) para el indicador "Tubería adecuada".
+function tile(valor, etiqueta, variante = false) {
+  const clase = variante === true ? ' alerta' : variante ? ` ${variante}` : '';
+  return `<div class="resultado-tile${clase}"><div class="valor">${valor}</div><div class="etiqueta">${etiqueta}</div></div>`;
 }
 
 /* --- Selectores de unidad de presión, uno independiente por campo/resultado --- */
@@ -56,11 +77,12 @@ function leerPresion(inputId, selectId, unidadDestino) {
 // cambiar la unidad solo redibuja ese tile desde el valor en Pa ya
 // cacheado en el DOM, no dispara un recálculo. `unidadesTiles` es el mapa
 // persistido (clave -> unidad elegida) del panel dueño del tile.
-function tilePresion(valorNativo, unidadNativa, etiqueta, clave, unidadesTiles, alerta = false) {
+function tilePresion(valorNativo, unidadNativa, etiqueta, clave, unidadesTiles, variante = false) {
   const valorPa = aPa(valorNativo, unidadNativa);
   const unidad = unidadesTiles[clave] || unidadNativa;
-  return `<div class="resultado-tile${alerta ? ' alerta' : ''}" data-tile-presion="${clave}" data-pa="${valorPa}">
-    <div class="valor"><span class="valor-numero">${formatearPresion(valorPa, unidad)}</span><select class="select-unidad-inline" data-tile-presion-unidad="${clave}">${opcionesUnidadPresion(unidad)}</select></div>
+  const clase = variante === true ? ' alerta' : variante ? ` ${variante}` : '';
+  return `<div class="resultado-tile${clase}" data-tile-presion="${clave}" data-pa="${valorPa}">
+    <div class="valor"><span class="valor-numero">${formatearPresionBonita(valorPa, unidad)}</span><select class="select-unidad-inline" data-tile-presion-unidad="${clave}">${opcionesUnidadPresion(unidad)}</select></div>
     <div class="etiqueta">${etiqueta}</div>
   </div>`;
 }
@@ -74,8 +96,37 @@ function initTilesPresion(contenedorId, unidadesTiles, claveStorage) {
     unidadesTiles[clave] = evento.target.value;
     guardar(claveStorage, unidadesTiles);
     const contenedorTile = evento.target.closest('[data-tile-presion]');
-    contenedorTile.querySelector('.valor-numero').textContent = formatearPresion(Number(contenedorTile.dataset.pa), evento.target.value);
+    contenedorTile.querySelector('.valor-numero').textContent = formatearPresionBonita(Number(contenedorTile.dataset.pa), evento.target.value);
   });
+}
+
+// Tile de resultado de flujo con su propio selector de unidad inline — a
+// diferencia de tilePresion(), acá SÍ dispara un recálculo al cambiar (el
+// motor recibe la unidad elegida y devuelve el valor ya expresado en ella,
+// ver unidadNormalizado/unidadH2 en calc-flujo.js). El <select> se
+// regenera en cada render (igual que poblarSelectTuberia), así que
+// `seleccionada` fija cuál opción queda marcada.
+function tileConUnidad(valorFormateado, etiqueta, selectId, opciones, seleccionada) {
+  const opcionesHtml = opciones.map((o) => {
+    const texto = o.replace(/[[\]]/g, '').replace('m3', 'm³');
+    return `<option value="${o}"${o === seleccionada ? ' selected' : ''}>${texto}</option>`;
+  }).join('');
+  return `<div class="resultado-tile">
+    <div class="valor"><span class="valor-numero">${valorFormateado}</span><select class="select-unidad-inline" id="${selectId}">${opcionesHtml}</select></div>
+    <div class="etiqueta">${etiqueta}</div>
+  </div>`;
+}
+
+// Selector de Factor de diseño F por Clase de Ubicación — ASME B31.12,
+// Tabla PL-3.7.1(b)(6)-1 (ver TABLA_FACTOR_DISENO_F en gas-h2.js). El
+// value es el propio factor F (lo que espera calcularFlujo); varias clases
+// comparten F=0.50 a propósito, igual que la tabla oficial. Por defecto
+// selecciona la última fila (Clase 4, F=0.40) — mismo valor que tenía el
+// input numérico libre que reemplaza.
+function poblarSelectFactorDiseno(select) {
+  select.innerHTML = TABLA_FACTOR_DISENO_F.map(
+    (f, i) => `<option value="${f.factor}"${i === TABLA_FACTOR_DISENO_F.length - 1 ? ' selected' : ''}>${f.clase} (F=${f.factor.toFixed(2)})</option>`
+  ).join('');
 }
 
 function formatearPulgadas(valor) {
@@ -102,6 +153,16 @@ function poblarSelectTuberia(select) {
 /* Pestaña 1 — Tubería y Flujo                                            */
 /* ---------------------------------------------------------------------- */
 
+// Unidad de flujo normalizado/H₂ elegida — vive fuera del <form> (el
+// selector ahora está junto a su tile de resultado, a pedido del usuario),
+// así que se sigue por variable en vez de leerse del DOM del formulario.
+// Factor E de uniones longitudinales: SIEMPRE 1, ya no es editable ni se
+// muestra (a pedido del usuario) — ver Hidrogeno/CLAUDE.md.
+const OPCIONES_UNIDAD_NORMALIZADO = ['[Nm3/h]', '[sL/min]'];
+const OPCIONES_UNIDAD_H2 = ['[m3/h]', '[L/min]'];
+let unidadNormalizadoFlujo = '[sL/min]';
+let unidadH2Flujo = '[m3/h]';
+
 function leerFlujoForm() {
   const num = (id) => Number(document.getElementById(id).value);
   const tuberiaSeleccionada = document.getElementById('flujo-tuberia').value;
@@ -121,9 +182,9 @@ function leerFlujoForm() {
     tees: num('flujo-tees'),
     valvulas: num('flujo-valvulas'),
     factorDiseno: num('flujo-factor-diseno'),
-    factorUnion: num('flujo-factor-union'),
-    unidadNormalizado: document.getElementById('flujo-unidad-normalizado').value,
-    unidadH2: document.getElementById('flujo-unidad-h2').value,
+    factorUnion: 1,
+    unidadNormalizado: unidadNormalizadoFlujo,
+    unidadH2: unidadH2Flujo,
   };
 }
 
@@ -131,19 +192,22 @@ const unidadesTilesPresionFlujo = cargar('unidades-tiles-presion-flujo', {});
 
 function renderResultadosFlujo(r) {
   const cercaDeErosion = r.velocidadFlujoMS >= r.velocidadErosionMS * 0.8;
+  const varianteAdecuada = r.tuberiaAdecuada ? 'ok' : 'alerta';
   document.getElementById('resultados-flujo').innerHTML = [
-    tilePresion(r.presionMaxDisenoBar, 'bar', 'Presión máxima de diseño (Barlow, ASME B31.12)', 'presion-max-diseno', unidadesTilesPresionFlujo),
-    tile(r.factorHfAplicado.toFixed(3), 'Factor Hf aplicado (Tabla IX-5A, fragilización por H₂)'),
-    tile(`${r.densidadKgM3.toFixed(4)} kg/m³`, 'Densidad real'),
-    tile(`${r.flujoMasicoKgH.toFixed(3)} kg/h`, 'Flujo másico de H₂'),
-    tile(`${r.flujoVolNormalizado.toFixed(2)}`, 'Flujo volumétrico normalizado'),
-    tile(`${r.flujoVolH2.toFixed(3)}`, 'Flujo volumétrico H₂'),
-    tile(`${r.velocidadFlujoMS.toFixed(2)} m/s`, 'Velocidad de flujo', cercaDeErosion),
-    tile(`${r.velocidadErosionMS.toFixed(2)} m/s`, 'Velocidad de erosión (límite)'),
+    tilePresion(r.presionMaxDisenoBar, 'bar', 'Presión máxima de diseño (Barlow, ASME B31.12)', 'presion-max-diseno', unidadesTilesPresionFlujo, varianteAdecuada),
+    tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar tubería de mayor espesor o menor diámetro', 'Tubería adecuada', varianteAdecuada),
+    tile(formatearNumero(r.factorHfAplicado), 'Factor Hf aplicado (Tabla IX-5A, fragilización por H₂)'),
+    tile(formatearNumero(r.factorTAplicado), 'Factor T aplicado (Tabla PL-3.7.1(b)(8), derating por temperatura)'),
+    tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad real'),
+    tile(`${formatearNumero(r.flujoMasicoKgH)} kg/h`, 'Flujo másico de H₂'),
+    tileConUnidad(formatearNumero(r.flujoVolNormalizado), 'Flujo volumétrico normalizado', 'flujo-unidad-normalizado', OPCIONES_UNIDAD_NORMALIZADO, unidadNormalizadoFlujo),
+    tileConUnidad(formatearNumero(r.flujoVolH2), 'Flujo volumétrico H₂', 'flujo-unidad-h2', OPCIONES_UNIDAD_H2, unidadH2Flujo),
+    tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo', cercaDeErosion),
+    tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad de erosión (límite)'),
     tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdida de carga', 'perdida-carga', unidadesTilesPresionFlujo),
-    tile(r.zDiseno.toFixed(6), 'Factor Z (diseño)'),
-    tile(r.reynolds.toFixed(0), 'Número de Reynolds'),
-    tile(r.factorFriccion.toFixed(5), 'Factor de fricción (Haaland)'),
+    tile(formatearNumero(r.zDiseno), 'Factor Z (diseño)'),
+    tile(formatearNumero(r.reynolds), 'Número de Reynolds'),
+    tile(formatearNumero(r.factorFriccion), 'Factor de fricción (Haaland)'),
   ].join('');
 }
 
@@ -159,6 +223,7 @@ function initTeoriaFlujo() {
   const form = document.getElementById('form-flujo');
   const select = document.getElementById('flujo-tuberia');
   poblarSelectTuberia(select);
+  poblarSelectFactorDiseno(document.getElementById('flujo-factor-diseno'));
   renderTablaTuberia();
 
   const guardados = cargar('flujo', null);
@@ -167,6 +232,8 @@ function initTeoriaFlujo() {
       const el = document.getElementById(id);
       if (el) el.value = valor;
     });
+    unidadNormalizadoFlujo = guardados['flujo-unidad-normalizado'] ?? unidadNormalizadoFlujo;
+    unidadH2Flujo = guardados['flujo-unidad-h2'] ?? unidadH2Flujo;
   } else {
     select.value = '0.5';
   }
@@ -185,10 +252,25 @@ function initTeoriaFlujo() {
     const inputs = leerFlujoForm();
     const resultado = calcularFlujo(inputs);
     renderResultadosFlujo(resultado);
-    guardar('flujo', Object.fromEntries(
-      Array.from(form.querySelectorAll('input, select')).map((el) => [el.id, el.value])
+    guardar('flujo', Object.assign(
+      Object.fromEntries(Array.from(form.querySelectorAll('input, select')).map((el) => [el.id, el.value])),
+      { 'flujo-unidad-normalizado': unidadNormalizadoFlujo, 'flujo-unidad-h2': unidadH2Flujo }
     ));
   }
+
+  // Los selectores de unidad de flujo viven en los tiles de resultado (se
+  // regeneran en cada render), fuera del <form> — se cablean aparte por
+  // delegación en el contenedor de resultados en vez de sumarse a
+  // `form.querySelectorAll('input, select')`.
+  document.getElementById('resultados-flujo').addEventListener('input', (evento) => {
+    if (evento.target.id === 'flujo-unidad-normalizado') {
+      unidadNormalizadoFlujo = evento.target.value;
+      recalcular();
+    } else if (evento.target.id === 'flujo-unidad-h2') {
+      unidadH2Flujo = evento.target.value;
+      recalcular();
+    }
+  });
 
   form.addEventListener('input', recalcular);
   recalcular();
@@ -198,6 +280,9 @@ function initTeoriaFlujo() {
 /* Pestaña 2 — Almacenamiento                                             */
 /* ---------------------------------------------------------------------- */
 
+const OPCIONES_UNIDAD_CAUDAL_ALM = ['[m³/h]', '[L/min]'];
+let unidadCaudalAlm = '[m³/h]';
+
 function leerAlmacenamientoForm() {
   const num = (id) => Number(document.getElementById(id).value);
   return {
@@ -205,21 +290,21 @@ function leerAlmacenamientoForm() {
     temperaturaC: num('alm-temperatura'),
     presionBarAbs: leerPresion('alm-presion', 'alm-presion-unidad', 'bar'),
     volumenM3: num('alm-volumen'),
-    unidadCaudalReferencia: document.getElementById('alm-unidad-caudal').value,
+    unidadCaudalReferencia: unidadCaudalAlm,
   };
 }
 
 function renderResultadosAlmacenamiento(r) {
   document.getElementById('resultados-almacenamiento').innerHTML = [
-    tile(`${r.masaAlmacenadaKg.toFixed(3)} kg`, 'Masa de H₂ almacenada (PV=ZnRT)'),
-    tile(r.zAlmacenamiento.toFixed(3), 'Factor de compresibilidad Z'),
-    tile(`${r.densidadRealKgM3.toFixed(3)} kg/m³`, 'Densidad real en el estanque'),
-    tile(`${r.volumenNormalizadoNm3.toFixed(2)} Nm³`, 'Volumen normalizado'),
+    tile(`${formatearNumero(r.masaAlmacenadaKg)} kg`, 'Masa de H₂ almacenada (PV=ZnRT)'),
+    tile(formatearNumero(r.zAlmacenamiento), 'Factor de compresibilidad Z'),
+    tile(`${formatearNumero(r.densidadRealKgM3)} kg/m³`, 'Densidad real en el estanque'),
+    tile(`${formatearNumero(r.volumenNormalizadoNm3)} Nm³`, 'Volumen normalizado'),
     tile(formatearHoras(r.autonomiaHoras), 'Autonomía (hh:mm:ss)'),
-    tile(`${r.consumoKgH.toFixed(3)} kg/h`, 'Consumo del quemador'),
-    tile(`${r.consumoNm3H.toFixed(3)} Nm³/h`, 'Consumo del quemador (normalizado)'),
-    tile(`${r.caudalReferenciaM3H.toFixed(4)}`, 'Caudal de referencia (línea capilar Ø¼")'),
-    tile(`${r.velocidadReferenciaMS.toFixed(3)} m/s`, 'Velocidad de referencia (línea capilar Ø¼")'),
+    tile(`${formatearNumero(r.consumoKgH)} kg/h`, 'Consumo del quemador'),
+    tile(`${formatearNumero(r.consumoNm3H)} Nm³/h`, 'Consumo del quemador (normalizado)'),
+    tileConUnidad(formatearNumero(r.caudalReferenciaM3H), 'Caudal de referencia (línea capilar Ø¼")', 'alm-unidad-caudal', OPCIONES_UNIDAD_CAUDAL_ALM, unidadCaudalAlm),
+    tile(`${formatearNumero(r.velocidadReferenciaMS)} m/s`, 'Velocidad de referencia (línea capilar Ø¼")'),
     tile(formatearHoras(r.tiempoLlenadoHoras), 'Tiempo de llenado (hh:mm:ss)'),
   ].join('');
 }
@@ -232,6 +317,7 @@ function initAlmacenamiento() {
       const el = document.getElementById(id);
       if (el) el.value = valor;
     });
+    unidadCaudalAlm = guardados['alm-unidad-caudal'] ?? unidadCaudalAlm;
   }
 
   initSelectorUnidadCampo('alm-presion', 'alm-presion-unidad');
@@ -239,10 +325,18 @@ function initAlmacenamiento() {
   function recalcular() {
     const resultado = calcularAlmacenamiento(leerAlmacenamientoForm());
     renderResultadosAlmacenamiento(resultado);
-    guardar('almacenamiento', Object.fromEntries(
-      Array.from(form.querySelectorAll('input, select')).map((el) => [el.id, el.value])
+    guardar('almacenamiento', Object.assign(
+      Object.fromEntries(Array.from(form.querySelectorAll('input, select')).map((el) => [el.id, el.value])),
+      { 'alm-unidad-caudal': unidadCaudalAlm }
     ));
   }
+
+  document.getElementById('resultados-almacenamiento').addEventListener('input', (evento) => {
+    if (evento.target.id === 'alm-unidad-caudal') {
+      unidadCaudalAlm = evento.target.value;
+      recalcular();
+    }
+  });
 
   form.addEventListener('input', recalcular);
   recalcular();
@@ -298,10 +392,10 @@ function renderTablaMemoria(resultado) {
       </td>
       <td><input type="text" class="mem-material" value="${t.material}"></td>
       <td><input type="number" step="any" class="mem-temp" value="${t.temperaturaC}"></td>
-      <td>${t.densidadKgM3.toFixed(4)}</td>
-      <td>${t.velocidadFlujoMS.toFixed(2)}</td>
-      <td>${formatearPresion(aPa(t.perdidaParcialMbar, 'mbar'), unidadPerdidaParcial)}</td>
-      <td>${formatearPresion(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td>
+      <td>${formatearNumero(t.densidadKgM3)}</td>
+      <td>${formatearNumero(t.velocidadFlujoMS)}</td>
+      <td>${formatearPresionBonita(aPa(t.perdidaParcialMbar, 'mbar'), unidadPerdidaParcial)}</td>
+      <td>${formatearPresionBonita(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td>
       <td><button type="button" class="mem-eliminar no-imprimir">✕</button></td>
     </tr>
   `).join('');
@@ -337,7 +431,7 @@ function renderArbol(resultado) {
   const circulos = nodos.map((n) => `
     <g>
       <circle cx="${n.nivel * anchoNivel + 60}" cy="${n.fila * altoFila + 20}" r="8" fill="var(--brand-orange)"/>
-      <title>${n.t.nombre} — ${n.t.perdidaAcumuladaMbar.toFixed(2)} mbar acumulados, ${n.t.velocidadFlujoMS.toFixed(2)} m/s</title>
+      <title>${n.t.nombre} — ${formatearNumero(n.t.perdidaAcumuladaMbar)} mbar acumulados, ${formatearNumero(n.t.velocidadFlujoMS)} m/s</title>
       <text x="${n.nivel * anchoNivel + 74}" y="${n.fila * altoFila + 24}" font-size="12" fill="var(--text-primary)">${n.t.nombre}</text>
     </g>`).join('');
   svg.setAttribute('height', String(Math.max(...porNivel.values(), 1) * altoFila + 20));
@@ -365,7 +459,7 @@ function recalcularMemoria() {
   document.getElementById('memoria-impresion-th-presion').textContent = `Presión [${unidadPresion}]`;
   document.getElementById('memoria-impresion-th-perdida').textContent = `Pérdida acumulada [${unidadPerdidaAcumulada}]`;
   document.getElementById('memoria-tabla-impresion-cuerpo').innerHTML = resultado.map((t) => `
-    <tr><td>${t.nombre}</td><td>${porNombreTramo(t.continuaDesdeId)}</td><td>${formatearPresion(aPa(t.presionMPa, 'MPa'), unidadPresion)}</td><td>${t.longitudM}</td><td>${etiquetaTuberia(t)}</td><td>${formatearPresion(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td></tr>
+    <tr><td>${t.nombre}</td><td>${porNombreTramo(t.continuaDesdeId)}</td><td>${formatearPresionBonita(aPa(t.presionMPa, 'MPa'), unidadPresion)}</td><td>${t.longitudM}</td><td>${etiquetaTuberia(t)}</td><td>${formatearPresionBonita(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td></tr>
   `).join('');
   guardar('memoria', tramos);
 }

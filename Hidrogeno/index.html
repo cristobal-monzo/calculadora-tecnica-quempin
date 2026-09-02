@@ -86,39 +86,27 @@
           <input id="flujo-largo" type="number" step="any" value="20" required>
         </div>
         <div class="campo">
-          <label for="flujo-codos">Codos</label>
-          <input id="flujo-codos" type="number" step="1" min="0" value="0">
+          <label for="flujo-factor-diseno">Factor de diseño F (ASME B31.12, Tabla PL-3.7.1(b)(6)-1)</label>
+          <select id="flujo-factor-diseno" required></select>
         </div>
-        <div class="campo">
-          <label for="flujo-tees">Tee</label>
-          <input id="flujo-tees" type="number" step="1" min="0" value="0">
-        </div>
-        <div class="campo">
-          <label for="flujo-valvulas">Válvulas</label>
-          <input id="flujo-valvulas" type="number" step="1" min="0" value="0">
-        </div>
-        <div class="campo">
-          <label for="flujo-factor-diseno">Factor de diseño F (ASME B31.12)</label>
-          <input id="flujo-factor-diseno" type="number" step="any" value="0.4" required>
-        </div>
-        <div class="campo">
-          <label for="flujo-factor-union">Factor de uniones longitudinales E</label>
-          <input id="flujo-factor-union" type="number" step="any" value="1" required>
-        </div>
-        <div class="campo">
-          <label for="flujo-unidad-normalizado">Unidad flujo normalizado</label>
-          <select id="flujo-unidad-normalizado">
-            <option value="[Nm3/h]">[Nm3/h]</option>
-            <option value="[sL/min]" selected>[sL/min]</option>
-          </select>
-        </div>
-        <div class="campo">
-          <label for="flujo-unidad-h2">Unidad flujo H2</label>
-          <select id="flujo-unidad-h2">
-            <option value="[m3/h]" selected>[m3/h]</option>
-            <option value="[L/min]">[L/min]</option>
-          </select>
-        </div>
+
+        <fieldset class="subseccion">
+          <legend>Accesorios (pérdidas locales)</legend>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="flujo-codos">Codos</label>
+              <input id="flujo-codos" type="number" step="1" min="0" value="0">
+            </div>
+            <div class="campo">
+              <label for="flujo-tees">Tee</label>
+              <input id="flujo-tees" type="number" step="1" min="0" value="0">
+            </div>
+            <div class="campo">
+              <label for="flujo-valvulas">Válvulas</label>
+              <input id="flujo-valvulas" type="number" step="1" min="0" value="0">
+            </div>
+          </div>
+        </fieldset>
       </form>
 
       <div class="resultados" id="resultados-flujo" aria-live="polite"></div>
@@ -132,7 +120,7 @@
     <section class="tab-panel" id="panel-almacenamiento" data-panel="almacenamiento">
       <form id="form-almacenamiento" class="fila-campos" autocomplete="off">
         <div class="campo">
-          <label for="alm-potencia">Potencia quemador [kW]</label>
+          <label for="alm-potencia">Potencia de consumo [kW]</label>
           <input id="alm-potencia" type="number" step="any" value="60" required>
         </div>
         <div class="campo">
@@ -156,13 +144,6 @@
         <div class="campo">
           <label for="alm-volumen">Volumen del estanque [m³]</label>
           <input id="alm-volumen" type="number" step="any" value="0.19" required>
-        </div>
-        <div class="campo">
-          <label for="alm-unidad-caudal">Unidad caudal de referencia</label>
-          <select id="alm-unidad-caudal">
-            <option value="[m³/h]" selected>[m³/h]</option>
-            <option value="[L/min]">[L/min]</option>
-          </select>
         </div>
       </form>
       <div class="resultados" id="resultados-almacenamiento" aria-live="polite"></div>

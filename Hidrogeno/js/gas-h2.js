@@ -106,3 +106,51 @@ export function factorHf({ limiteFluenciaMPa, presionDisenoBarG }) {
     }
   }
 }
+
+// Tabla de factor de diseño F — ASME B31.12, Tabla PL-3.7.1(b)(6)-1 "Basic
+// Design Factor, F (Used With Option A)" (provista por el usuario,
+// 2026-09-02). Reemplaza el input numérico libre que tenía "Tubería y
+// Flujo" (default 0.4, sin relación explícita con la norma) por un
+// selector de Clase de Ubicación — ver poblarSelectFactorDiseno() en
+// ui.js. Las tres primeras clases comparten F=0.50; se listan igual que la
+// tabla oficial (no solo los valores únicos) para que el usuario elija por
+// clase de ubicación real del proyecto, no por número de F.
+export const TABLA_FACTOR_DISENO_F = [
+  { clase: 'Clase de Ubicación 1, División 2', factor: 0.50 },
+  { clase: 'Clase de Ubicación 2', factor: 0.50 },
+  { clase: 'Clase de Ubicación 3', factor: 0.50 },
+  { clase: 'Clase de Ubicación 4', factor: 0.40 },
+];
+
+// Tabla de derating por temperatura — ASME B31.12, Tabla PL-3.7.1(b)(8)
+// "Temperature Derating Factor, T, for Steel Pipe" (provista por el
+// usuario, 2026-09-02). AGREGADA a la fórmula de Barlow: Hidrogeno/CLAUDE.md
+// ya documentaba `P=2·S·t·F·E·Hf·T/D` como la fórmula real de la norma,
+// pero T no estaba implementado (el Excel fuente tampoco lo aplicaba). La
+// tabla oficial está en °F; factorT() convierte desde la temperatura en
+// °C que ya pide "Tubería y Flujo" (no se agrega ningún campo nuevo).
+export const TABLA_FACTOR_TEMPERATURA_T = [
+  { tempF: 250, factor: 1.000 },
+  { tempF: 300, factor: 0.967 },
+  { tempF: 350, factor: 0.933 },
+  { tempF: 400, factor: 0.900 },
+  { tempF: 450, factor: 0.867 },
+];
+
+// Interpolación lineal en temperatura (nota general de la Tabla
+// PL-3.7.1(b)(8): "for intermediate temperatures, interpolate for derating
+// factor") con saturación plana fuera de rango en ambos extremos — mismo
+// criterio que factorHf() para la presión (arriba).
+export function factorT({ temperaturaC }) {
+  const tempF = temperaturaC * 9 / 5 + 32;
+  const tabla = TABLA_FACTOR_TEMPERATURA_T;
+  const ultimo = tabla.length - 1;
+  if (tempF <= tabla[0].tempF) return tabla[0].factor;
+  if (tempF >= tabla[ultimo].tempF) return tabla[ultimo].factor;
+  for (let i = 0; i < ultimo; i++) {
+    if (tempF >= tabla[i].tempF && tempF <= tabla[i + 1].tempF) {
+      const t = (tempF - tabla[i].tempF) / (tabla[i + 1].tempF - tabla[i].tempF);
+      return tabla[i].factor + t * (tabla[i + 1].factor - tabla[i].factor);
+    }
+  }
+}
