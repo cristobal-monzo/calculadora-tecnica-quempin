@@ -42,12 +42,21 @@
 
     <section class="tab-panel active" id="panel-red-gas" data-panel="red-gas">
       <form id="form-red-gas" class="fila-campos" autocomplete="off">
-        <div class="campo">
+        <div class="campo campo-ancho">
           <label for="rg-regimen">Régimen de presión</label>
-          <select id="rg-regimen">
-            <option value="<10 kPa">Baja presión (&lt;10 kPa)</option>
-            <option value=">10 kPa">Media/alta presión (&gt;10 kPa)</option>
-          </select>
+          <div class="campo-con-unidad">
+            <select id="rg-regimen">
+              <option value="<10 kPa">Baja presión (&lt;10 kPa)</option>
+              <option value=">10 kPa">Media/alta presión (&gt;10 kPa)</option>
+            </select>
+            <select id="rg-regimen-unidad" class="select-unidad" aria-label="Unidad del umbral de régimen">
+              <option value="Pa">Pa</option>
+              <option value="kPa" selected>kPa</option>
+              <option value="mbar">mbar</option>
+              <option value="bar">bar</option>
+              <option value="psi">psi</option>
+            </select>
+          </div>
         </div>
         <div class="campo">
           <label for="rg-material">Material de tubería</label>
@@ -69,8 +78,17 @@
           <input id="rg-longitud" type="number" step="any" value="10" required>
         </div>
         <div class="campo">
-          <label for="rg-presion-inicial">Presión inicial [Pa]</label>
-          <input id="rg-presion-inicial" type="number" step="any" value="1000" required>
+          <label for="rg-presion-inicial">Presión inicial</label>
+          <div class="campo-con-unidad">
+            <input id="rg-presion-inicial" type="number" step="any" value="1000" required>
+            <select id="rg-presion-inicial-unidad" class="select-unidad" aria-label="Unidad de presión inicial">
+              <option value="Pa" selected>Pa</option>
+              <option value="kPa">kPa</option>
+              <option value="mbar">mbar</option>
+              <option value="bar">bar</option>
+              <option value="psi">psi</option>
+            </select>
+          </div>
         </div>
         <div class="campo">
           <label for="rg-temperatura">Temperatura [°C]</label>
@@ -101,8 +119,17 @@
           <input id="cb-pci" type="number" step="any" value="48029" required>
         </div>
         <div class="campo">
-          <label for="cb-presion-ref">Presión de referencia [kPa]</label>
-          <input id="cb-presion-ref" type="number" step="any" value="3" required>
+          <label for="cb-presion-ref">Presión de referencia</label>
+          <div class="campo-con-unidad">
+            <input id="cb-presion-ref" type="number" step="any" value="3" required>
+            <select id="cb-presion-ref-unidad" class="select-unidad" aria-label="Unidad de presión de referencia">
+              <option value="Pa">Pa</option>
+              <option value="kPa" selected>kPa</option>
+              <option value="mbar">mbar</option>
+              <option value="bar">bar</option>
+              <option value="psi">psi</option>
+            </select>
+          </div>
         </div>
         <div class="campo">
           <label for="cb-temp-ref">Temperatura de referencia [°C]</label>
@@ -149,8 +176,17 @@
           <input id="qm-diam-inyector" type="number" step="any" value="1.2" required>
         </div>
         <div class="campo">
-          <label for="qm-presion-gas">Presión de gas [mbar]</label>
-          <input id="qm-presion-gas" type="number" step="any" value="29" required>
+          <label for="qm-presion-gas">Presión de gas</label>
+          <div class="campo-con-unidad">
+            <input id="qm-presion-gas" type="number" step="any" value="29" required>
+            <select id="qm-presion-gas-unidad" class="select-unidad" aria-label="Unidad de presión de gas">
+              <option value="Pa">Pa</option>
+              <option value="kPa">kPa</option>
+              <option value="mbar" selected>mbar</option>
+              <option value="bar">bar</option>
+              <option value="psi">psi</option>
+            </select>
+          </div>
         </div>
         <div class="campo">
           <label for="qm-relacion-aire">Relación de aire (aireación 1ª)</label>

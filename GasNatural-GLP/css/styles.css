@@ -44,6 +44,12 @@ main {
 }
 .campo input:focus-visible, .campo select:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
 .fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0 20px; }
+.campo-ancho { grid-column: span 2; }
+
+/* --- Campo de presión con selector de unidad propio --- */
+.campo-con-unidad { display: flex; gap: 6px; }
+.campo-con-unidad > *:first-child { flex: 1; min-width: 0; }
+.campo-con-unidad > .select-unidad { flex: 0 0 auto; width: 76px; padding: 8px 4px; }
 .subtitulo { font-size: 13px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin: 24px 0 4px; }
 .subtitulo:first-child { margin-top: 0; }
 
@@ -53,12 +59,18 @@ main {
   background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px;
   padding: 14px 16px;
 }
-.resultado-tile .valor { font-size: 20px; font-weight: 900; color: var(--text-primary); }
+.resultado-tile .valor { font-size: 20px; font-weight: 900; color: var(--text-primary); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
 .resultado-tile .etiqueta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .resultado-tile.alerta { border-color: var(--brand-orange); }
 .resultado-tile.alerta .valor { color: var(--brand-orange-ink, var(--brand-orange)); }
 .resultado-tile.ok { border-color: #2e7d32; }
 .resultado-tile.ok .valor { color: #2e7d32; }
+
+/* --- Selector de unidad inline dentro de un tile de resultado de presión --- */
+.select-unidad-inline {
+  font-size: 12px; font-weight: 700; color: var(--text-secondary); padding: 2px 4px;
+  border-radius: 4px; border: 1px solid var(--gridline); background: var(--page-plane);
+}
 
 .aviso-gas {
   background: var(--surface-card); border: 1px dashed var(--gridline); border-radius: 10px;

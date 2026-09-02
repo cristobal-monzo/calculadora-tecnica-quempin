@@ -30,6 +30,33 @@ publican. Diseño completo en
 Propiedades de gas: `js/gas-glp.js`, `js/gas-gn.js` (composición → PM, R,
 densidad, fracciones de carbono/hidrógeno para combustión).
 
+## Unidades de presión (2026-09-02, a pedido del usuario)
+
+Los 3 campos de ingreso manual de presión (`rg-presion-inicial` en Red de
+Gas, `cb-presion-ref` en Combustión, `qm-presion-gas` en Quemador) y los 3
+tiles de resultado en presión de Red de Gas (`Pérdida de presión
+requerida`, `Pérdida de presión admisible`, `Presión final`) tienen **cada
+uno su propio selector de unidad** (Pa/kPa/mbar/bar/psi) — no hay un
+selector global. El selector "Régimen de presión" también tiene el suyo,
+puramente para mostrar el umbral de 10 kPa en la unidad elegida (el
+`value` interno `<10 kPa`/`>10 kPa` que usa `calc-red-gas.js` no cambia).
+
+- `js/unidades-presion.js` — conversión pura (`aPa`/`desdePa`), sin tocar
+  ningún motor de cálculo. Los motores (`calc-red-gas.js`,
+  `calc-combustion.js`, `calc-quemador.js`) siguen esperando exactamente la
+  misma unidad interna de siempre (Pa/kPa/mbar respectivamente); `ui.js` es
+  la única capa que convierte, tanto al leer el formulario
+  (`leerPresion(inputId, selectId, unidadDestino)`) como al mostrar
+  resultados.
+- Cambiar la unidad de un campo de ingreso **convierte el número mostrado**
+  para conservar la presión física (1000 Pa → 10 mbar), no resetea el
+  valor. Cambiar la unidad de un tile de resultado solo redibuja ese tile
+  desde el valor en Pa ya calculado — no dispara un recálculo.
+- Cada selector de unidad se guarda junto con el resto del formulario en
+  localStorage (se agregó a los `querySelectorAll('input, select')` de
+  guardado/restauración de Combustión y Quemador, que antes solo incluían
+  `input` porque esos formularios no tenían ningún `<select>` propio).
+
 ## Decisiones de reconciliación (no son bugs silenciados)
 
 **Red de Gas — Goal Seek manual reemplazado por álgebra**: en el Excel,

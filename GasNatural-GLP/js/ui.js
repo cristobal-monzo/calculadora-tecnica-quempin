@@ -6,6 +6,7 @@ import { propiedadesGN } from './gas-gn.js';
 import { calcularQuemador } from './calc-quemador.js';
 import { guardar, cargar } from './storage.js';
 import { initSelectorGas } from '../../assets/gas-switcher.js';
+import { aPa, desdePa, formatearPresion, opcionesUnidadPresion } from './unidades-presion.js';
 
 let combustible = cargar('combustible', 'GLP');
 
@@ -27,6 +28,36 @@ function tile(valor, etiqueta, variante) {
   return `<div class="resultado-tile${clase}"><div class="valor">${valor}</div><div class="etiqueta">${etiqueta}</div></div>`;
 }
 
+/* --- Selectores de unidad de presión, uno independiente por campo/resultado --- */
+
+// Cablea un <select> de unidad junto a un <input> de presión: al cambiar la
+// unidad, convierte el número mostrado para conservar la presión física
+// (ej. 1000 Pa -> 10 mbar), sin tocar el motor de cálculo. El evento 'input'
+// del <select> burbujea hasta el listener del formulario, así que no hace
+// falta disparar un recálculo aparte. Idempotente: se puede volver a llamar
+// en cada render() (p.ej. tras restaurar estado guardado al cambiar de
+// combustible) para resincronizar la unidad base sin duplicar el listener.
+function initSelectorUnidadCampo(inputId, selectId) {
+  const input = document.getElementById(inputId);
+  const select = document.getElementById(selectId);
+  select.dataset.unidadAnterior = select.value;
+  if (select.dataset.unidadCableada) return;
+  select.dataset.unidadCableada = '1';
+  select.addEventListener('input', () => {
+    const valorPa = aPa(Number(input.value) || 0, select.dataset.unidadAnterior);
+    input.value = Number(desdePa(valorPa, select.value).toPrecision(6));
+    select.dataset.unidadAnterior = select.value;
+  });
+}
+
+// Lee un campo de presión (input + select de unidad) convertido a la unidad
+// que espera el motor de cálculo correspondiente.
+function leerPresion(inputId, selectId, unidadDestino) {
+  const valor = Number(document.getElementById(inputId).value);
+  const unidadOrigen = document.getElementById(selectId).value;
+  return desdePa(aPa(valor, unidadOrigen), unidadDestino);
+}
+
 const listeners = [];
 function alCambiarCombustible(fn) { listeners.push(fn); }
 function notificarCambioCombustible() { listeners.forEach((fn) => fn(combustible)); }
@@ -45,8 +76,22 @@ function initSelectorCombustible() {
 /* Pestaña 1 — Red de Gas                                                 */
 /* ---------------------------------------------------------------------- */
 
+function formatearPulgadas(valor) {
+  const entero = Math.floor(valor);
+  const resto = valor - entero;
+  if (resto === 0) return `${entero}"`;
+  const denominador = 16;
+  let numerador = Math.round(resto * denominador);
+  let d = denominador;
+  const mcd = (a, b) => (b === 0 ? a : mcd(b, a % b));
+  const g = mcd(numerador, d);
+  numerador /= g;
+  d /= g;
+  return entero > 0 ? `${entero}-${numerador}/${d}"` : `${numerador}/${d}"`;
+}
+
 function poblarSelectDiametro(select) {
-  select.innerHTML = TABLA_TUBERIA_RED_GAS.map((f) => `<option value="${f.pulgadas}">${f.pulgadas}"</option>`).join('');
+  select.innerHTML = TABLA_TUBERIA_RED_GAS.map((f) => `<option value="${f.pulgadas}">${formatearPulgadas(f.pulgadas)}</option>`).join('');
 }
 
 function leerRedGasForm() {
@@ -58,9 +103,22 @@ function leerRedGasForm() {
     pulgadas: Number(document.getElementById('rg-diametro').value),
     potenciaKw: num('rg-potencia'),
     longitudM: num('rg-longitud'),
-    presionInicialPa: num('rg-presion-inicial'),
+    presionInicialPa: leerPresion('rg-presion-inicial', 'rg-presion-inicial-unidad', 'Pa'),
     temperaturaC: num('rg-temperatura'),
   };
+}
+
+// Unidad elegida para cada tile de resultado en presión — independiente de
+// la unidad del campo de ingreso y persistida aparte.
+const unidadesTilesPresionRedGas = cargar('unidades-tiles-presion-red-gas', {});
+
+function tilePresion(valorPa, etiqueta, clave, variante) {
+  const unidad = unidadesTilesPresionRedGas[clave] || 'Pa';
+  const clase = variante ? ` ${variante}` : '';
+  return `<div class="resultado-tile${clase}" data-tile-presion="${clave}" data-pa="${valorPa}">
+    <div class="valor"><span class="valor-numero">${formatearPresion(valorPa, unidad)}</span><select class="select-unidad-inline" data-tile-presion-unidad="${clave}">${opcionesUnidadPresion(unidad)}</select></div>
+    <div class="etiqueta">${etiqueta}</div>
+  </div>`;
 }
 
 function renderResultadosRedGas(r) {
@@ -69,12 +127,12 @@ function renderResultadosRedGas(r) {
     tile(`${r.caudalObjetivoM3H.toFixed(3)} m³/h`, 'Caudal objetivo'),
     tile(`${r.velocidadMS.toFixed(2)} m/s`, 'Velocidad de flujo'),
     tile(`${r.volumenTuberiaM3.toFixed(4)} m³`, 'Volumen de la tubería'),
-    tile(`${r.perdidaPresionRequeridaPa.toFixed(2)} Pa`, 'Pérdida de presión requerida', variante),
-    tile(`${r.perdidaAdmisiblePa} Pa`, 'Pérdida de presión admisible'),
+    tilePresion(r.perdidaPresionRequeridaPa, 'Pérdida de presión requerida', 'perdida-requerida', variante),
+    tilePresion(r.perdidaAdmisiblePa, 'Pérdida de presión admisible', 'perdida-admisible'),
     tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar diámetro mayor', 'Tubería adecuada', variante),
   ];
   if (r.presionFinalPa !== null) {
-    tiles.push(tile(`${r.presionFinalPa.toFixed(1)} Pa`, 'Presión final'));
+    tiles.push(tilePresion(r.presionFinalPa, 'Presión final', 'presion-final'));
   }
   document.getElementById('resultados-red-gas').innerHTML = tiles.join('');
 }
@@ -93,6 +151,33 @@ function initRedGas() {
   } else {
     selectDiametro.value = '0.75';
   }
+
+  initSelectorUnidadCampo('rg-presion-inicial', 'rg-presion-inicial-unidad');
+
+  // El umbral del selector "Régimen de presión" (10 kPa) es un valor fijo
+  // del motor de cálculo (no un campo editable) — su selector de unidad solo
+  // recalcula el texto mostrado en las dos opciones, el `value` interno
+  // ("<10 kPa" / ">10 kPa") no cambia.
+  function actualizarEtiquetasRegimen() {
+    const unidad = document.getElementById('rg-regimen-unidad').value;
+    const umbral = formatearPresion(aPa(10, 'kPa'), unidad);
+    const select = document.getElementById('rg-regimen');
+    select.options[0].textContent = `Baja presión (<${umbral} ${unidad})`;
+    select.options[1].textContent = `Media/alta presión (>${umbral} ${unidad})`;
+  }
+  actualizarEtiquetasRegimen();
+  document.getElementById('rg-regimen-unidad').addEventListener('input', actualizarEtiquetasRegimen);
+
+  // Selector de unidad independiente en cada tile de presión: solo redibuja
+  // ese tile a partir del valor en Pa ya cacheado en el DOM, sin recalcular.
+  document.getElementById('resultados-red-gas').addEventListener('change', (evento) => {
+    const clave = evento.target.dataset.tilePresionUnidad;
+    if (!clave) return;
+    unidadesTilesPresionRedGas[clave] = evento.target.value;
+    guardar('unidades-tiles-presion-red-gas', unidadesTilesPresionRedGas);
+    const contenedor = evento.target.closest('[data-tile-presion]');
+    contenedor.querySelector('.valor-numero').textContent = formatearPresion(Number(contenedor.dataset.pa), evento.target.value);
+  });
 
   function recalcular() {
     try {
@@ -315,6 +400,7 @@ function initCombustion() {
       document.getElementById('cb-pci').value = pciPorDefecto.toFixed(2);
     }
 
+    initSelectorUnidadCampo('cb-presion-ref', 'cb-presion-ref-unidad');
     contenedorComposicion.querySelectorAll('input').forEach((el) => el.addEventListener('input', recalcular));
     recalcular();
   }
@@ -323,7 +409,7 @@ function initCombustion() {
     const num = (id) => Number(document.getElementById(id).value);
     const comunes = {
       potenciaKw: num('cb-potencia'), lambda: num('cb-lambda'), pciKjKg: num('cb-pci'),
-      presionReferenciaKPa: num('cb-presion-ref'), temperaturaReferenciaC: num('cb-temp-ref'),
+      presionReferenciaKPa: leerPresion('cb-presion-ref', 'cb-presion-ref-unidad', 'kPa'), temperaturaReferenciaC: num('cb-temp-ref'),
       concentracionO2Pct: num('cb-o2-medido') / 100,
     };
     let resultado;
@@ -338,7 +424,7 @@ function initCombustion() {
       document.getElementById('resultados-combustion').innerHTML = tile(error.message, 'Error', 'alerta');
     }
 
-    const campos = Array.from(form.querySelectorAll('input')).concat(Array.from(contenedorComposicion.querySelectorAll('input')));
+    const campos = Array.from(form.querySelectorAll('input, select')).concat(Array.from(contenedorComposicion.querySelectorAll('input')));
     guardar(`combustion-${combustible}`, Object.fromEntries(campos.map((el) => [el.id, el.value])));
   }
 
@@ -387,6 +473,7 @@ function initQuemador() {
       document.getElementById('qm-pci').value = propiedadesGN(leerComposicion('qm')).pciMasa.toFixed(2);
     }
 
+    initSelectorUnidadCampo('qm-presion-gas', 'qm-presion-gas-unidad');
     contenedorComposicion.querySelectorAll('input').forEach((el) => el.addEventListener('input', recalcular));
     recalcular();
   }
@@ -403,7 +490,7 @@ function initQuemador() {
         diametroPerforacionMm: num('qm-diam-perforacion'),
         coeficienteDescarga: num('qm-cd'),
         diametroInyectorMm: num('qm-diam-inyector'),
-        presionGasMbar: num('qm-presion-gas'),
+        presionGasMbar: leerPresion('qm-presion-gas', 'qm-presion-gas-unidad', 'mbar'),
         relacionAire: num('qm-relacion-aire'),
         temperaturaGasC: num('qm-temp-gas'),
         temperaturaAmbienteC: num('qm-temp-ambiente'),
@@ -415,7 +502,7 @@ function initQuemador() {
       document.getElementById('resultados-quemador').innerHTML = tile(error.message, 'Error', 'alerta');
     }
 
-    const campos = Array.from(form.querySelectorAll('input')).concat(Array.from(contenedorComposicion.querySelectorAll('input')));
+    const campos = Array.from(form.querySelectorAll('input, select')).concat(Array.from(contenedorComposicion.querySelectorAll('input')));
     guardar(`quemador-${combustible}`, Object.fromEntries(campos.map((el) => [el.id, el.value])));
   }
 
