@@ -190,21 +190,27 @@ function leerFlujoForm() {
 
 const unidadesTilesPresionFlujo = cargar('unidades-tiles-presion-flujo', {});
 
+// Orden y etiquetas (2026-09-02, a pedido del usuario): los resultados de
+// mayor relevancia para la decisión de dimensionamiento van primero
+// (presión/adecuación, caudales, velocidades, pérdida de carga); los
+// factores de verificación de la fórmula (Hf, T, Z, Reynolds, fricción) y
+// la densidad se agrupan aparte, al final, bajo su propio subtítulo.
 function renderResultadosFlujo(r) {
   const cercaDeErosion = r.velocidadFlujoMS >= r.velocidadErosionMS * 0.8;
   const varianteAdecuada = r.tuberiaAdecuada ? 'ok' : 'alerta';
   document.getElementById('resultados-flujo').innerHTML = [
-    tilePresion(r.presionMaxDisenoBar, 'bar', 'Presión máxima de diseño (Barlow, ASME B31.12)', 'presion-max-diseno', unidadesTilesPresionFlujo, varianteAdecuada),
+    tilePresion(r.presionMaxDisenoBar, 'bar', 'Presión máxima diseño (PL-3.7.1)', 'presion-max-diseno', unidadesTilesPresionFlujo, varianteAdecuada),
     tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar tubería de mayor espesor o menor diámetro', 'Tubería adecuada', varianteAdecuada),
+    tileConUnidad(formatearNumero(r.flujoVolNormalizado), 'Flujo volum. Norm.', 'flujo-unidad-normalizado', OPCIONES_UNIDAD_NORMALIZADO, unidadNormalizadoFlujo),
+    tileConUnidad(formatearNumero(r.flujoVolH2), 'Flujo volum. de H₂', 'flujo-unidad-h2', OPCIONES_UNIDAD_H2, unidadH2Flujo),
+    tile(`${formatearNumero(r.flujoMasicoKgH)} kg/h`, 'Flujo másico de H₂'),
+    tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad erosión (I-3.4.5)'),
+    tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo', cercaDeErosion),
+    tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdidas de carga', 'perdida-carga', unidadesTilesPresionFlujo),
+    '<div class="resultados-subtitulo">Factores de verificación</div>',
+    tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad real'),
     tile(formatearNumero(r.factorHfAplicado), 'Factor Hf aplicado (Tabla IX-5A, fragilización por H₂)'),
     tile(formatearNumero(r.factorTAplicado), 'Factor T aplicado (Tabla PL-3.7.1(b)(8), derating por temperatura)'),
-    tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad real'),
-    tile(`${formatearNumero(r.flujoMasicoKgH)} kg/h`, 'Flujo másico de H₂'),
-    tileConUnidad(formatearNumero(r.flujoVolNormalizado), 'Flujo volumétrico normalizado', 'flujo-unidad-normalizado', OPCIONES_UNIDAD_NORMALIZADO, unidadNormalizadoFlujo),
-    tileConUnidad(formatearNumero(r.flujoVolH2), 'Flujo volumétrico H₂', 'flujo-unidad-h2', OPCIONES_UNIDAD_H2, unidadH2Flujo),
-    tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo', cercaDeErosion),
-    tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad de erosión (límite)'),
-    tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdida de carga', 'perdida-carga', unidadesTilesPresionFlujo),
     tile(formatearNumero(r.zDiseno), 'Factor Z (diseño)'),
     tile(formatearNumero(r.reynolds), 'Número de Reynolds'),
     tile(formatearNumero(r.factorFriccion), 'Factor de fricción (Haaland)'),

@@ -116,10 +116,10 @@ export function factorHf({ limiteFluenciaMPa, presionDisenoBarG }) {
 // tabla oficial (no solo los valores únicos) para que el usuario elija por
 // clase de ubicación real del proyecto, no por número de F.
 export const TABLA_FACTOR_DISENO_F = [
-  { clase: 'Clase de Ubicación 1, División 2', factor: 0.50 },
-  { clase: 'Clase de Ubicación 2', factor: 0.50 },
-  { clase: 'Clase de Ubicación 3', factor: 0.50 },
-  { clase: 'Clase de Ubicación 4', factor: 0.40 },
+  { clase: 'Clase 1, División 2', factor: 0.50 },
+  { clase: 'Clase 2', factor: 0.50 },
+  { clase: 'Clase 3', factor: 0.50 },
+  { clase: 'Clase 4', factor: 0.40 },
 ];
 
 // Tabla de derating por temperatura — ASME B31.12, Tabla PL-3.7.1(b)(8)

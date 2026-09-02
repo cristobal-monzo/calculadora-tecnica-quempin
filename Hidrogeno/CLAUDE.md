@@ -260,6 +260,22 @@ que el guardado en localStorage los agrega a mano (ver
   pasó a "Potencia de consumo [kW]" — es la única ocurrencia de esa frase
   en el módulo; no confundir con "Potencia combustión [kW]" de Tubería y
   Flujo (`flujo-potencia`), que es un campo distinto y no cambió de nombre.
+- El selector "Factor de diseño F" pasó a etiqueta corta "Factor de diseño
+  F (ASME B31.12)" (antes citaba la tabla completa) y sus opciones a
+  "Clase 1, División 2"/"Clase 2"/"Clase 3"/"Clase 4" (antes "Clase de
+  Ubicación N") — mismo `factor` por opción, solo texto más compacto.
+- **Reordenados y recategorizados los tiles de "Tubería y Flujo"**
+  (`renderResultadosFlujo` en `ui.js`): primero los resultados relevantes
+  para la decisión de dimensionamiento, en este orden — Presión máxima
+  diseño + Tubería adecuada, Flujo volum. Norm., Flujo volum. de H₂, Flujo
+  másico de H₂, Velocidad erosión, Velocidad de flujo, Pérdidas de carga:
+  luego, bajo un subtítulo "Factores de verificación" (`.resultados-subtitulo`
+  en `css/styles.css`, spanea toda la fila de la grilla), Densidad real y
+  los factores Hf/T/Z/Reynolds/fricción, en ese orden. Algunas etiquetas se
+  acortaron con la cita de norma que pidió el usuario: "Presión máxima
+  diseño (PL-3.7.1)" (antes "...(Barlow, ASME B31.12)") y "Velocidad
+  erosión (I-3.4.5)" (antes "...(límite)") — provistas por el usuario, no
+  verificadas independientemente contra el texto de la norma.
 
 ## Fuera de alcance (v1)
 
