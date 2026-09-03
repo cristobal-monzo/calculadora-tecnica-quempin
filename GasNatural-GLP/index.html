@@ -38,6 +38,7 @@
       <button class="tab" role="tab" data-tab="almacenamiento">Almacenamiento</button>
       <button class="tab" role="tab" data-tab="combustion">Combustión</button>
       <button class="tab" role="tab" data-tab="quemador">Quemador Atmosférico</button>
+      <button class="tab" role="tab" data-tab="memoria">Memoria de Cálculo</button>
     </nav>
 
     <section class="tab-panel active" id="panel-red-gas" data-panel="red-gas">
@@ -219,6 +220,53 @@
         </div>
       </form>
       <div class="resultados" id="resultados-quemador" aria-live="polite"></div>
+    </section>
+
+    <section class="tab-panel" id="panel-memoria" data-panel="memoria">
+      <div class="no-imprimir" style="display:flex; gap:8px; flex-wrap:wrap; margin: 20px 0 16px;">
+        <button type="button" id="memoria-agregar-tramo">+ Agregar tramo</button>
+        <button type="button" id="memoria-exportar">Exportar proyecto (.json)</button>
+        <label style="display:inline-flex; align-items:center; gap:6px; font-size: 12.5px; color: var(--text-secondary);">
+          Importar proyecto
+          <input type="file" id="memoria-importar" accept="application/json">
+        </label>
+        <button type="button" id="memoria-imprimir">Imprimir / Guardar PDF</button>
+      </div>
+
+      <svg id="memoria-arbol" width="100%" height="220" role="img" aria-label="Diagrama de la red de tramos"></svg>
+
+      <div style="overflow-x:auto;">
+        <table id="memoria-tabla" class="no-imprimir">
+          <thead>
+            <tr>
+              <th>Tramo</th><th>Continúa desde</th>
+              <th title="Reinicia la pérdida de carga acumulada desde este tramo (ej. después de un regulador de presión)">Reinicia acum.</th>
+              <th>Régimen de presión</th>
+              <th>Material</th>
+              <th>Diámetro</th>
+              <th>Potencia [kW]</th>
+              <th>Longitud [m]</th>
+              <th>Presión inicial <select id="memoria-presion-inicial-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión inicial"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th>Temp. [°C]</th>
+              <th>Caudal objetivo [m³/h]</th>
+              <th>Velocidad [m/s]</th>
+              <th>Pérdida requerida <select id="memoria-perdida-requerida-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida requerida"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th>Pérdida acumulada <select id="memoria-perdida-acumulada-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida acumulada"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th>Presión final <select id="memoria-presion-final-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión final"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="memoria-tabla-cuerpo"></tbody>
+        </table>
+      </div>
+
+      <table id="memoria-tabla-impresion" style="display:none;">
+        <caption>Memoria de Cálculo — Red de Gas — QUEMPIN</caption>
+        <thead>
+          <tr><th>Tramo</th><th>Continúa desde</th><th id="memoria-impresion-th-presion">Presión inicial [Pa]</th><th>Longitud [m]</th><th>Diámetro</th><th id="memoria-impresion-th-perdida">Pérdida acumulada [Pa]</th></tr>
+        </thead>
+        <tbody id="memoria-tabla-impresion-cuerpo"></tbody>
+      </table>
     </section>
   </main>
 </div>
