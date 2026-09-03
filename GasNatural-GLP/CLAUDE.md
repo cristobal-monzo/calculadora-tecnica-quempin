@@ -139,6 +139,75 @@ Una diferencia deliberada del bloque de impresión (`@media print`) frente
 al de Hidrógeno: también oculta `.selector-combustible`, que Hidrógeno no
 tiene — es parte del chrome de la página, no del contenido de la memoria.
 
+## Informe formal + corrección de foco al escribir (2026-09-03, a pedido del usuario)
+
+Dos cambios en la misma sesión, mirroring y corrigiendo respectivamente el
+informe de `Hidrogeno/js/ui.js` (commit `a2ad060`, "informe formal de
+Memoria de Cálculo con membrete QUEMPIN").
+
+**Informe formal**: se portaron los cajetines de proyecto (fecha,
+proyecto, instalador, contacto, dirección, comuna, firma/documento,
+criterios de diseño opcionales, observaciones), la lista de artefactos y
+el rediseño completo de `#memoria-informe-impresion` (membrete QUEMPIN,
+tabla de datos, criterios, artefactos, detalle de tramos a 10 columnas,
+resumen, firma). Estado `proyecto` nuevo, persistido aparte
+(`memoria-proyecto`); exportar/importar pasa a `{ tramos, proyecto }` con
+compatibilidad hacia atrás (array plano). Adaptaciones respecto al
+original de Hidrógeno, no copia literal:
+
+- **Observaciones por defecto reescritas**: el texto de Hidrógeno cita
+  Darcy-Weisbach/Reynolds/ASME B31.12/NFPA 2 — metodología de Barlow, no
+  aplicable acá. El texto de este módulo (`OBSERVACIONES_DEFECTO` en
+  `ui.js`) cita Renouard + Peng-Robinson + D.S. N°66, que es lo que
+  `calc-red-gas.js`/`pipe-network.js` realmente implementan.
+- **"Velocidad máxima flujo de gas" sin precompletar**: Hidrógeno la deja
+  en 20 m/s (límite NFPA 2 ya usado en "Tubería y Flujo"). Acá no hay una
+  norma de referencia ya usada en el módulo de la que tomar ese número, así
+  que el cajetín queda vacío ("—") hasta que el usuario lo complete.
+- **Título y "Tipo de red" dinámicos**: Hidrógeno los deja fijos
+  ("Hidrógeno gas") porque es mono-gas; acá `#informe-subtitulo` y
+  `#informe-tipo-red` se recalculan según el combustible vigente ("RED DE
+  GLP"/"GLP" o "RED DE GAS NATURAL"/"Gas Natural") en cada
+  `renderInformeImpresion()`.
+- **Tabla de tramos impresa**: mismo recuento de 10 columnas que Hidrógeno
+  y el mismo orden posicional (Tramo/Continúa desde primero, Diámetro/
+  Material en las posiciones 6/7) para poder reusar tal cual las reglas
+  CSS `:nth-child` de alineación — pero con los campos propios de Red de
+  Gas (Presión inicial en vez de Presión de tramo, Pérdida requerida en
+  vez de Pérdida parcial, Velocidad en vez de Densidad+Velocidad).
+
+**Corrección de foco al escribir** (bug reportado por el usuario: "solo se
+me permite ingresar 1 solo dígito... tampoco me permite ingresar el
+carácter para agregar decimales"): `recalcularMemoria()` reescribía el
+`innerHTML` completo de `#memoria-tabla-cuerpo` en cada tecla —
+destruía el foco del cajetín y volvía a serializar el valor ya convertido
+a número, descartando cualquier "," o "." recién tipeado antes del
+siguiente carácter. Se agregó `recalcularMemoriaLigero()`
+(`js/ui.js`): para un `<input>` de texto, actualiza solo las celdas de
+resultado de cada fila vía `textContent` (identificadas con las clases
+nuevas `.mem-caudal`/`.mem-velocidad`/`.mem-perdida-requerida`/
+`.mem-perdida-acumulada`/`.mem-presion-final`) y sincroniza la etiqueta de
+"Continúa desde" en las demás filas si el nombre cambió — nunca toca
+ningún `<input>`/`<select>`, así que el foco y el texto a medio escribir
+se conservan. Los `<select>`/checkbox de la fila (régimen, material,
+diámetro, padre, reseteo) siguen disparando el `recalcularMemoria()`
+completo — no tienen el problema de "escribir carácter a carácter", así
+que un re-render completo ahí es seguro y más simple. Ver el listener de
+`'input'` en `#memoria-tabla-cuerpo` dentro de `initMemoria()`, que
+decide la rama según `evento.target.tagName`. Este mismo bug muy
+probablemente existe también en `Hidrogeno/js/ui.js` (mismo patrón de
+`recalcularMemoria()` reescribiendo la tabla en cada tecla) — no se tocó
+ese módulo en esta sesión para no interferir con el trabajo concurrente
+del informe formal que se estaba mergeando en paralelo; queda pendiente
+decidir si se porta la misma corrección allá.
+
+Se aprovechó el mismo cambio para ensanchar los cajetines de la tabla
+(`css/styles.css`): `#memoria-tabla` pasa de `width:100%` (que con 16
+columnas dejaba cada cajetín muy angosto) a `width:auto; min-width:100%`
+con un `min-width` propio en cada `<input>`/`<select>` — la tabla se
+desborda con scroll horizontal (ya vive en un contenedor con
+`overflow-x:auto`) en vez de encoger columnas para caber.
+
 ## Decisiones de reconciliación (no son bugs silenciados)
 
 **Red de Gas — Goal Seek manual reemplazado por álgebra**: en el Excel,

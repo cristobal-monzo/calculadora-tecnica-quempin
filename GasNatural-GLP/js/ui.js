@@ -557,6 +557,40 @@ function initQuemador() {
 
 let tramosMemoria = [];
 let contadorIdMemoria = 0;
+let proyecto = null;
+let contadorArtefactoId = 0;
+let ultimoResultadoMemoria = [];
+
+// Texto de observaciones por defecto (2026-09-03, a pedido del usuario,
+// mirroring el informe formal de Hidrogeno/js/ui.js) — adaptado a la
+// metodología real de este módulo: a diferencia de Hidrógeno (Barlow +
+// Darcy-Weisbach + ASME B31.12/NFPA 2), Red de Gas usa Renouard (baja y
+// media/alta presión) con compresibilidad real vía Peng-Robinson, bajo
+// D.S. N°66 (reglamento chileno de instalaciones de gas) — ver
+// GasNatural-GLP/CLAUDE.md y js/pipe-network.js.
+const OBSERVACIONES_DEFECTO =
+  'Cálculos basados en la ecuación de Renouard para la pérdida de carga en baja y media/alta presión, ' +
+  'con factor de compresibilidad real determinado mediante la ecuación de estado de Peng-Robinson. ' +
+  'Metodología de dimensionamiento de redes de gas aplicable según el D.S. N°66 (Reglamento de ' +
+  'instalaciones interiores y medidores de gas).';
+
+function proyectoPorDefecto() {
+  return {
+    fecha: '', proyecto: '', instalador: '', contacto: '', direccion: '', comuna: '',
+    cargoInstalador: '', runInstalador: '', numeroDoc: '01', revision: '1',
+    // A diferencia de Hidrógeno (que precompleta 20 m/s, el límite NFPA 2 ya
+    // usado en "Tubería y Flujo"), acá se deja sin valor por defecto: no hay
+    // una norma de referencia ya usada en este módulo de la que tomar un
+    // límite de velocidad — el usuario lo completa si aplica a su proyecto.
+    velocidadMaxFlujoDisenoMS: null, velocidadErosionDisenoMS: null, perdidaMaxAcumuladaDisenoPa: null,
+    artefactos: [], observaciones: OBSERVACIONES_DEFECTO,
+  };
+}
+
+function artefactoPorDefecto() {
+  contadorArtefactoId += 1;
+  return { id: `a${contadorArtefactoId}`, nombre: '', potenciaKw: 0 };
+}
 
 function tramoMemoriaPorDefecto() {
   contadorIdMemoria += 1;
@@ -621,11 +655,11 @@ function renderTablaMemoria(resultado) {
       <td><input type="text" inputmode="decimal" class="mem-largo" value="${t.longitudM}"></td>
       <td><input type="text" inputmode="decimal" class="mem-presion" value="${Number(desdePa(t.presionInicialPa, unidadPresionInicial).toPrecision(6))}"></td>
       <td><input type="text" inputmode="decimal" class="mem-temp" value="${t.temperaturaC}"></td>
-      <td>${t.caudalObjetivoM3H.toFixed(3)}</td>
-      <td>${t.velocidadMS.toFixed(2)}</td>
-      <td>${formatearPresion(t.perdidaPresionRequeridaPa, unidadPerdidaRequerida)}</td>
-      <td>${formatearPresion(t.perdidaAcumuladaPa, unidadPerdidaAcumulada)}</td>
-      <td>${t.presionFinalPa !== null ? formatearPresion(t.presionFinalPa, unidadPresionFinal) : '—'}</td>
+      <td class="mem-caudal">${t.caudalObjetivoM3H.toFixed(3)}</td>
+      <td class="mem-velocidad">${t.velocidadMS.toFixed(2)}</td>
+      <td class="mem-perdida-requerida">${formatearPresion(t.perdidaPresionRequeridaPa, unidadPerdidaRequerida)}</td>
+      <td class="mem-perdida-acumulada">${formatearPresion(t.perdidaAcumuladaPa, unidadPerdidaAcumulada)}</td>
+      <td class="mem-presion-final">${t.presionFinalPa !== null ? formatearPresion(t.presionFinalPa, unidadPresionFinal) : '—'}</td>
       <td><button type="button" class="mem-eliminar no-imprimir">✕</button></td>
     </tr>
   `).join('');
@@ -669,6 +703,93 @@ function renderArbolMemoria(resultado) {
   svg.innerHTML = lineas + circulos;
 }
 
+// Cajetín de un criterio de diseño opcional del encabezado del informe
+// (2026-09-03, a pedido del usuario, mirroring Hidrogeno/js/ui.js) — sin
+// valor manual se muestra "-" con la unidad, igual que el documento de
+// ejemplo de QUEMPIN.
+function formatearCriterio(valor, unidad) {
+  return valor === null || valor === undefined || Number.isNaN(valor)
+    ? `- [${unidad}]` : `${valor} [${unidad}]`;
+}
+
+function actualizarTotalArtefactos() {
+  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
+  document.getElementById('memoria-artefactos-total-txt').textContent =
+    `Total: ${totalKw.toFixed(2)} kW térmicos — Potencia instalada: ${totalKw.toFixed(2)} kW térmicos (no se considera operación simultánea)`;
+}
+
+function renderArtefactos() {
+  document.getElementById('memoria-artefactos-cuerpo').innerHTML = proyecto.artefactos.map((a) => `
+    <div class="artefacto-fila" data-id="${a.id}">
+      <input type="text" class="af-nombre" value="${a.nombre}" placeholder="Nombre del artefacto">
+      <input type="text" inputmode="decimal" class="af-potencia" value="${a.potenciaKw}" placeholder="kW">
+      <button type="button" class="af-eliminar no-imprimir">✕</button>
+    </div>
+  `).join('');
+  actualizarTotalArtefactos();
+}
+
+function renderInformeImpresion(resultado) {
+  document.getElementById('informe-doc-num').textContent = proyecto.numeroDoc;
+  document.getElementById('informe-doc-rev').textContent = proyecto.revision;
+
+  document.getElementById('informe-fecha').textContent = proyecto.fecha;
+  document.getElementById('informe-proyecto').textContent = proyecto.proyecto;
+  document.getElementById('informe-instalador').textContent = proyecto.instalador;
+  document.getElementById('informe-direccion').textContent = proyecto.direccion;
+  document.getElementById('informe-contacto').textContent = proyecto.contacto;
+  document.getElementById('informe-comuna').textContent = proyecto.comuna;
+
+  // Título y "Tipo de red" reflejan el combustible vigente (a diferencia de
+  // Hidrogeno, donde ambos son texto fijo "Hidrógeno gas" — acá el mismo
+  // informe sirve para GLP o Gas Natural según el selector global).
+  document.getElementById('informe-subtitulo').textContent = combustible === 'GLP' ? 'RED DE GLP' : 'RED DE GAS NATURAL';
+  document.getElementById('informe-tipo-red').textContent = combustible === 'GLP' ? 'GLP' : 'Gas Natural';
+
+  document.getElementById('informe-vel-max-flujo').textContent = formatearCriterio(proyecto.velocidadMaxFlujoDisenoMS, 'm/s');
+  document.getElementById('informe-vel-erosion').textContent = formatearCriterio(proyecto.velocidadErosionDisenoMS, 'm/s');
+  document.getElementById('informe-perdida-max').textContent = formatearCriterio(proyecto.perdidaMaxAcumuladaDisenoPa, 'Pa');
+
+  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
+  document.getElementById('informe-artefactos-cuerpo').innerHTML = proyecto.artefactos.length
+    ? proyecto.artefactos.map((a) => `<tr><td>${a.nombre}</td><td>${Number(a.potenciaKw).toFixed(2)} kW térmicos</td></tr>`).join('')
+    : '<tr><td colspan="2">—</td></tr>';
+  document.getElementById('informe-artefactos-total').textContent = `${totalKw.toFixed(2)} kW térmicos`;
+  document.getElementById('informe-potencia-instalada').textContent = `${totalKw.toFixed(2)} kW térmicos`;
+
+  const unidadPresionInicial = document.getElementById('memoria-presion-inicial-unidad').value;
+  const unidadPerdidaRequerida = document.getElementById('memoria-perdida-requerida-unidad').value;
+  const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
+  document.getElementById('memoria-impresion-th-presion').textContent = `Presión inicial [${unidadPresionInicial}]`;
+  document.getElementById('memoria-impresion-th-parcial').textContent = `P. Requerida [${unidadPerdidaRequerida}]`;
+  document.getElementById('memoria-impresion-th-perdida').textContent = `P. Acumulada [${unidadPerdidaAcumulada}]`;
+  document.getElementById('memoria-tabla-impresion-cuerpo').innerHTML = resultado.map((t) => `
+    <tr>
+      <td>${t.nombre}</td>
+      <td>${porNombreTramoMemoria(t.continuaDesdeId)}${t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</td>
+      <td>${formatearPresion(t.presionInicialPa, unidadPresionInicial)}</td>
+      <td>${t.longitudM}</td>
+      <td>${t.potenciaKw}</td>
+      <td>${etiquetaDiametroMemoria(t)}</td>
+      <td>${t.pulgadas === 'manual' ? '—' : t.material}</td>
+      <td>${formatearPresion(t.perdidaPresionRequeridaPa, unidadPerdidaRequerida)}</td>
+      <td>${formatearPresion(t.perdidaAcumuladaPa, unidadPerdidaAcumulada)}</td>
+      <td>${t.velocidadMS.toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  const perdidaAcumMaxPa = resultado.length ? Math.max(...resultado.map((t) => t.perdidaAcumuladaPa)) : 0;
+  const velFlujoMaxMS = resultado.length ? Math.max(...resultado.map((t) => t.velocidadMS)) : 0;
+  document.getElementById('informe-perdida-acum-max').textContent = `${formatearPresion(perdidaAcumMaxPa, unidadPerdidaAcumulada)} [${unidadPerdidaAcumulada}]`;
+  document.getElementById('informe-vel-flujo-max').textContent = `${velFlujoMaxMS.toFixed(2)} [m/s]`;
+
+  document.getElementById('informe-observaciones').textContent = proyecto.observaciones;
+
+  document.getElementById('informe-firma-nombre').textContent = proyecto.instalador;
+  document.getElementById('informe-firma-cargo').textContent = proyecto.cargoInstalador;
+  document.getElementById('informe-firma-run').textContent = proyecto.runInstalador;
+}
+
 function recalcularMemoria() {
   const contenedorError = document.getElementById('memoria-error');
   let resultado;
@@ -680,17 +801,107 @@ function recalcularMemoria() {
     return;
   }
   contenedorError.style.display = 'none';
+  ultimoResultadoMemoria = resultado;
   renderTablaMemoria(resultado);
   renderArbolMemoria(resultado);
-
-  const unidadPresionInicial = document.getElementById('memoria-presion-inicial-unidad').value;
-  const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
-  document.getElementById('memoria-impresion-th-presion').textContent = `Presión inicial [${unidadPresionInicial}]`;
-  document.getElementById('memoria-impresion-th-perdida').textContent = `Pérdida acumulada [${unidadPerdidaAcumulada}]`;
-  document.getElementById('memoria-tabla-impresion-cuerpo').innerHTML = resultado.map((t) => `
-    <tr><td>${t.nombre}</td><td>${porNombreTramoMemoria(t.continuaDesdeId)}${t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</td><td>${formatearPresion(t.presionInicialPa, unidadPresionInicial)}</td><td>${t.longitudM}</td><td>${etiquetaDiametroMemoria(t)}</td><td>${formatearPresion(t.perdidaAcumuladaPa, unidadPerdidaAcumulada)}</td></tr>
-  `).join('');
+  renderArtefactos();
+  renderInformeImpresion(resultado);
   guardar('memoria-red-gas', tramosMemoria);
+  guardar('memoria-proyecto', proyecto);
+}
+
+// Recalcula sin regenerar los <input>/<select> de la tabla de tramos
+// (2026-09-03, a pedido del usuario): escribir en un cajetín de texto solo
+// dejaba entrar un carácter a la vez, porque recalcularMemoria() reescribe
+// el innerHTML completo de #memoria-tabla-cuerpo en cada tecla — destruye
+// el foco y vuelve a serializar el valor ya convertido a número, perdiendo
+// cualquier "," o "." recién tipeado antes del siguiente dígito. Esta
+// versión solo actualiza las celdas de resultado (de solo lectura) de cada
+// fila vía textContent y sincroniza las etiquetas de "Continúa desde" de
+// las demás filas si el nombre cambió — nunca toca ningún <input>/<select>,
+// así que el foco y lo que el usuario ya escribió se conservan intactos.
+// Los cambios que sí alteran la estructura de la fila (un <select>: unidad,
+// régimen, material, diámetro, padre; o el checkbox de reseteo) siguen
+// pasando por recalcularMemoria() completo — ver el listener en initMemoria().
+function recalcularMemoriaLigero() {
+  const contenedorError = document.getElementById('memoria-error');
+  let resultado;
+  try {
+    resultado = calcularRedMemoria(tramosMemoria, combustible);
+  } catch (error) {
+    contenedorError.textContent = error.message;
+    contenedorError.style.display = '';
+    return;
+  }
+  contenedorError.style.display = 'none';
+  ultimoResultadoMemoria = resultado;
+  actualizarCeldasCalculadas(resultado);
+  tramosMemoria.forEach((t) => {
+    document.querySelectorAll(`#memoria-tabla-cuerpo .mem-padre option[value="${t.id}"]`).forEach((opcion) => {
+      opcion.textContent = t.nombre;
+    });
+  });
+  renderArbolMemoria(resultado);
+  renderInformeImpresion(resultado);
+  guardar('memoria-red-gas', tramosMemoria);
+}
+
+function actualizarCeldasCalculadas(resultado) {
+  const unidadPerdidaRequerida = document.getElementById('memoria-perdida-requerida-unidad').value;
+  const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
+  const unidadPresionFinal = document.getElementById('memoria-presion-final-unidad').value;
+  resultado.forEach((t) => {
+    const fila = document.querySelector(`#memoria-tabla-cuerpo tr[data-id="${t.id}"]`);
+    if (!fila) return;
+    fila.querySelector('.mem-caudal').textContent = t.caudalObjetivoM3H.toFixed(3);
+    fila.querySelector('.mem-velocidad').textContent = t.velocidadMS.toFixed(2);
+    fila.querySelector('.mem-perdida-requerida').textContent = formatearPresion(t.perdidaPresionRequeridaPa, unidadPerdidaRequerida);
+    fila.querySelector('.mem-perdida-acumulada').textContent = formatearPresion(t.perdidaAcumuladaPa, unidadPerdidaAcumulada);
+    fila.querySelector('.mem-presion-final').textContent = t.presionFinalPa !== null ? formatearPresion(t.presionFinalPa, unidadPresionFinal) : '—';
+  });
+}
+
+function leerProyecto() {
+  const val = (id) => document.getElementById(id).value;
+  const numOpcional = (id) => {
+    const bruto = val(id).trim();
+    return bruto === '' ? null : numeroFlexible(bruto);
+  };
+  return {
+    fecha: val('mp-fecha'), proyecto: val('mp-proyecto'), instalador: val('mp-instalador'),
+    contacto: val('mp-contacto'), direccion: val('mp-direccion'), comuna: val('mp-comuna'),
+    cargoInstalador: val('mp-cargo'), runInstalador: val('mp-run'),
+    numeroDoc: val('mp-doc'), revision: val('mp-revision'),
+    velocidadMaxFlujoDisenoMS: numOpcional('mp-vel-max-flujo'),
+    velocidadErosionDisenoMS: numOpcional('mp-vel-erosion'),
+    perdidaMaxAcumuladaDisenoPa: numOpcional('mp-perdida-max'),
+    observaciones: val('mp-observaciones'),
+  };
+}
+
+function aplicarProyectoAForm() {
+  document.getElementById('mp-fecha').value = proyecto.fecha;
+  document.getElementById('mp-proyecto').value = proyecto.proyecto;
+  document.getElementById('mp-instalador').value = proyecto.instalador;
+  document.getElementById('mp-contacto').value = proyecto.contacto;
+  document.getElementById('mp-direccion').value = proyecto.direccion;
+  document.getElementById('mp-comuna').value = proyecto.comuna;
+  document.getElementById('mp-cargo').value = proyecto.cargoInstalador;
+  document.getElementById('mp-run').value = proyecto.runInstalador;
+  document.getElementById('mp-doc').value = proyecto.numeroDoc;
+  document.getElementById('mp-revision').value = proyecto.revision;
+  document.getElementById('mp-vel-max-flujo').value = proyecto.velocidadMaxFlujoDisenoMS ?? '';
+  document.getElementById('mp-vel-erosion').value = proyecto.velocidadErosionDisenoMS ?? '';
+  document.getElementById('mp-perdida-max').value = proyecto.perdidaMaxAcumuladaDisenoPa ?? '';
+  document.getElementById('mp-observaciones').value = proyecto.observaciones;
+}
+
+function leerFilaArtefacto(fila) {
+  return {
+    id: fila.dataset.id,
+    nombre: fila.querySelector('.af-nombre').value,
+    potenciaKw: numeroFlexible(fila.querySelector('.af-potencia').value),
+  };
 }
 
 function leerFilaMemoria(fila) {
@@ -720,6 +931,9 @@ function leerFilaMemoria(fila) {
 function initMemoria() {
   tramosMemoria = cargar('memoria-red-gas', null) ?? [tramoMemoriaPorDefecto()];
   contadorIdMemoria = tramosMemoria.length;
+  proyecto = cargar('memoria-proyecto', null) ?? proyectoPorDefecto();
+  contadorArtefactoId = proyecto.artefactos.length;
+  aplicarProyectoAForm();
 
   ['memoria-presion-inicial-unidad', 'memoria-perdida-requerida-unidad', 'memoria-perdida-acumulada-unidad', 'memoria-presion-final-unidad'].forEach((id) => {
     const clave = `memoria-red-gas-${id}`;
@@ -737,12 +951,21 @@ function initMemoria() {
     recalcularMemoria();
   });
 
+  // Un <select>/checkbox cambia la estructura de la fila (visibilidad de
+  // sub-campos manuales, opciones de padre) y necesita el re-render
+  // completo; un <input> de texto/número solo actualiza los resultados
+  // calculados sin tocar ningún elemento de ingreso — ver
+  // recalcularMemoriaLigero() y el comentario ahí.
   document.getElementById('memoria-tabla-cuerpo').addEventListener('input', (evento) => {
     const fila = evento.target.closest('tr[data-id]');
     if (!fila) return;
     const actualizado = leerFilaMemoria(fila);
     tramosMemoria = tramosMemoria.map((t) => (t.id === actualizado.id ? actualizado : t));
-    recalcularMemoria();
+    if (evento.target.tagName === 'SELECT') {
+      recalcularMemoria();
+    } else {
+      recalcularMemoriaLigero();
+    }
   });
 
   document.getElementById('memoria-tabla-cuerpo').addEventListener('click', (evento) => {
@@ -752,14 +975,64 @@ function initMemoria() {
     recalcularMemoria();
   });
 
+  // Cajetines de datos del proyecto — un único listener de 'input'
+  // delegado en el <form>; nunca se regeneran vía innerHTML (solo se leen
+  // y se guardan), así que no tienen el problema de foco de la tabla de
+  // tramos.
+  document.getElementById('form-memoria-proyecto').addEventListener('input', () => {
+    proyecto = { ...proyecto, ...leerProyecto() };
+    renderInformeImpresion(ultimoResultadoMemoria);
+    guardar('memoria-proyecto', proyecto);
+  });
+
+  // Artefactos: escribir en un cajetín solo actualiza el total y el
+  // informe (sin regenerar la lista, mismo criterio que
+  // recalcularMemoriaLigero()); agregar/quitar sí necesita regenerar la
+  // lista completa.
+  document.getElementById('memoria-artefactos-cuerpo').addEventListener('input', (evento) => {
+    const fila = evento.target.closest('.artefacto-fila');
+    if (!fila) return;
+    const actualizado = leerFilaArtefacto(fila);
+    proyecto.artefactos = proyecto.artefactos.map((a) => (a.id === actualizado.id ? actualizado : a));
+    actualizarTotalArtefactos();
+    renderInformeImpresion(ultimoResultadoMemoria);
+    guardar('memoria-proyecto', proyecto);
+  });
+
+  document.getElementById('memoria-artefactos-cuerpo').addEventListener('click', (evento) => {
+    if (!evento.target.classList.contains('af-eliminar')) return;
+    const id = evento.target.closest('.artefacto-fila').dataset.id;
+    proyecto.artefactos = proyecto.artefactos.filter((a) => a.id !== id);
+    renderArtefactos();
+    renderInformeImpresion(ultimoResultadoMemoria);
+    guardar('memoria-proyecto', proyecto);
+  });
+
+  document.getElementById('memoria-artefacto-agregar').addEventListener('click', () => {
+    proyecto.artefactos.push(artefactoPorDefecto());
+    renderArtefactos();
+    renderInformeImpresion(ultimoResultadoMemoria);
+    guardar('memoria-proyecto', proyecto);
+  });
+
   document.getElementById('memoria-exportar').addEventListener('click', () => {
-    exportarJSON('proyecto-gas-natural-glp.json', tramosMemoria);
+    exportarJSON('proyecto-gas-natural-glp.json', { tramos: tramosMemoria, proyecto });
   });
 
   document.getElementById('memoria-importar').addEventListener('change', async (evento) => {
     const archivo = evento.target.files[0];
     if (!archivo) return;
-    tramosMemoria = await importarJSON(archivo);
+    const datos = await importarJSON(archivo);
+    // Compatibilidad hacia atrás: un export previo a los cajetines de
+    // proyecto era un array plano de tramos, sin envolver.
+    if (Array.isArray(datos)) {
+      tramosMemoria = datos;
+    } else {
+      tramosMemoria = datos.tramos ?? [];
+      proyecto = { ...proyectoPorDefecto(), ...datos.proyecto };
+      contadorArtefactoId = proyecto.artefactos.length;
+      aplicarProyectoAForm();
+    }
     contadorIdMemoria = tramosMemoria.length;
     recalcularMemoria();
   });

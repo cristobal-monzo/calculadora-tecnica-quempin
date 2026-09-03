@@ -94,21 +94,90 @@ th { color: var(--text-secondary); font-size: 12px; }
   color: var(--text-primary); cursor: pointer;
 }
 #memoria-agregar-tramo:hover, #memoria-exportar:hover, #memoria-imprimir:hover { border-color: var(--brand-orange); }
+/* Tabla más ancha que el viewport a propósito (2026-09-03, a pedido del
+   usuario): con 16 columnas, un ancho 100% dejaba cada cajetín demasiado
+   angosto para escribir con comodidad. #memoria-tabla ya vive dentro de un
+   contenedor con overflow-x:auto (ver index.html), así que en vez de
+   encoger columnas para caber, cada cajetín tiene un ancho mínimo y la
+   tabla completa se desborda con scroll horizontal. */
+#memoria-tabla { width: auto; min-width: 100%; }
+#memoria-tabla th, #memoria-tabla td { white-space: nowrap; }
 #memoria-tabla input, #memoria-tabla select {
-  font: inherit; font-size: 12.5px; padding: 4px 6px; border-radius: 4px;
-  border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary); width: 100%;
+  font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 4px;
+  border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary);
+  width: 100%; min-width: 78px;
 }
 #memoria-tabla th .select-unidad-columna { width: auto; font-weight: 700; padding: 2px 4px; margin-left: 4px; }
-.mem-tuberia-manual { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 4px; min-width: 90px; }
-.mem-tuberia-manual input { width: 100%; font-size: 11px !important; padding: 2px 3px !important; }
+.mem-tuberia-manual { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px; min-width: 130px; }
+.mem-tuberia-manual input { width: 100%; min-width: 60px; font-size: 12px !important; padding: 3px 4px !important; }
 .mem-eliminar { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
 .mem-eliminar:hover { color: var(--brand-orange); }
 #memoria-arbol { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px; margin-bottom: 16px; }
 
+/* --- Memoria de Cálculo: cajetines del proyecto y lista de artefactos --- */
+.artefacto-fila { display: grid; grid-template-columns: 1fr 110px 28px; gap: 8px; align-items: center; margin-bottom: 6px; }
+.artefacto-fila input {
+  font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 6px;
+  border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary);
+}
+#memoria-artefacto-agregar {
+  font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 12px; margin-top: 4px;
+  border-radius: 6px; border: 1px solid var(--gridline); background: var(--surface-card);
+  color: var(--text-primary); cursor: pointer;
+}
+#memoria-artefacto-agregar:hover { border-color: var(--brand-orange); }
+.af-eliminar { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
+.af-eliminar:hover { color: var(--brand-orange); }
+
 /* --- Impresión (Memoria de Cálculo) --- */
 @media print {
   .tabs, .no-imprimir, .viz-theme-toggle, .selector-combustible { display: none !important; }
-  body, .viz-root { background: #ffffff !important; color: #000000 !important; }
+  html, body, .viz-root { background: #ffffff !important; color: #000000; }
+  /* Solo se imprime la pestaña activa (evita que las pestañas queden
+     apiladas en el PDF) — el default ya oculta .tab-panel sin .active. */
   .tab-panel.active { display: block !important; }
-  #memoria-tabla-impresion { display: table !important; }
+  /* El informe formal es autocontenido (trae su propio encabezado con logo
+     QUEMPIN) — se oculta el resto del cromo de la app (header/selector de
+     gas) y el diagrama de árbol (ayuda visual de edición, no parte del
+     documento entregable) para que el PDF sea solo la memoria de cálculo. */
+  .viz-header, #memoria-arbol { display: none !important; }
+  @page { size: A4; margin: 14mm; }
+
+  #memoria-informe-impresion { display: block !important; font-family: 'Lato', system-ui, sans-serif; color: #1a1a1a; }
+
+  .informe-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 2px solid var(--brand-orange); padding-bottom: 10px; margin-bottom: 10px; }
+  .informe-logo { max-height: 56px; width: auto; }
+  .informe-empresa { flex: 1; font-size: 10px; line-height: 1.6; color: #333333; }
+  .informe-empresa strong, .informe-doc strong { color: #000000; }
+  .informe-doc { font-size: 10px; text-align: right; line-height: 1.6; white-space: nowrap; color: #333333; }
+
+  .informe-titulo { text-align: center; margin: 8px 0 16px; font-size: 16px; letter-spacing: 0.5px; }
+  .informe-titulo span { display: block; font-size: 13px; font-weight: 700; color: var(--brand-orange); margin-top: 3px; }
+
+  .informe-datos, .informe-criterios, .informe-artefactos, .informe-resumen {
+    width: 100%; border-collapse: collapse; font-size: 10.5px; margin-bottom: 10px;
+  }
+  .informe-datos th, .informe-criterios th, .informe-artefactos th, .informe-resumen th {
+    text-align: left; width: 180px; padding: 3px 8px 3px 0; color: #333333; font-weight: 700; vertical-align: top;
+  }
+  .informe-datos td, .informe-criterios td, .informe-artefactos td, .informe-resumen td { padding: 3px 8px 3px 0; }
+  .informe-artefactos caption, #memoria-tabla-impresion caption { text-align: left; font-weight: 700; font-size: 11px; padding-bottom: 4px; color: #000000; }
+  .informe-artefactos .informe-nota { font-style: italic; color: #555555; font-size: 9.5px; padding: 2px 8px; }
+  .informe-artefactos tfoot th, .informe-artefactos tfoot td { border-top: 1px solid #cccccc; padding-top: 5px; }
+
+  #memoria-tabla-impresion { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 10px; }
+  #memoria-tabla-impresion th, #memoria-tabla-impresion td { border: 1px solid #cccccc; padding: 4px 6px; text-align: right; }
+  #memoria-tabla-impresion th:nth-child(1), #memoria-tabla-impresion td:nth-child(1),
+  #memoria-tabla-impresion th:nth-child(2), #memoria-tabla-impresion td:nth-child(2),
+  #memoria-tabla-impresion th:nth-child(6), #memoria-tabla-impresion td:nth-child(6),
+  #memoria-tabla-impresion th:nth-child(7), #memoria-tabla-impresion td:nth-child(7) { text-align: left; }
+  #memoria-tabla-impresion thead th { background: #f3f3f3; color: #000000; }
+  #memoria-tabla-impresion tbody tr:nth-child(even) { background: #fafafa; }
+
+  .informe-observaciones { font-size: 9.5px; color: #333333; border: 1px solid #cccccc; border-radius: 4px; padding: 8px 10px; margin-bottom: 30px; }
+
+  .informe-firma { width: 260px; margin: 0 auto; text-align: center; font-size: 10.5px; }
+  .informe-firma-linea { border-top: 1px solid #000000; margin-bottom: 6px; }
+  #informe-firma-nombre { font-weight: 700; }
+  #informe-firma-cargo, #informe-firma-run { color: #333333; }
 }
