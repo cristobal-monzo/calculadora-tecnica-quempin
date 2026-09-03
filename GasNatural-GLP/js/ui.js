@@ -601,8 +601,8 @@ function renderTablaMemoria(resultado) {
           <option value=">10 kPa"${t.regimenPresion === '>10 kPa' ? ' selected' : ''}>Media/alta (&gt;10 kPa)</option>
         </select>
       </td>
-      <td${t.pulgadas === 'manual' ? ' style="display:none;"' : ''}>
-        <select class="mem-material">
+      <td>
+        <select class="mem-material"${t.pulgadas === 'manual' ? ' style="display:none;"' : ''}>
           <option value="Acero Sch40"${t.material === 'Acero Sch40' ? ' selected' : ''}>Acero Sch40</option>
           <option value="Cobre tipo L"${t.material === 'Cobre tipo L' ? ' selected' : ''}>Cobre tipo L</option>
         </select>
@@ -670,14 +670,16 @@ function renderArbolMemoria(resultado) {
 }
 
 function recalcularMemoria() {
+  const contenedorError = document.getElementById('memoria-error');
   let resultado;
   try {
     resultado = calcularRedMemoria(tramosMemoria, combustible);
   } catch (error) {
-    document.getElementById('memoria-tabla-cuerpo').innerHTML =
-      `<tr><td colspan="16" class="resultado-tile alerta">${error.message}</td></tr>`;
+    contenedorError.textContent = error.message;
+    contenedorError.style.display = '';
     return;
   }
+  contenedorError.style.display = 'none';
   renderTablaMemoria(resultado);
   renderArbolMemoria(resultado);
 

@@ -149,6 +149,57 @@ tal cual, funciones nuevas `leerFilaMemoria`/`renderTablaMemoria`/
 `renderArbol`/`recalcularMemoria`/`initMemoria` calcadas de Hidrógeno),
 `css/styles.css`, `storage.js`, `tests/run-all.js`, `CLAUDE.md`.
 
+## Addenda (al pasar a plan de implementación)
+
+Entre la aprobación de este spec y la escritura del plan, una sesión
+concurrente agregó dos patrones nuevos a Hidrógeno que ya son el estándar
+vigente del resto de ambos módulos — el plan de implementación los
+incorpora para mantener paridad real con Hidrógeno "tal como está hoy", no
+con la foto de cuando se escribió este documento:
+
+- **Separador decimal flexible**: todo `<input>` de ingreso manual de
+  valores continuos es `type="text" inputmode="decimal"` en vez de
+  `type="number" step="any"`, leído con `numeroFlexible()` (ya existe en
+  `GasNatural-GLP/js/ui.js`, reusar tal cual — no reimplementar). Aplica a
+  las columnas nuevas: Potencia, Longitud, Presión inicial, Temp., y los
+  sub-campos de diámetro manual (mm/factor K).
+- **Punto de reseteo de pérdida acumulada** (`reseteaAcumulada`): cada
+  tramo tiene un checkbox "Reinicia acum." — si está activo,
+  `perdidaAcumulada()` en el motor nuevo ignora la acumulada heredada del
+  padre y arranca en 0 (modela un regulador de presión). Mismo criterio
+  exacto que `Hidrogeno/js/calc-memoria.js` (ver su código y
+  `calc-memoria.test.js`, caso de cadena A-B-C-D con reseteo en C) — se
+  porta la misma lógica de recursión, el mismo anillo en el nodo del árbol
+  SVG, y la misma anotación "(reinicia acumulada)" en la tabla de
+  impresión.
+
+## Addenda (post-implementación, hallazgos de la revisión final)
+
+- **El manejo de errores se corrigió tras la implementación.** Este spec
+  decía que cualquier excepción debía abortar el cálculo completo de la red
+  "mismo patrón que Hidrógeno" — reemplazando toda la tabla editable por una
+  fila de error. Eso es seguro en Hidrógeno porque sus únicos errores son
+  estructurales (padre inválido, ciclo). Acá no: `calcularRedGas()` lanza
+  excepción ante combinaciones de inputs perfectamente normales (ej. el
+  tramo por defecto de este mismo spec — 1000 Pa de presión inicial — lanza
+  "El caudal objetivo excede lo que este diámetro puede entregar..." apenas
+  se cambia su Régimen de presión a Media/alta). Reemplazar toda la tabla
+  dejaba al usuario sin ninguna fila editable para corregir el valor
+  problemático. Corregido: el error se muestra en un banner dedicado
+  (`#memoria-error`) sin tocar las filas de la tabla, que quedan intactas y
+  editables.
+- **La casilla de verificación manual del plan (Task 4, Step 6) tenía un
+  caso que no se sostiene con los valores por defecto tal como están
+  escritos**: "cambiar Régimen a Media/alta y ver aparecer Presión final"
+  en realidad lanza una excepción con los defaults (ver punto anterior) — no
+  muestra Presión final. Para probar ese caso hay que primero subir la
+  presión inicial del tramo (ej. a 200000 Pa) antes de cambiar el régimen.
+- **La viñeta de CSS a portar omitía las reglas base de `table`/`th`/`td`.**
+  GasNatural-GLP nunca tuvo una tabla antes de esta funcionalidad, así que
+  tampoco tenía (ni heredaba de `assets/brand.css`) esas reglas genéricas —
+  se agregaron además de las reglas específicas de Memoria que sí estaban
+  listadas.
+
 ## Verificación
 
 ```bash

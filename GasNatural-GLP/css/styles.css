@@ -82,6 +82,11 @@ main {
   padding: 16px; color: var(--text-secondary); font-size: 13.5px; margin-top: 16px;
 }
 
+/* --- Tablas (Memoria de Cálculo es la única pestaña con <table>) --- */
+table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); }
+th { color: var(--text-secondary); font-size: 12px; }
+
 /* --- Memoria de Cálculo: barra de acciones y tabla editable --- */
 #memoria-agregar-tramo, #memoria-exportar, #memoria-imprimir {
   font: inherit; font-size: 12.5px; font-weight: 700; padding: 8px 14px;
@@ -103,7 +108,7 @@ main {
 /* --- Impresión (Memoria de Cálculo) --- */
 @media print {
   .tabs, .no-imprimir, .viz-theme-toggle, .selector-combustible { display: none !important; }
-  body { background: #ffffff; color: #000000; }
+  body, .viz-root { background: #ffffff !important; color: #000000 !important; }
   .tab-panel.active { display: block !important; }
   #memoria-tabla-impresion { display: table !important; }
 }
