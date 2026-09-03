@@ -1,10 +1,11 @@
 import { TABLA_TUBERIA_RED_GAS } from './pipe-network.js';
 import { calcularRedGas } from './calc-red-gas.js';
+import { calcularRedMemoria } from './calc-memoria-red-gas.js';
 import { cilindrosPorVaporizacion, cilindrosPorConsumoDiario, calcularEstanqueGLP } from './calc-almacenamiento-glp.js';
 import { calcularCombustionGLP, calcularCombustionGN } from './calc-combustion.js';
 import { propiedadesGN } from './gas-gn.js';
 import { calcularQuemador } from './calc-quemador.js';
-import { guardar, cargar } from './storage.js';
+import { guardar, cargar, exportarJSON, importarJSON } from './storage.js';
 import { initSelectorGas } from '../../assets/gas-switcher.js';
 import { aPa, desdePa, formatearPresion, opcionesUnidadPresion } from './unidades-presion.js';
 
@@ -551,6 +552,223 @@ function initQuemador() {
 }
 
 /* ---------------------------------------------------------------------- */
+/* Pestaña 5 — Memoria de Cálculo (red ramificada de Red de Gas)          */
+/* ---------------------------------------------------------------------- */
+
+let tramosMemoria = [];
+let contadorIdMemoria = 0;
+
+function tramoMemoriaPorDefecto() {
+  contadorIdMemoria += 1;
+  return {
+    id: `t${contadorIdMemoria}`, nombre: `Tramo ${contadorIdMemoria}`, continuaDesdeId: null,
+    reseteaAcumulada: false, regimenPresion: '<10 kPa', material: 'Acero Sch40', pulgadas: 0.75,
+    potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15,
+  };
+}
+
+function etiquetaDiametroMemoria(t) {
+  return t.pulgadas === 'manual' ? `Manual ${t.tuberiaManual.diametroMm} mm` : formatearPulgadas(t.pulgadas);
+}
+
+function porNombreTramoMemoria(id) {
+  return id ? (tramosMemoria.find((t) => t.id === id)?.nombre ?? '') : '— raíz —';
+}
+
+function renderTablaMemoria(resultado) {
+  const opcionesPadre = (actualId) => ['<option value="">— raíz —</option>'].concat(
+    tramosMemoria.filter((t) => t.id !== actualId).map((t) => `<option value="${t.id}">${t.nombre}</option>`)
+  ).join('');
+
+  // Unidad elegida en cada cabecera de columna de presión — independiente
+  // entre las cuatro, no hay una unidad "de la tabla". El dato canónico
+  // en `tramosMemoria` sigue siempre en Pa (lo que espera calcularRedGas
+  // vía calcularRedMemoria); cambiar la unidad de una columna solo
+  // redibuja la tabla, ver leerFilaMemoria().
+  const unidadPresionInicial = document.getElementById('memoria-presion-inicial-unidad').value;
+  const unidadPerdidaRequerida = document.getElementById('memoria-perdida-requerida-unidad').value;
+  const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
+  const unidadPresionFinal = document.getElementById('memoria-presion-final-unidad').value;
+
+  document.getElementById('memoria-tabla-cuerpo').innerHTML = resultado.map((t) => `
+    <tr data-id="${t.id}">
+      <td><input type="text" class="mem-nombre" value="${t.nombre}"></td>
+      <td><select class="mem-padre">${opcionesPadre(t.id)}</select></td>
+      <td style="text-align:center;"><input type="checkbox" class="mem-reset"${t.reseteaAcumulada ? ' checked' : ''} title="Reinicia la pérdida de carga acumulada desde este tramo (ej. después de un regulador de presión)"></td>
+      <td>
+        <select class="mem-regimen">
+          <option value="<10 kPa"${t.regimenPresion === '<10 kPa' ? ' selected' : ''}>Baja (&lt;10 kPa)</option>
+          <option value=">10 kPa"${t.regimenPresion === '>10 kPa' ? ' selected' : ''}>Media/alta (&gt;10 kPa)</option>
+        </select>
+      </td>
+      <td${t.pulgadas === 'manual' ? ' style="display:none;"' : ''}>
+        <select class="mem-material">
+          <option value="Acero Sch40"${t.material === 'Acero Sch40' ? ' selected' : ''}>Acero Sch40</option>
+          <option value="Cobre tipo L"${t.material === 'Cobre tipo L' ? ' selected' : ''}>Cobre tipo L</option>
+        </select>
+      </td>
+      <td>
+        <select class="mem-diametro">
+          ${TABLA_TUBERIA_RED_GAS.map((f) => `<option value="${f.pulgadas}"${f.pulgadas === t.pulgadas ? ' selected' : ''}>${formatearPulgadas(f.pulgadas)}</option>`).join('')}
+          <option value="manual"${t.pulgadas === 'manual' ? ' selected' : ''}>Manual (mm)</option>
+        </select>
+        <div class="mem-tuberia-manual"${t.pulgadas === 'manual' ? '' : ' style="display:none;"'}>
+          <input type="text" inputmode="decimal" class="mem-diametro-manual-mm" value="${t.tuberiaManual?.diametroMm ?? 50}" title="Diámetro interior [mm]">
+          <input type="text" inputmode="decimal" class="mem-diametro-manual-k" value="${t.tuberiaManual?.k ?? 1800}" title="Factor K (rugosidad, solo baja presión)">
+        </div>
+      </td>
+      <td><input type="text" inputmode="decimal" class="mem-potencia" value="${t.potenciaKw}"></td>
+      <td><input type="text" inputmode="decimal" class="mem-largo" value="${t.longitudM}"></td>
+      <td><input type="text" inputmode="decimal" class="mem-presion" value="${Number(desdePa(t.presionInicialPa, unidadPresionInicial).toPrecision(6))}"></td>
+      <td><input type="text" inputmode="decimal" class="mem-temp" value="${t.temperaturaC}"></td>
+      <td>${t.caudalObjetivoM3H.toFixed(3)}</td>
+      <td>${t.velocidadMS.toFixed(2)}</td>
+      <td>${formatearPresion(t.perdidaPresionRequeridaPa, unidadPerdidaRequerida)}</td>
+      <td>${formatearPresion(t.perdidaAcumuladaPa, unidadPerdidaAcumulada)}</td>
+      <td>${t.presionFinalPa !== null ? formatearPresion(t.presionFinalPa, unidadPresionFinal) : '—'}</td>
+      <td><button type="button" class="mem-eliminar no-imprimir">✕</button></td>
+    </tr>
+  `).join('');
+
+  tramosMemoria.forEach((t) => {
+    const selectPadre = document.querySelector(`#memoria-tabla-cuerpo tr[data-id="${t.id}"] .mem-padre`);
+    if (selectPadre) selectPadre.value = t.continuaDesdeId ?? '';
+  });
+}
+
+function renderArbolMemoria(resultado) {
+  const porId = Object.fromEntries(resultado.map((t) => [t.id, t]));
+  const nivelDe = (t, visitados = new Set()) => {
+    if (!t.continuaDesdeId || visitados.has(t.id)) return 0;
+    visitados.add(t.id);
+    return 1 + nivelDe(porId[t.continuaDesdeId], visitados);
+  };
+  const anchoNivel = 140, altoFila = 40;
+  const nodos = resultado.map((t) => ({ t, nivel: nivelDe(t) }));
+  const porNivel = new Map();
+  nodos.forEach((n) => {
+    const fila = porNivel.get(n.nivel) ?? 0;
+    n.fila = fila;
+    porNivel.set(n.nivel, fila + 1);
+  });
+
+  const svg = document.getElementById('memoria-arbol');
+  const lineas = nodos.filter((n) => n.t.continuaDesdeId).map((n) => {
+    const padre = nodos.find((p) => p.t.id === n.t.continuaDesdeId);
+    if (!padre) return '';
+    return `<line x1="${padre.nivel * anchoNivel + 60}" y1="${padre.fila * altoFila + 20}" x2="${n.nivel * anchoNivel + 60}" y2="${n.fila * altoFila + 20}" stroke="var(--gridline)" stroke-width="2"/>`;
+  }).join('');
+  const circulos = nodos.map((n) => `
+    <g>
+      ${n.t.reseteaAcumulada ? `<circle cx="${n.nivel * anchoNivel + 60}" cy="${n.fila * altoFila + 20}" r="12" fill="none" stroke="var(--text-primary)" stroke-width="2"/>` : ''}
+      <circle cx="${n.nivel * anchoNivel + 60}" cy="${n.fila * altoFila + 20}" r="8" fill="var(--brand-orange)"/>
+      <title>${n.t.nombre} — ${formatearPresion(n.t.perdidaAcumuladaPa, 'Pa')} Pa acumulados, ${n.t.velocidadMS.toFixed(2)} m/s${n.t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</title>
+      <text x="${n.nivel * anchoNivel + 74}" y="${n.fila * altoFila + 24}" font-size="12" fill="var(--text-primary)">${n.t.nombre}</text>
+    </g>`).join('');
+  svg.setAttribute('height', String(Math.max(...porNivel.values(), 1) * altoFila + 20));
+  svg.innerHTML = lineas + circulos;
+}
+
+function recalcularMemoria() {
+  let resultado;
+  try {
+    resultado = calcularRedMemoria(tramosMemoria, combustible);
+  } catch (error) {
+    document.getElementById('memoria-tabla-cuerpo').innerHTML =
+      `<tr><td colspan="16" class="resultado-tile alerta">${error.message}</td></tr>`;
+    return;
+  }
+  renderTablaMemoria(resultado);
+  renderArbolMemoria(resultado);
+
+  const unidadPresionInicial = document.getElementById('memoria-presion-inicial-unidad').value;
+  const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
+  document.getElementById('memoria-impresion-th-presion').textContent = `Presión inicial [${unidadPresionInicial}]`;
+  document.getElementById('memoria-impresion-th-perdida').textContent = `Pérdida acumulada [${unidadPerdidaAcumulada}]`;
+  document.getElementById('memoria-tabla-impresion-cuerpo').innerHTML = resultado.map((t) => `
+    <tr><td>${t.nombre}</td><td>${porNombreTramoMemoria(t.continuaDesdeId)}${t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</td><td>${formatearPresion(t.presionInicialPa, unidadPresionInicial)}</td><td>${t.longitudM}</td><td>${etiquetaDiametroMemoria(t)}</td><td>${formatearPresion(t.perdidaAcumuladaPa, unidadPerdidaAcumulada)}</td></tr>
+  `).join('');
+  guardar('memoria-red-gas', tramosMemoria);
+}
+
+function leerFilaMemoria(fila) {
+  const id = fila.dataset.id;
+  const val = (clase) => fila.querySelector(`.${clase}`).value;
+  const unidadPresionInicial = document.getElementById('memoria-presion-inicial-unidad').value;
+  const diametroSeleccionado = val('mem-diametro');
+  const esManual = diametroSeleccionado === 'manual';
+  return {
+    id,
+    nombre: val('mem-nombre'),
+    continuaDesdeId: val('mem-padre') || null,
+    reseteaAcumulada: fila.querySelector('.mem-reset').checked,
+    regimenPresion: val('mem-regimen'),
+    material: val('mem-material'),
+    pulgadas: esManual ? 'manual' : Number(diametroSeleccionado),
+    tuberiaManual: esManual ? {
+      diametroMm: numeroFlexible(val('mem-diametro-manual-mm')), k: numeroFlexible(val('mem-diametro-manual-k')),
+    } : undefined,
+    potenciaKw: numeroFlexible(val('mem-potencia')),
+    longitudM: numeroFlexible(val('mem-largo')),
+    presionInicialPa: aPa(numeroFlexible(val('mem-presion')), unidadPresionInicial),
+    temperaturaC: numeroFlexible(val('mem-temp')),
+  };
+}
+
+function initMemoria() {
+  tramosMemoria = cargar('memoria-red-gas', null) ?? [tramoMemoriaPorDefecto()];
+  contadorIdMemoria = tramosMemoria.length;
+
+  ['memoria-presion-inicial-unidad', 'memoria-perdida-requerida-unidad', 'memoria-perdida-acumulada-unidad', 'memoria-presion-final-unidad'].forEach((id) => {
+    const clave = `memoria-red-gas-${id}`;
+    const guardado = cargar(clave, null);
+    const select = document.getElementById(id);
+    if (guardado) select.value = guardado;
+    select.addEventListener('input', () => {
+      guardar(clave, select.value);
+      recalcularMemoria();
+    });
+  });
+
+  document.getElementById('memoria-agregar-tramo').addEventListener('click', () => {
+    tramosMemoria.push(tramoMemoriaPorDefecto());
+    recalcularMemoria();
+  });
+
+  document.getElementById('memoria-tabla-cuerpo').addEventListener('input', (evento) => {
+    const fila = evento.target.closest('tr[data-id]');
+    if (!fila) return;
+    const actualizado = leerFilaMemoria(fila);
+    tramosMemoria = tramosMemoria.map((t) => (t.id === actualizado.id ? actualizado : t));
+    recalcularMemoria();
+  });
+
+  document.getElementById('memoria-tabla-cuerpo').addEventListener('click', (evento) => {
+    if (!evento.target.classList.contains('mem-eliminar')) return;
+    const id = evento.target.closest('tr[data-id]').dataset.id;
+    tramosMemoria = tramosMemoria.filter((t) => t.id !== id).map((t) => (t.continuaDesdeId === id ? { ...t, continuaDesdeId: null } : t));
+    recalcularMemoria();
+  });
+
+  document.getElementById('memoria-exportar').addEventListener('click', () => {
+    exportarJSON('proyecto-gas-natural-glp.json', tramosMemoria);
+  });
+
+  document.getElementById('memoria-importar').addEventListener('change', async (evento) => {
+    const archivo = evento.target.files[0];
+    if (!archivo) return;
+    tramosMemoria = await importarJSON(archivo);
+    contadorIdMemoria = tramosMemoria.length;
+    recalcularMemoria();
+  });
+
+  document.getElementById('memoria-imprimir').addEventListener('click', () => window.print());
+
+  alCambiarCombustible(recalcularMemoria);
+  recalcularMemoria();
+}
+
+/* ---------------------------------------------------------------------- */
 
 initTabs();
 initSelectorCombustible();
@@ -558,4 +776,5 @@ initRedGas();
 initAlmacenamiento();
 initCombustion();
 initQuemador();
+initMemoria();
 initSelectorGas({ actualId: 'gas-natural-glp', profundidad: 1 });
