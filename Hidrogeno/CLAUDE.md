@@ -313,6 +313,55 @@ junto a "Continúa desde") y en el diagrama de árbol (anillo alrededor del
 nodo). Ver el caso de prueba de cadena A-B-C-D con reseteo en C en
 `calc-memoria.test.js`.
 
+## Informe formal de Memoria de Cálculo (`index.html`/`ui.js`/`css/styles.css`, 2026-09-03, a pedido del usuario)
+
+La pestaña "Memoria de Cálculo" imprimía solo una tabla desnuda de tramos
+(6 columnas, sin membrete). Se rediseñó `#memoria-informe-impresion` como
+un documento formal completo, calcado del membrete real de QUEMPIN
+(`ejemplo MC.pdf`, provisto por el usuario) — logo (`assets/LOGO
+QUEMPIN.PNG`), datos de la empresa, título, cajetines de proyecto,
+criterios de diseño, artefactos, tabla de tramos ampliada a 10 columnas
+(agrega Potencia/Material/P.Parcial/V.flujo, que la tabla vieja omitía),
+resumen, observaciones y firma. Decisiones:
+
+- **Datos de la empresa (RUT 76.772.215-k, Giro, Dirección Carlos Fernando
+  983) van hardcodeados** en el HTML del informe, no como cajetín — son
+  fijos de QUEMPIN, no cambian por proyecto (a diferencia de la
+  "Dirección"/"Comuna" del cajetín, que es la del proyecto/instalación, un
+  dato distinto).
+- **Nuevo estado `proyecto`** (objeto aparte de `tramos`, clave propia
+  `memoria-proyecto` en localStorage — sin migrar el shape de `memoria`):
+  fecha/proyecto/instalador/contacto/dirección/comuna, cargo y RUN del
+  instalador (bloque de firma), N° de documento/revisión (default "01"/"1"),
+  3 criterios de diseño opcionales, artefactos y observaciones.
+- **"Velocidad máxima flujo de gas" / "Velocidad de erosión" / "Máxima
+  pérdida de carga acumulada" del encabezado son cajetines manuales
+  opcionales**, no calculados: son criterios/límites de diseño del
+  proyecto, no un resultado de un tramo — la velocidad de erosión en
+  particular depende de la presión, que varía tramo a tramo en una red
+  ramificada, así que no hay un único valor "correcto" que derivar
+  automáticamente (decisión confirmada con el usuario). Sin valor, se
+  muestran como "- [unidad]", igual que el documento de ejemplo. Default
+  20 m/s en velocidad máxima de flujo (mismo límite NFPA 2 usado en
+  "Tubería y Flujo"). Distintos de "Pérdida acumulada máxima" / "Velocidad
+  máxima de flujo" al pie del informe, que sí son calculados (máximo de
+  `perdidaAcumuladaMbar`/`velocidadFlujoMS` entre los tramos ya
+  resueltos).
+- **Artefactos**: lista libre (nombre + potencia kW, agregar/quitar, mismo
+  patrón que los tramos). "Potencia instalada" = suma siempre, con la nota
+  fija "No se considera operación simultánea" — igual que el documento de
+  ejemplo (confirmado con el usuario; sin interruptor de simultaneidad).
+- **Exportar/Importar proyecto (.json)** pasa de un array plano de
+  `tramos` a `{ tramos, proyecto }`. Importar sigue aceptando el formato
+  viejo (`Array.isArray(datos)`) por compatibilidad con exports previos.
+- **Impresión**: además de `.no-imprimir`, ahora se ocultan `.viz-header`
+  (cromo del sitio — logo de texto, selector de gas) y `#memoria-arbol` (el
+  diagrama de árbol es ayuda visual de edición, no parte del documento) —
+  el informe es autocontenido y trae su propio membrete. Se agregó `@page
+  { size: A4; margin: 14mm; }` y `html, body, .viz-root` forzados a fondo
+  blanco puro (antes se colaba el beige de `--page-plane` del tema claro
+  alrededor del informe).
+
 ## Fuera de alcance (v1)
 
 - Gas Natural / GLP — sitio separado con selector de gas, otro ciclo de

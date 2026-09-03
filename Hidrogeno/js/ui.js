@@ -367,6 +367,32 @@ function initAlmacenamiento() {
 
 let tramos = [];
 let contadorId = 0;
+let proyecto = null;
+let contadorArtefactoId = 0;
+
+// Texto de observaciones por defecto (2026-09-02, a pedido del usuario) —
+// mismo texto que trae el documento de ejemplo de QUEMPIN (Q=vA en vez del
+// itálico matemático original, por compatibilidad de fuente); editable en
+// el cajetín "Observaciones".
+const OBSERVACIONES_DEFECTO =
+  'Cálculos basados en la ecuación de continuidad (Q=vA), determinación de pérdidas de carga ' +
+  'mediante la ecuación de Darcy–Weisbach y evaluación del régimen de flujo mediante el número de ' +
+  'Reynolds. Metodología de análisis hidráulico respaldada por principios clásicos de mecánica de ' +
+  'fluidos y criterios de diseño aplicables a tuberías de hidrógeno establecidos en ASME B31.12 y NFPA 2.';
+
+function proyectoPorDefecto() {
+  return {
+    fecha: '', proyecto: '', instalador: '', contacto: '', direccion: '', comuna: '',
+    cargoInstalador: '', runInstalador: '', numeroDoc: '01', revision: '1',
+    velocidadMaxFlujoDisenoMS: 20, velocidadErosionDisenoMS: null, perdidaMaxAcumuladaDisenoPa: null,
+    artefactos: [], observaciones: OBSERVACIONES_DEFECTO,
+  };
+}
+
+function artefactoPorDefecto() {
+  contadorArtefactoId += 1;
+  return { id: `a${contadorArtefactoId}`, nombre: '', potenciaKw: 0 };
+}
 
 function tramoPorDefecto() {
   contadorId += 1;
@@ -464,6 +490,84 @@ function porNombreTramo(id) {
   return id ? (tramos.find((t) => t.id === id)?.nombre ?? '') : '— raíz —';
 }
 
+// Cajetín de un criterio de diseño opcional del encabezado del informe
+// (Velocidad máxima flujo de gas / Velocidad de erosión / Máxima pérdida de
+// carga acumulada, 2026-09-02, a pedido del usuario) — sin valor manual se
+// muestra "-" con la unidad, igual que el documento de ejemplo de QUEMPIN.
+function formatearCriterio(valor, unidad) {
+  return valor === null || valor === undefined || Number.isNaN(valor)
+    ? `- [${unidad}]` : `${formatearNumero(valor)} [${unidad}]`;
+}
+
+function renderArtefactos() {
+  document.getElementById('memoria-artefactos-cuerpo').innerHTML = proyecto.artefactos.map((a) => `
+    <div class="artefacto-fila" data-id="${a.id}">
+      <input type="text" class="af-nombre" value="${a.nombre}" placeholder="Nombre del artefacto">
+      <input type="text" inputmode="decimal" class="af-potencia" value="${a.potenciaKw}" placeholder="kW">
+      <button type="button" class="af-eliminar no-imprimir">✕</button>
+    </div>
+  `).join('');
+  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
+  document.getElementById('memoria-artefactos-total-txt').textContent =
+    `Total: ${formatearNumero(totalKw)} kW térmicos — Potencia instalada: ${formatearNumero(totalKw)} kW térmicos (no se considera operación simultánea)`;
+}
+
+function renderInformeImpresion(resultado) {
+  document.getElementById('informe-doc-num').textContent = proyecto.numeroDoc;
+  document.getElementById('informe-doc-rev').textContent = proyecto.revision;
+
+  document.getElementById('informe-fecha').textContent = proyecto.fecha;
+  document.getElementById('informe-proyecto').textContent = proyecto.proyecto;
+  document.getElementById('informe-instalador').textContent = proyecto.instalador;
+  document.getElementById('informe-direccion').textContent = proyecto.direccion;
+  document.getElementById('informe-contacto').textContent = proyecto.contacto;
+  document.getElementById('informe-comuna').textContent = proyecto.comuna;
+
+  document.getElementById('informe-vel-max-flujo').textContent = formatearCriterio(proyecto.velocidadMaxFlujoDisenoMS, 'm/s');
+  document.getElementById('informe-vel-erosion').textContent = formatearCriterio(proyecto.velocidadErosionDisenoMS, 'm/s');
+  document.getElementById('informe-perdida-max').textContent = formatearCriterio(proyecto.perdidaMaxAcumuladaDisenoPa, 'Pa');
+
+  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
+  document.getElementById('informe-artefactos-cuerpo').innerHTML = proyecto.artefactos.length
+    ? proyecto.artefactos.map((a) => `<tr><td>${a.nombre}</td><td>${formatearNumero(a.potenciaKw)} kW térmicos</td></tr>`).join('')
+    : '<tr><td colspan="2">—</td></tr>';
+  document.getElementById('informe-artefactos-total').textContent = `${formatearNumero(totalKw)} kW térmicos`;
+  document.getElementById('informe-potencia-instalada').textContent = `${formatearNumero(totalKw)} kW térmicos`;
+
+  const unidadPresion = document.getElementById('memoria-presion-unidad').value;
+  const unidadPerdidaParcial = document.getElementById('memoria-perdida-parcial-unidad').value;
+  const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
+  document.getElementById('memoria-impresion-th-presion').textContent = `Presión [${unidadPresion}]`;
+  document.getElementById('memoria-impresion-th-parcial').textContent = `P. Parcial [${unidadPerdidaParcial}]`;
+  document.getElementById('memoria-impresion-th-perdida').textContent = `P. Acumulada [${unidadPerdidaAcumulada}]`;
+  document.getElementById('memoria-tabla-impresion-cuerpo').innerHTML = resultado.map((t) => `
+    <tr>
+      <td>${t.nombre}</td>
+      <td>${porNombreTramo(t.continuaDesdeId)}${t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</td>
+      <td>${formatearPresionBonita(aPa(t.presionMPa, 'MPa'), unidadPresion)}</td>
+      <td>${formatearNumero(t.longitudM)}</td>
+      <td>${formatearNumero(t.potenciaKw)}</td>
+      <td>${etiquetaTuberia(t)}</td>
+      <td>${t.material}</td>
+      <td>${formatearPresionBonita(aPa(t.perdidaParcialMbar, 'mbar'), unidadPerdidaParcial)}</td>
+      <td>${formatearPresionBonita(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td>
+      <td>${formatearNumero(t.velocidadFlujoMS)}</td>
+    </tr>
+  `).join('');
+
+  const perdidaAcumMaxMbar = resultado.length ? Math.max(...resultado.map((t) => t.perdidaAcumuladaMbar)) : 0;
+  const velFlujoMaxMS = resultado.length ? Math.max(...resultado.map((t) => t.velocidadFlujoMS)) : 0;
+  document.getElementById('informe-perdida-acum-max').textContent =
+    `${formatearPresionBonita(aPa(perdidaAcumMaxMbar, 'mbar'), unidadPerdidaAcumulada)} [${unidadPerdidaAcumulada}]`;
+  document.getElementById('informe-vel-flujo-max').textContent = `${formatearNumero(velFlujoMaxMS)} [m/s]`;
+
+  document.getElementById('informe-observaciones').textContent = proyecto.observaciones;
+
+  document.getElementById('informe-firma-nombre').textContent = proyecto.instalador;
+  document.getElementById('informe-firma-cargo').textContent = proyecto.cargoInstalador;
+  document.getElementById('informe-firma-run').textContent = proyecto.runInstalador;
+}
+
 function recalcularMemoria() {
   let resultado;
   try {
@@ -475,15 +579,53 @@ function recalcularMemoria() {
   }
   renderTablaMemoria(resultado);
   renderArbol(resultado);
-
-  const unidadPresion = document.getElementById('memoria-presion-unidad').value;
-  const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
-  document.getElementById('memoria-impresion-th-presion').textContent = `Presión [${unidadPresion}]`;
-  document.getElementById('memoria-impresion-th-perdida').textContent = `Pérdida acumulada [${unidadPerdidaAcumulada}]`;
-  document.getElementById('memoria-tabla-impresion-cuerpo').innerHTML = resultado.map((t) => `
-    <tr><td>${t.nombre}</td><td>${porNombreTramo(t.continuaDesdeId)}${t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</td><td>${formatearPresionBonita(aPa(t.presionMPa, 'MPa'), unidadPresion)}</td><td>${t.longitudM}</td><td>${etiquetaTuberia(t)}</td><td>${formatearPresionBonita(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td></tr>
-  `).join('');
+  renderArtefactos();
+  renderInformeImpresion(resultado);
   guardar('memoria', tramos);
+  guardar('memoria-proyecto', proyecto);
+}
+
+function leerProyecto() {
+  const val = (id) => document.getElementById(id).value;
+  const numOpcional = (id) => {
+    const bruto = val(id).trim();
+    return bruto === '' ? null : numeroFlexible(bruto);
+  };
+  return {
+    fecha: val('mp-fecha'), proyecto: val('mp-proyecto'), instalador: val('mp-instalador'),
+    contacto: val('mp-contacto'), direccion: val('mp-direccion'), comuna: val('mp-comuna'),
+    cargoInstalador: val('mp-cargo'), runInstalador: val('mp-run'),
+    numeroDoc: val('mp-doc'), revision: val('mp-revision'),
+    velocidadMaxFlujoDisenoMS: numOpcional('mp-vel-max-flujo'),
+    velocidadErosionDisenoMS: numOpcional('mp-vel-erosion'),
+    perdidaMaxAcumuladaDisenoPa: numOpcional('mp-perdida-max'),
+    observaciones: val('mp-observaciones'),
+  };
+}
+
+function aplicarProyectoAForm() {
+  document.getElementById('mp-fecha').value = proyecto.fecha;
+  document.getElementById('mp-proyecto').value = proyecto.proyecto;
+  document.getElementById('mp-instalador').value = proyecto.instalador;
+  document.getElementById('mp-contacto').value = proyecto.contacto;
+  document.getElementById('mp-direccion').value = proyecto.direccion;
+  document.getElementById('mp-comuna').value = proyecto.comuna;
+  document.getElementById('mp-cargo').value = proyecto.cargoInstalador;
+  document.getElementById('mp-run').value = proyecto.runInstalador;
+  document.getElementById('mp-doc').value = proyecto.numeroDoc;
+  document.getElementById('mp-revision').value = proyecto.revision;
+  document.getElementById('mp-vel-max-flujo').value = proyecto.velocidadMaxFlujoDisenoMS ?? '';
+  document.getElementById('mp-vel-erosion').value = proyecto.velocidadErosionDisenoMS ?? '';
+  document.getElementById('mp-perdida-max').value = proyecto.perdidaMaxAcumuladaDisenoPa ?? '';
+  document.getElementById('mp-observaciones').value = proyecto.observaciones;
+}
+
+function leerFilaArtefacto(fila) {
+  return {
+    id: fila.dataset.id,
+    nombre: fila.querySelector('.af-nombre').value,
+    potenciaKw: numeroFlexible(fila.querySelector('.af-potencia').value),
+  };
 }
 
 function leerFilaMemoria(fila) {
@@ -517,6 +659,9 @@ function etiquetaTuberia(t) {
 function initMemoria() {
   tramos = cargar('memoria', null) ?? [tramoPorDefecto()];
   contadorId = tramos.length;
+  proyecto = cargar('memoria-proyecto', null) ?? proyectoPorDefecto();
+  contadorArtefactoId = proyecto.artefactos.length;
+  aplicarProyectoAForm();
 
   // Unidad de cada columna de presión de la tabla — independiente entre
   // las tres, persistida aparte. Cambiar cualquiera solo redibuja la tabla
@@ -552,14 +697,54 @@ function initMemoria() {
     recalcularMemoria();
   });
 
+  // Cajetines de datos del proyecto (fecha, instalador, artefactos, etc.) —
+  // un único listener de 'input' delegado en el <form>, igual que las otras
+  // 2 pestañas leen sus formularios estáticos. Los artefactos NO viven
+  // dentro de este <form> (ver más abajo) para que su propio re-render no
+  // dispare este listener dos veces.
+  document.getElementById('form-memoria-proyecto').addEventListener('input', () => {
+    proyecto = { ...proyecto, ...leerProyecto() };
+    recalcularMemoria();
+  });
+
+  document.getElementById('memoria-artefactos-cuerpo').addEventListener('input', (evento) => {
+    const fila = evento.target.closest('.artefacto-fila');
+    if (!fila) return;
+    const actualizado = leerFilaArtefacto(fila);
+    proyecto.artefactos = proyecto.artefactos.map((a) => (a.id === actualizado.id ? actualizado : a));
+    recalcularMemoria();
+  });
+
+  document.getElementById('memoria-artefactos-cuerpo').addEventListener('click', (evento) => {
+    if (!evento.target.classList.contains('af-eliminar')) return;
+    const id = evento.target.closest('.artefacto-fila').dataset.id;
+    proyecto.artefactos = proyecto.artefactos.filter((a) => a.id !== id);
+    recalcularMemoria();
+  });
+
+  document.getElementById('memoria-artefacto-agregar').addEventListener('click', () => {
+    proyecto.artefactos.push(artefactoPorDefecto());
+    recalcularMemoria();
+  });
+
   document.getElementById('memoria-exportar').addEventListener('click', () => {
-    exportarJSON('proyecto-hidrogeno.json', tramos);
+    exportarJSON('proyecto-hidrogeno.json', { tramos, proyecto });
   });
 
   document.getElementById('memoria-importar').addEventListener('change', async (evento) => {
     const archivo = evento.target.files[0];
     if (!archivo) return;
-    tramos = await importarJSON(archivo);
+    const datos = await importarJSON(archivo);
+    // Compatibilidad hacia atrás (2026-09-02): un export previo a los
+    // cajetines de proyecto era un array plano de tramos, sin envolver.
+    if (Array.isArray(datos)) {
+      tramos = datos;
+    } else {
+      tramos = datos.tramos ?? [];
+      proyecto = { ...proyectoPorDefecto(), ...datos.proyecto };
+      contadorArtefactoId = proyecto.artefactos.length;
+      aplicarProyectoAForm();
+    }
     contadorId = tramos.length;
     recalcularMemoria();
   });

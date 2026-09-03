@@ -160,6 +160,87 @@
         <button type="button" id="memoria-imprimir">Imprimir / Guardar PDF</button>
       </div>
 
+      <div class="no-imprimir">
+        <form id="form-memoria-proyecto" class="fila-campos" autocomplete="off">
+          <div class="campo">
+            <label for="mp-fecha">Fecha</label>
+            <input id="mp-fecha" type="text" placeholder="Marzo 2026">
+          </div>
+          <div class="campo">
+            <label for="mp-proyecto">Proyecto</label>
+            <input id="mp-proyecto" type="text" placeholder="Nombre del proyecto">
+          </div>
+          <div class="campo">
+            <label for="mp-instalador">Instalador</label>
+            <input id="mp-instalador" type="text" placeholder="Nombre del instalador">
+          </div>
+          <div class="campo">
+            <label for="mp-contacto">Contacto</label>
+            <input id="mp-contacto" type="text" placeholder="correo@quempin.cl">
+          </div>
+          <div class="campo">
+            <label for="mp-direccion">Dirección</label>
+            <input id="mp-direccion" type="text" placeholder="Dirección del proyecto">
+          </div>
+          <div class="campo">
+            <label for="mp-comuna">Comuna</label>
+            <input id="mp-comuna" type="text" placeholder="Comuna">
+          </div>
+
+          <fieldset class="subseccion">
+            <legend>Firma y documento</legend>
+            <div class="fila-campos">
+              <div class="campo">
+                <label for="mp-cargo">Cargo / clase de instalador</label>
+                <input id="mp-cargo" type="text" placeholder="Instalador de Gas Clase 1 y 5">
+              </div>
+              <div class="campo">
+                <label for="mp-run">RUN instalador</label>
+                <input id="mp-run" type="text" placeholder="19.137.364-2">
+              </div>
+              <div class="campo">
+                <label for="mp-doc">N° Documento</label>
+                <input id="mp-doc" type="text" value="01">
+              </div>
+              <div class="campo">
+                <label for="mp-revision">Revisión</label>
+                <input id="mp-revision" type="text" value="1">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="subseccion">
+            <legend>Criterios de diseño (opcional)</legend>
+            <div class="fila-campos">
+              <div class="campo">
+                <label for="mp-vel-max-flujo">Velocidad máxima flujo de gas [m/s]</label>
+                <input id="mp-vel-max-flujo" type="text" inputmode="decimal" value="20">
+              </div>
+              <div class="campo">
+                <label for="mp-vel-erosion">Velocidad de erosión [m/s]</label>
+                <input id="mp-vel-erosion" type="text" inputmode="decimal" placeholder="—">
+              </div>
+              <div class="campo">
+                <label for="mp-perdida-max">Máxima pérdida de carga acumulada [Pa]</label>
+                <input id="mp-perdida-max" type="text" inputmode="decimal" placeholder="—">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="subseccion">
+            <legend>Observaciones</legend>
+            <textarea id="mp-observaciones" rows="4" style="width:100%; font:inherit; font-size:13px; padding:8px 10px; border-radius:6px; border:1px solid var(--gridline); background:var(--surface-card); color:var(--text-primary);"></textarea>
+          </fieldset>
+        </form>
+
+        <fieldset class="subseccion" style="margin-bottom:16px;">
+          <legend>Artefactos</legend>
+          <div id="memoria-artefactos-cuerpo"></div>
+          <button type="button" id="memoria-artefacto-agregar">+ Agregar artefacto</button>
+          <div id="memoria-artefactos-total-txt" style="font-size:12px; color:var(--text-secondary); margin-top:8px;"></div>
+        </fieldset>
+      </div>
+
       <svg id="memoria-arbol" width="100%" height="220" role="img" aria-label="Diagrama de la red de tramos"></svg>
 
       <div style="overflow-x:auto;">
@@ -181,13 +262,75 @@
         </table>
       </div>
 
-      <table id="memoria-tabla-impresion" style="display:none;">
-        <caption>Memoria de Cálculo — Red de Hidrógeno — QUEMPIN</caption>
-        <thead>
-          <tr><th>Tramo</th><th>Continúa desde</th><th id="memoria-impresion-th-presion">Presión [MPa]</th><th>Longitud [m]</th><th>Diámetro</th><th id="memoria-impresion-th-perdida">Pérdida acumulada [mbar]</th></tr>
-        </thead>
-        <tbody id="memoria-tabla-impresion-cuerpo"></tbody>
-      </table>
+      <div id="memoria-informe-impresion" style="display:none;">
+        <header class="informe-header">
+          <img src="../assets/LOGO QUEMPIN.PNG" alt="QUEMPIN" class="informe-logo">
+          <div class="informe-empresa">
+            <div><strong>RUT:</strong> 76.772.215-k</div>
+            <div><strong>Giro:</strong> FABRICACIÓN DE HORNOS, HOGARES Y QUEMADORES</div>
+            <div><strong>Dirección:</strong> Carlos Fernando 983, Viña del Mar, Chile</div>
+          </div>
+          <div class="informe-doc">
+            <div><strong>N°. Doc.:</strong> <span id="informe-doc-num"></span></div>
+            <div><strong>Revisión:</strong> <span id="informe-doc-rev"></span></div>
+            <div><strong>Página:</strong> 1 de 1</div>
+          </div>
+        </header>
+
+        <h2 class="informe-titulo">MEMORIA DE CÁLCULO<span>RED DE GAS HIDRÓGENO</span></h2>
+
+        <table class="informe-datos">
+          <tr><th>Fecha</th><td id="informe-fecha"></td><th>Proyecto</th><td id="informe-proyecto"></td></tr>
+          <tr><th>Instalador</th><td id="informe-instalador"></td><th>Dirección</th><td id="informe-direccion"></td></tr>
+          <tr><th>Contacto</th><td id="informe-contacto"></td><th>Comuna</th><td id="informe-comuna"></td></tr>
+        </table>
+
+        <table class="informe-criterios">
+          <tr><th>Tipo de red</th><td>Hidrógeno gas</td></tr>
+          <tr><th>Velocidad máxima flujo de gas</th><td id="informe-vel-max-flujo"></td></tr>
+          <tr><th>Velocidad de erosión</th><td id="informe-vel-erosion"></td></tr>
+          <tr><th>Máxima pérdida de carga acumulada</th><td id="informe-perdida-max"></td></tr>
+        </table>
+
+        <table class="informe-artefactos">
+          <caption>Artefactos</caption>
+          <tbody id="informe-artefactos-cuerpo"></tbody>
+          <tfoot>
+            <tr><th>Total</th><td id="informe-artefactos-total"></td></tr>
+            <tr><td colspan="2" class="informe-nota">No se considera operación simultánea</td></tr>
+            <tr><th>Potencia instalada</th><td id="informe-potencia-instalada"></td></tr>
+          </tfoot>
+        </table>
+
+        <table id="memoria-tabla-impresion">
+          <caption>Detalle de tramos</caption>
+          <thead>
+            <tr>
+              <th>Tramo</th><th>Continúa desde</th>
+              <th id="memoria-impresion-th-presion">Presión [MPa]</th>
+              <th>Longitud [m]</th><th>Potencia [kW]</th><th>Diámetro</th><th>Material</th>
+              <th id="memoria-impresion-th-parcial">P. Parcial [mbar]</th>
+              <th id="memoria-impresion-th-perdida">P. Acumulada [mbar]</th>
+              <th>V. flujo [m/s]</th>
+            </tr>
+          </thead>
+          <tbody id="memoria-tabla-impresion-cuerpo"></tbody>
+        </table>
+
+        <table class="informe-resumen">
+          <tr><th>Pérdida acumulada máxima</th><td id="informe-perdida-acum-max"></td></tr>
+          <tr><th>Velocidad máxima de flujo</th><td id="informe-vel-flujo-max"></td></tr>
+        </table>
+
+        <div class="informe-observaciones"><strong>OBS:</strong> <span id="informe-observaciones"></span></div>
+
+        <div class="informe-firma">
+          <div class="informe-firma-linea"></div>
+          <div id="informe-firma-nombre"></div>
+          <div id="informe-firma-cargo"></div>
+          <div id="informe-firma-run"></div>
+        </div>
+      </div>
     </section>
   </main>
 </div>
