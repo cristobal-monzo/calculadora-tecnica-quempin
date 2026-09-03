@@ -18,7 +18,7 @@ tienen fórmulas propietarias y (`MASTER DISEÑO.xlsm`) una hoja
 publican. Diseño completo en
 [`../docs/superpowers/specs/2026-09-01-calculadora-tecnica-glp-gn-design.md`](../docs/superpowers/specs/2026-09-01-calculadora-tecnica-glp-gn-design.md).
 
-## Las 4 pestañas y su hoja de origen
+## Las 5 pestañas y su hoja de origen
 
 | Pestaña | Hoja Excel | Motor |
 |---|---|---|
@@ -26,6 +26,7 @@ publican. Diseño completo en
 | Almacenamiento (solo GLP) | `Bases de Cálculo` (cilindros) + `Estanque GLP` | `js/calc-almacenamiento-glp.js` |
 | Combustión | `Combustión Gas` (columnas GLP/GN) | `js/combustion.js` + `js/calc-combustion.js` |
 | Quemador Atmosférico | `Quem. Atm.` + `Diseño Quemador Atmosférico` | `js/calc-quemador.js` |
+| Memoria de Cálculo | (sin hoja fuente — no existe en el Excel) | `js/calc-memoria-red-gas.js` |
 
 Propiedades de gas: `js/gas-glp.js`, `js/gas-gn.js` (composición → PM, R,
 densidad, fracciones de carbono/hidrógeno para combustión).
@@ -97,6 +98,46 @@ oculta porque deja de tener efecto (acero/cobre son solo dos DI de la
 misma fila tabulada — con diámetro manual hay un único DI). `d5` se
 calcula como DI^5 igual que en las filas nuevas de la tabla. Ver
 `tuberiaManual` en `js/calc-red-gas.js`.
+
+## Memoria de Cálculo (2026-09-02, a pedido del usuario)
+
+Quinta pestaña, mirroring la de `Hidrogeno/js/calc-memoria.js` pero sobre
+Red de Gas en vez de Barlow — ver
+[`../docs/superpowers/specs/2026-09-02-memoria-calculo-glp-gn-design.md`](../docs/superpowers/specs/2026-09-02-memoria-calculo-glp-gn-design.md)
+para las dos decisiones de modelado confirmadas con el usuario:
+
+- **El gas es de toda la red, no por tramo** — sigue el selector global
+  de Combustible que ya gobierna las otras 4 pestañas. Cambiarlo
+  recalcula toda la tabla.
+- **Sin encadenar presión entre tramos** — cada tramo tiene su propia
+  presión inicial como input manual; la "pérdida acumulada" solo suma
+  hacia arriba para reportar, igual que en Hidrógeno.
+
+`js/calc-memoria-red-gas.js` no reimplementa Renouard/Peng-Robinson: cada
+tramo se resuelve llamando directamente a `calcularRedGas()` — cualquier
+corrección futura a Red de Gas se hereda automáticamente acá.
+
+Igual que Hidrógeno, **no hay indicador "Tubería adecuada" por tramo** en
+la tabla (aunque `calcularRedGas` lo devuelve gratis) — Hidrógeno mismo
+excluye el chequeo análogo (velocidad de erosión) de su propia Memoria,
+mismo criterio acá para no agregar una columna más a una tabla ya ancha
+(16 columnas: Tramo, Continúa desde, Reinicia acum., Régimen, Material,
+Diámetro, Potencia, Longitud, Presión inicial, Temp., Caudal objetivo,
+Velocidad, Pérdida requerida, Pérdida acumulada, Presión final, eliminar).
+
+Igual que Hidrógeno: reseteo de pérdida acumulada por tramo
+(`reseteaAcumulada`, checkbox "Reinicia acum."), tubería manual por tramo
+(mismo criterio que el tramo único de Red de Gas: sin fila de tabla,
+"Material" se oculta y se piden diámetro interior + factor K), árbol SVG,
+exportar/importar proyecto (`.json`, requirió agregar `exportarJSON`/
+`importarJSON` a `js/storage.js`, portadas tal cual desde
+`Hidrogeno/js/storage.js`), impresión con tabla recortada, y autoguardado
+en localStorage (clave `memoria-red-gas`, distinta de `red-gas` para no
+pisar el estado del tramo único).
+
+Una diferencia deliberada del bloque de impresión (`@media print`) frente
+al de Hidrógeno: también oculta `.selector-combustible`, que Hidrógeno no
+tiene — es parte del chrome de la página, no del contenido de la memoria.
 
 ## Decisiones de reconciliación (no son bugs silenciados)
 
