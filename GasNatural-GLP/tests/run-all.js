@@ -4,6 +4,7 @@ await import('./gas-glp.test.js');
 await import('./gas-gn.test.js');
 await import('./pipe-network.test.js');
 await import('./calc-red-gas.test.js');
+await import('./calc-memoria-red-gas.test.js');
 await import('./calc-almacenamiento-glp.test.js');
 await import('./calc-combustion.test.js');
 await import('./calc-quemador.test.js');
