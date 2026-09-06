@@ -147,16 +147,16 @@ th { color: var(--text-secondary); font-size: 12px; }
 
   #memoria-informe-impresion { display: block !important; font-family: 'Lato', system-ui, sans-serif; color: #1a1a1a; }
 
-  .informe-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 3px solid var(--brand-orange); padding-bottom: 12px; margin-bottom: 10px; }
+  .informe-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 3px solid var(--brand-orange); padding-bottom: 12px; margin-bottom: 10px; break-inside: avoid; }
   .informe-logo { max-height: 50px; width: auto; flex-shrink: 0; }
-  .informe-empresa { flex: 1; font-size: 9.5px; line-height: 1.75; color: #333333; }
+  .informe-empresa { flex: 1; font-size: 9.5px; line-height: 1.75; color: var(--brand-gray-11); }
   .informe-empresa strong, .informe-doc strong { color: #000000; font-weight: 700; }
   /* Cajetín de control del documento (N° / Revisión / Página) — tratamiento
      de "title block" de plano técnico: caja con borde propio y filas
      etiqueta-izquierda/valor-derecha, en vez de texto suelto alineado a la
      derecha. Refuerza la lectura de "documento controlado" del membrete. */
   .informe-doc {
-    flex-shrink: 0; min-width: 148px; font-size: 9.5px; line-height: 1.5; color: #333333;
+    flex-shrink: 0; min-width: 148px; font-size: 9.5px; line-height: 1.5; color: var(--brand-gray-11);
     border: 1px solid var(--gridline); padding: 6px 10px; background: rgba(255, 81, 0, 0.03);
   }
   .informe-doc div { display: flex; justify-content: space-between; gap: 14px; white-space: nowrap; }
@@ -194,9 +194,9 @@ th { color: var(--text-secondary); font-size: 12px; }
     font-size: 8.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-gray-11);
   }
   .informe-artefactos td { padding: 3px 8px 3px 0; color: #1a1a1a; }
-  .informe-artefactos tbody td { border-bottom: 1px solid #f0f0f0; padding-top: 4px; padding-bottom: 4px; }
+  .informe-artefactos tbody td { border-bottom: 1px solid var(--gridline); padding-top: 4px; padding-bottom: 4px; }
   .informe-artefactos .informe-nota { font-style: italic; color: var(--brand-gray-7); font-size: 9.5px; padding: 2px 8px; }
-  .informe-artefactos tfoot th, .informe-artefactos tfoot td { border-top: 1px solid #cccccc; padding-top: 5px; }
+  .informe-artefactos tfoot th, .informe-artefactos tfoot td { border-top: 1px solid var(--brand-gray-7); padding-top: 5px; }
   /* "Potencia instalada" es el numero que de verdad importa de esta
      seccion (lo que dimensiona la red) — se destaca con mas tamano/peso
      que "Total" (un paso intermedio), mismo criterio que un total final
@@ -211,7 +211,7 @@ th { color: var(--text-secondary); font-size: 12px; }
      (numero grande + etiqueta chica), para que se lean como el cierre del
      documento y no como un dato mas. */
   .informe-resumen { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 4px; }
-  .informe-stat { border: 1px solid var(--gridline); border-left: 3px solid var(--brand-orange); padding: 8px 12px; background: rgba(255, 81, 0, 0.03); }
+  .informe-stat { border: 1px solid var(--gridline); border-left: 3px solid var(--brand-orange); padding: 8px 12px; background: rgba(255, 81, 0, 0.03); break-inside: avoid; }
   .informe-stat-valor { display: block; font-size: 17px; font-weight: 900; color: #1a1a1a; }
   .informe-stat-label { display: block; font-size: 8.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-gray-11); margin-top: 2px; }
 
@@ -221,7 +221,13 @@ th { color: var(--text-secondary); font-size: 12px; }
      quitar los verticales y apoyarse en la cebra + el filete de cabecera
      en naranja de marca da un aspecto de tabla diseñada a propósito. */
   #memoria-tabla-impresion { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
-  #memoria-tabla-impresion th, #memoria-tabla-impresion td { border: none; border-bottom: 1px solid #e7e7e7; padding: 5px 8px; text-align: right; }
+  /* Si la red crece a mas tramos de los que caben en una pagina, repetir
+     la cabecera en cada pagina y no partir una fila de tramo a la mitad
+     (detalle de acabado — el caso feliz de 1-2 tramos ya se ve bien sin
+     esto, pero un reporte real puede tener muchos mas). */
+  #memoria-tabla-impresion thead { display: table-header-group; }
+  #memoria-tabla-impresion tbody tr { break-inside: avoid; }
+  #memoria-tabla-impresion th, #memoria-tabla-impresion td { border: none; border-bottom: 1px solid var(--gridline); padding: 5px 8px; text-align: right; }
   #memoria-tabla-impresion th {
     font-size: 8px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
     background: rgba(255, 81, 0, 0.06); color: var(--brand-gray-11); border-bottom: 2px solid var(--brand-orange);
@@ -234,16 +240,20 @@ th { color: var(--text-secondary); font-size: 12px; }
   #memoria-tabla-impresion tbody tr:nth-child(even) { background: #fafafa; }
   #memoria-tabla-impresion tbody tr:last-child td { border-bottom: 1.5px solid var(--brand-gray-11); }
 
-  .informe-observaciones { font-size: 9.5px; line-height: 1.5; color: #333333; border: 1px solid #d9d9d9; border-radius: 4px; padding: 8px 10px; margin-bottom: 26px; }
+  /* Esquinas rectas en todo el informe a proposito (aca y en .informe-doc/
+     .informe-stat) — un documento controlado/tecnico se lee mas formal con
+     bordes cuadrados que con las esquinas redondeadas de una tarjeta de
+     app; esta era la unica que había quedado redondeada. */
+  .informe-observaciones { font-size: 9.5px; line-height: 1.5; color: var(--brand-gray-11); border: 1px solid var(--gridline); padding: 8px 10px; margin-bottom: 26px; break-inside: avoid; }
 
-  .informe-firma { width: 260px; margin: 0 auto 28px; text-align: center; font-size: 10.5px; }
+  .informe-firma { width: 260px; margin: 0 auto 28px; text-align: center; font-size: 10.5px; break-inside: avoid; }
   .informe-firma-etiqueta {
     font-size: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--brand-gray-7); margin-bottom: 22px;
   }
   .informe-firma-linea { border-top: 1px solid #000000; margin-bottom: 6px; }
   #informe-firma-nombre { font-weight: 700; }
-  #informe-firma-cargo, #informe-firma-run { color: #333333; }
+  #informe-firma-cargo, #informe-firma-run { color: var(--brand-gray-11); }
 
   /* Pie de cierre del documento — remata la pagina identificando al
      emisor, en vez de terminar de golpe despues de la firma. */
