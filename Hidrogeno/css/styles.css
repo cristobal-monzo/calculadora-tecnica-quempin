@@ -153,30 +153,45 @@ th { color: var(--text-secondary); font-size: 12px; }
   .informe-empresa strong, .informe-doc strong { color: #000000; }
   .informe-doc { font-size: 10px; text-align: right; line-height: 1.6; white-space: nowrap; color: #333333; }
 
-  .informe-titulo { text-align: center; margin: 8px 0 16px; font-size: 16px; letter-spacing: 0.5px; }
-  .informe-titulo span { display: block; font-size: 13px; font-weight: 700; color: var(--brand-orange); margin-top: 3px; }
+  .informe-titulo { text-align: center; margin: 10px 0 4px; font-size: 19px; font-weight: 900; letter-spacing: 0.02em; }
+  .informe-titulo span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--brand-orange); margin-top: 5px; }
+
+  /* Etiqueta de sección ("eyebrow") — el informe original no tenía ningún
+     título entre bloques (datos/criterios/artefactos/tramos/resumen/
+     observaciones), lo que lo hacía ver como una lista de tablas sueltas.
+     Se reutiliza la misma clase en <div> y en <caption> (Artefactos/Detalle
+     de tramos) para que las 6 secciones compartan un único tratamiento. */
+  .informe-eyebrow {
+    font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--brand-gray-11); text-align: left; caption-side: top;
+    margin: 20px 0 7px; padding-top: 9px; border-top: 1px solid var(--gridline);
+  }
+  .informe-header + .informe-titulo + .informe-eyebrow { margin-top: 14px; }
 
   .informe-datos, .informe-criterios, .informe-artefactos, .informe-resumen {
-    width: 100%; border-collapse: collapse; font-size: 10.5px; margin-bottom: 10px;
+    width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 4px;
   }
   .informe-datos th, .informe-criterios th, .informe-artefactos th, .informe-resumen th {
-    text-align: left; width: 180px; padding: 3px 8px 3px 0; color: #333333; font-weight: 700; vertical-align: top;
+    text-align: left; width: 170px; padding: 3px 8px 3px 0; vertical-align: top;
+    font-size: 8.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-gray-11);
   }
-  .informe-datos td, .informe-criterios td, .informe-artefactos td, .informe-resumen td { padding: 3px 8px 3px 0; }
-  .informe-artefactos caption, #memoria-tabla-impresion caption { text-align: left; font-weight: 700; font-size: 11px; padding-bottom: 4px; color: #000000; }
-  .informe-artefactos .informe-nota { font-style: italic; color: #555555; font-size: 9.5px; padding: 2px 8px; }
+  .informe-datos td, .informe-criterios td, .informe-artefactos td, .informe-resumen td { padding: 3px 8px 3px 0; color: #1a1a1a; }
+  .informe-artefactos .informe-nota { font-style: italic; color: var(--brand-gray-7); font-size: 9.5px; padding: 2px 8px; }
   .informe-artefactos tfoot th, .informe-artefactos tfoot td { border-top: 1px solid #cccccc; padding-top: 5px; }
 
-  #memoria-tabla-impresion { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 10px; }
-  #memoria-tabla-impresion th, #memoria-tabla-impresion td { border: 1px solid #cccccc; padding: 4px 6px; text-align: right; }
+  #memoria-tabla-impresion { width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+  #memoria-tabla-impresion th, #memoria-tabla-impresion td { border: 1px solid #d9d9d9; padding: 4px 6px; text-align: right; }
+  #memoria-tabla-impresion th {
+    font-size: 8px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+    background: rgba(255, 81, 0, 0.06); color: var(--brand-gray-11);
+  }
   #memoria-tabla-impresion th:nth-child(1), #memoria-tabla-impresion td:nth-child(1),
   #memoria-tabla-impresion th:nth-child(2), #memoria-tabla-impresion td:nth-child(2),
   #memoria-tabla-impresion th:nth-child(6), #memoria-tabla-impresion td:nth-child(6),
   #memoria-tabla-impresion th:nth-child(7), #memoria-tabla-impresion td:nth-child(7) { text-align: left; }
-  #memoria-tabla-impresion thead th { background: #f3f3f3; color: #000000; }
   #memoria-tabla-impresion tbody tr:nth-child(even) { background: #fafafa; }
 
-  .informe-observaciones { font-size: 9.5px; color: #333333; border: 1px solid #cccccc; border-radius: 4px; padding: 8px 10px; margin-bottom: 30px; }
+  .informe-observaciones { font-size: 9.5px; line-height: 1.5; color: #333333; border: 1px solid #d9d9d9; border-radius: 4px; padding: 8px 10px; margin-bottom: 26px; }
 
   .informe-firma { width: 260px; margin: 0 auto; text-align: center; font-size: 10.5px; }
   .informe-firma-linea { border-top: 1px solid #000000; margin-bottom: 6px; }
