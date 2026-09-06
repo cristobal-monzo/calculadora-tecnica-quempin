@@ -188,16 +188,32 @@ th { color: var(--text-secondary); font-size: 12px; }
   .informe-campo-label { font-size: 8.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-gray-11); }
   .informe-campo-valor { font-size: 11px; color: #1a1a1a; }
 
-  .informe-artefactos, .informe-resumen {
-    width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 4px;
-  }
-  .informe-artefactos th, .informe-resumen th {
+  .informe-artefactos { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 4px; }
+  .informe-artefactos th {
     text-align: left; width: 170px; padding: 3px 8px 3px 0; vertical-align: top;
     font-size: 8.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-gray-11);
   }
-  .informe-artefactos td, .informe-resumen td { padding: 3px 8px 3px 0; color: #1a1a1a; }
+  .informe-artefactos td { padding: 3px 8px 3px 0; color: #1a1a1a; }
+  .informe-artefactos tbody td { border-bottom: 1px solid #f0f0f0; padding-top: 4px; padding-bottom: 4px; }
   .informe-artefactos .informe-nota { font-style: italic; color: var(--brand-gray-7); font-size: 9.5px; padding: 2px 8px; }
   .informe-artefactos tfoot th, .informe-artefactos tfoot td { border-top: 1px solid #cccccc; padding-top: 5px; }
+  /* "Potencia instalada" es el numero que de verdad importa de esta
+     seccion (lo que dimensiona la red) — se destaca con mas tamano/peso
+     que "Total" (un paso intermedio), mismo criterio que un total final
+     en una cotizacion/factura. */
+  .informe-artefactos tfoot tr:last-child th,
+  .informe-artefactos tfoot tr:last-child td { font-size: 13px; font-weight: 900; color: #1a1a1a; padding-top: 7px; }
+
+  /* Resumen de resultados — los 2 numeros de cierre de la memoria de
+     calculo (perdida acumulada maxima / velocidad maxima de flujo) pasan
+     de una fila de tabla mas a tarjetas de metrica destacada, el mismo
+     lenguaje visual que ya usan los tiles de resultado en pantalla
+     (numero grande + etiqueta chica), para que se lean como el cierre del
+     documento y no como un dato mas. */
+  .informe-resumen { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 4px; }
+  .informe-stat { border: 1px solid var(--gridline); border-left: 3px solid var(--brand-orange); padding: 8px 12px; background: rgba(255, 81, 0, 0.03); }
+  .informe-stat-valor { display: block; font-size: 17px; font-weight: 900; color: #1a1a1a; }
+  .informe-stat-label { display: block; font-size: 8.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-gray-11); margin-top: 2px; }
 
   /* Tabla de tramos — "reglada" (solo filetes horizontales + cebra) en vez
      de grilla completa (borde en las 4 direcciones de cada celda): la
