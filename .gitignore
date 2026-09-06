@@ -23,3 +23,6 @@ Thumbs.db
 *.png
 !assets/*.PNG
 !assets/*.png
+
+# Worktrees locales de aislamiento de trabajo (no se versionan)
+.worktrees/
