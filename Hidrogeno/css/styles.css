@@ -236,8 +236,19 @@ th { color: var(--text-secondary); font-size: 12px; }
 
   .informe-observaciones { font-size: 9.5px; line-height: 1.5; color: #333333; border: 1px solid #d9d9d9; border-radius: 4px; padding: 8px 10px; margin-bottom: 26px; }
 
-  .informe-firma { width: 260px; margin: 0 auto; text-align: center; font-size: 10.5px; }
+  .informe-firma { width: 260px; margin: 0 auto 28px; text-align: center; font-size: 10.5px; }
+  .informe-firma-etiqueta {
+    font-size: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--brand-gray-7); margin-bottom: 22px;
+  }
   .informe-firma-linea { border-top: 1px solid #000000; margin-bottom: 6px; }
   #informe-firma-nombre { font-weight: 700; }
   #informe-firma-cargo, #informe-firma-run { color: #333333; }
+
+  /* Pie de cierre del documento — remata la pagina identificando al
+     emisor, en vez de terminar de golpe despues de la firma. */
+  .informe-footer {
+    text-align: center; font-size: 8px; letter-spacing: 0.03em; color: var(--brand-gray-7);
+    border-top: 1px solid var(--gridline); padding-top: 8px;
+  }
 }
