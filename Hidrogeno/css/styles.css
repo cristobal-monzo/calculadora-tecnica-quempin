@@ -177,14 +177,25 @@ th { color: var(--text-secondary); font-size: 12px; }
   }
   .informe-header + .informe-titulo + .informe-eyebrow { margin-top: 14px; }
 
-  .informe-datos, .informe-criterios, .informe-artefactos, .informe-resumen {
+  /* Ficha de campos (Datos del proyecto / Criterios de diseño) — grilla de
+     2 columnas con la etiqueta ARRIBA y el valor abajo, en vez de la tabla
+     etiqueta-izquierda/valor-derecha que tenían antes: esa disposición
+     partía mal etiquetas largas ("Máxima pérdida de carga acumulada" caía
+     en 2 líneas descuadrando la fila). El patrón de ficha es además el que
+     usan la mayoría de los formularios/documentos formales modernos. */
+  .informe-ficha { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 28px; margin-bottom: 4px; }
+  .informe-campo { display: flex; flex-direction: column; gap: 1px; }
+  .informe-campo-label { font-size: 8.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-gray-11); }
+  .informe-campo-valor { font-size: 11px; color: #1a1a1a; }
+
+  .informe-artefactos, .informe-resumen {
     width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 4px;
   }
-  .informe-datos th, .informe-criterios th, .informe-artefactos th, .informe-resumen th {
+  .informe-artefactos th, .informe-resumen th {
     text-align: left; width: 170px; padding: 3px 8px 3px 0; vertical-align: top;
     font-size: 8.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-gray-11);
   }
-  .informe-datos td, .informe-criterios td, .informe-artefactos td, .informe-resumen td { padding: 3px 8px 3px 0; color: #1a1a1a; }
+  .informe-artefactos td, .informe-resumen td { padding: 3px 8px 3px 0; color: #1a1a1a; }
   .informe-artefactos .informe-nota { font-style: italic; color: var(--brand-gray-7); font-size: 9.5px; padding: 2px 8px; }
   .informe-artefactos tfoot th, .informe-artefactos tfoot td { border-top: 1px solid #cccccc; padding-top: 5px; }
 
