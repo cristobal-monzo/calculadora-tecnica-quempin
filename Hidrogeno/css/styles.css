@@ -147,11 +147,20 @@ th { color: var(--text-secondary); font-size: 12px; }
 
   #memoria-informe-impresion { display: block !important; font-family: 'Lato', system-ui, sans-serif; color: #1a1a1a; }
 
-  .informe-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 2px solid var(--brand-orange); padding-bottom: 10px; margin-bottom: 10px; }
-  .informe-logo { max-height: 56px; width: auto; }
-  .informe-empresa { flex: 1; font-size: 10px; line-height: 1.6; color: #333333; }
-  .informe-empresa strong, .informe-doc strong { color: #000000; }
-  .informe-doc { font-size: 10px; text-align: right; line-height: 1.6; white-space: nowrap; color: #333333; }
+  .informe-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 3px solid var(--brand-orange); padding-bottom: 12px; margin-bottom: 10px; }
+  .informe-logo { max-height: 50px; width: auto; flex-shrink: 0; }
+  .informe-empresa { flex: 1; font-size: 9.5px; line-height: 1.75; color: #333333; }
+  .informe-empresa strong, .informe-doc strong { color: #000000; font-weight: 700; }
+  /* Cajetín de control del documento (N° / Revisión / Página) — tratamiento
+     de "title block" de plano técnico: caja con borde propio y filas
+     etiqueta-izquierda/valor-derecha, en vez de texto suelto alineado a la
+     derecha. Refuerza la lectura de "documento controlado" del membrete. */
+  .informe-doc {
+    flex-shrink: 0; min-width: 148px; font-size: 9.5px; line-height: 1.5; color: #333333;
+    border: 1px solid var(--gridline); padding: 6px 10px; background: rgba(255, 81, 0, 0.03);
+  }
+  .informe-doc div { display: flex; justify-content: space-between; gap: 14px; white-space: nowrap; }
+  .informe-doc div + div { margin-top: 2px; }
 
   .informe-titulo { text-align: center; margin: 10px 0 4px; font-size: 19px; font-weight: 900; letter-spacing: 0.02em; }
   .informe-titulo span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--brand-orange); margin-top: 5px; }
