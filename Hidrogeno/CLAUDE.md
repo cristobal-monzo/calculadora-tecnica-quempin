@@ -313,6 +313,99 @@ junto a "Continúa desde") y en el diagrama de árbol (anillo alrededor del
 nodo). Ver el caso de prueba de cadena A-B-C-D con reseteo en C en
 `calc-memoria.test.js`.
 
+## Auditoría UX/UI: agrupación de inputs y jerarquía de resultados (`index.html`/`css/styles.css`/`ui.js`, 2026-09-03, a pedido del usuario)
+
+Rediseño de estructura visual (no de fórmulas ni de motores de cálculo,
+verificado con `node Hidrogeno/tests/run-all.js`) sobre las 3 pestañas:
+
+- **Inputs agrupados por concepto** en vez de una grilla plana: nueva clase
+  `.seccion`/`.seccion-titulo` (sin caja/borde — jerarquía por tipografía y
+  un hairline entre bloques, a propósito para no sumar más cards). "Tubería
+  y Flujo" pasa a "Condiciones de operación" + "Tubería y diseño normativo"
+  (con "Accesorios" ya existente adentro); "Red de Gas" en GLP recibe el
+  mismo tratamiento ("Configuración de tubería" + "Condiciones de
+  operación", ver su CLAUDE.md).
+- **Jerarquía KPI/secundario en resultados**: nuevo modificador
+  `.resultado-tile.kpi` (2 por pestaña, texto más grande) y `.secundario`
+  (factores de verificación, texto más chico) sobre el mismo componente —
+  `tile()`/`tilePresion()` ya aceptaban un string de clase libre en su
+  parámetro `variante`, así que no cambió su firma. "Tubería y Flujo":
+  Presión máxima diseño + Tubería adecuada como KPI, caudales/velocidades
+  sin cambio de peso, Hf/T/Z/Reynolds/fricción demovidos a `.secundario`
+  bajo "Factores de verificación" (ya existía el subtítulo, se generalizó
+  el patrón). "Almacenamiento": Masa de H₂ almacenada + Autonomía como KPI,
+  resto bajo "Detalle del cálculo".
+- **Memoria de Cálculo reordenada**: la tabla de tramos + árbol SVG (lo que
+  se edita todo el rato) pasan primero; los cajetines de proyecto/informe
+  (fecha, instalador, firma, criterios, observaciones, artefactos) se
+  movieron a un `<details class="seccion-avanzada">` "Datos del informe"
+  cerrado por defecto — nueva clase en `css/styles.css`, ya existía
+  `<details>` para la tabla de tubería de referencia. No afecta impresión:
+  `renderInformeImpresion()` sigue leyendo del objeto `proyecto` en JS, no
+  del DOM visible, y el bloque sigue con `.no-imprimir`.
+- **Fix de overflow en "Tubería manual"** (`#campo-flujo-tuberia-manual`):
+  el sub-grid de 4 campos (DI/espesor/límite elástico/rugosidad) se salía
+  de su contenedor porque `grid-template-columns:repeat(4, 1fr)` con
+  `<input>` sin `width` explícito usa el ancho intrínseco del input como
+  mínimo de cada columna. Cambiado a `repeat(4, minmax(0, 1fr))` en
+  `index.html` + `min-width: 0` agregado a `.campo input, .campo select`
+  en `css/styles.css` (deja que cualquier input se achique a su columna,
+  no solo este caso — no había un `width:100%` de base como sí tiene
+  `.campo-con-unidad`).
+- **Accesibilidad del patrón de pestañas** (2026-09-06, segunda pasada de
+  la misma auditoría): `role="tab"`/`role="tablist"` ya estaba, pero sin
+  `aria-selected` ni vínculo `aria-controls`/`aria-labelledby` entre botón
+  y panel, así que un lector de pantalla no anunciaba cuál pestaña estaba
+  activa. Cada botón ahora tiene `id="tab-<nombre>"` +
+  `aria-controls="panel-<nombre>"`; cada `<section class="tab-panel">`
+  tiene `role="tabpanel"` + `aria-labelledby="tab-<nombre>"`;
+  `initTabs()` en `ui.js` sincroniza `aria-selected` al hacer clic. También
+  se agregó `.tab:focus-visible` en `css/styles.css` (antes dependía del
+  outline por defecto del navegador — ahora usa el mismo naranja de marca
+  que `.campo input:focus-visible`). No se implementó navegación con
+  flechas del patrón ARIA APG completo (roving tabindex) — los botones ya
+  son nativamente enfocables con Tab, y agregar eso habría sido un cambio
+  de comportamiento mayor para un beneficio marginal.
+- **Botones/selects de solo-ícono con nombre accesible** (2026-09-06,
+  tercera pasada): los botones "✕" de eliminar tramo/artefacto
+  (`.mem-eliminar`/`.af-eliminar`) y los `<select>` de unidad inline
+  dentro de un tile de resultado no tenían texto accesible — un lector de
+  pantalla solo anunciaba "✕" o "select". Se agregó `aria-label` dinámico
+  (nombre del tramo/artefacto, o "Unidad de &lt;etiqueta del tile&gt;") en
+  `ui.js`. Los campos `af-nombre`/`af-potencia` (dependían solo de
+  `placeholder`) suman `aria-label` fijo.
+  **Bug encontrado de paso**: la etiqueta "Caudal de referencia (línea
+  capilar Ø¼")" lleva una comilla literal — interpolarla sin escapar en un
+  atributo `aria-label="..."` corta el atributo a mitad de camino y rompe
+  el `<select>`. Nueva función `escapeAttr()` en `ui.js` (escapa `&` y
+  `"`), usada en los 4 puntos nuevos de esta pasada. En ese momento no se
+  aplicó retroactivamente a las interpolaciones ya existentes de nombre de
+  tramo/artefacto/material en atributos y contenido — ver el punto
+  siguiente, donde sí se cerró.
+- **Saneamiento de texto libre en toda Memoria de Cálculo** (2026-09-06,
+  cuarta pasada, cierra el pendiente del punto anterior): nombre de tramo
+  (`t.nombre`), material libre (`t.material` — este módulo no tiene un
+  `<select>` de material como Red de Gas en GLP) y nombre de artefacto
+  (`a.nombre`) son texto libre que el usuario tipea o que llega vía
+  "Importar proyecto (.json)", y se interpolaban sin escapar en varios
+  `render*()`: `value="${t.nombre}"` de la tabla, las `<option>` del
+  selector "Continúa desde", `<text>`/`<title>` del árbol SVG, y las
+  celdas de artefactos/tramos de la tabla impresa. Un nombre con `"`
+  cortaba el atributo a mitad de camino (mismo bug que motivó
+  `escapeAttr()`); uno con `<algo>` se interpretaba como HTML real en vez
+  de texto literal (ej. `<b>` en un nombre de tramo aparecía en negrita en
+  vez de mostrarse tal cual). Nueva `escapeHtml()` (escapa `&`/`<`/`>`,
+  para contenido de etiqueta) junto a la `escapeAttr()` ya existente (para
+  atributos) — aplicadas en `renderTablaMemoria`, `renderArbol`,
+  `renderArtefactos` y `renderInformeImpresion`. Verificado con un nombre
+  de tramo `Tramo <b>"bold"</b> & mas`: antes de este fix habría creado un
+  `<b>` real en el DOM del árbol/tabla impresa; después, el texto se
+  muestra literal en los tres lugares. No es un vector entre usuarios (no
+  hay backend ni datos compartidos) sino un caso de "self-XSS" vía un
+  .json importado a mano o un nombre escrito sin querer con esos
+  caracteres — igual vale la pena cerrarlo porque antes rompía el layout
+  con solo escribir una comilla.
+
 ## Informe formal de Memoria de Cálculo (`index.html`/`ui.js`/`css/styles.css`, 2026-09-03, a pedido del usuario)
 
 La pestaña "Memoria de Cálculo" imprimía solo una tabla desnuda de tramos

@@ -34,85 +34,96 @@
     </div>
 
     <nav class="tabs" role="tablist">
-      <button class="tab active" role="tab" data-tab="red-gas">Red de Gas</button>
-      <button class="tab" role="tab" data-tab="almacenamiento">Almacenamiento</button>
-      <button class="tab" role="tab" data-tab="combustion">Combustión</button>
-      <button class="tab" role="tab" data-tab="quemador">Quemador Atmosférico</button>
-      <button class="tab" role="tab" data-tab="memoria">Memoria de Cálculo</button>
+      <button class="tab active" id="tab-red-gas" role="tab" aria-selected="true" aria-controls="panel-red-gas" data-tab="red-gas">Red de Gas</button>
+      <button class="tab" id="tab-almacenamiento" role="tab" aria-selected="false" aria-controls="panel-almacenamiento" data-tab="almacenamiento">Almacenamiento</button>
+      <button class="tab" id="tab-combustion" role="tab" aria-selected="false" aria-controls="panel-combustion" data-tab="combustion">Combustión</button>
+      <button class="tab" id="tab-quemador" role="tab" aria-selected="false" aria-controls="panel-quemador" data-tab="quemador">Quemador Atmosférico</button>
+      <button class="tab" id="tab-memoria" role="tab" aria-selected="false" aria-controls="panel-memoria" data-tab="memoria">Memoria de Cálculo</button>
     </nav>
 
-    <section class="tab-panel active" id="panel-red-gas" data-panel="red-gas">
-      <form id="form-red-gas" class="fila-campos" autocomplete="off">
-        <div class="campo campo-ancho">
-          <label for="rg-regimen">Régimen de presión</label>
-          <div class="campo-con-unidad">
-            <select id="rg-regimen">
-              <option value="<10 kPa">Baja presión (&lt;10 kPa)</option>
-              <option value=">10 kPa">Media/alta presión (&gt;10 kPa)</option>
-            </select>
-            <select id="rg-regimen-unidad" class="select-unidad" aria-label="Unidad del umbral de régimen">
-              <option value="Pa">Pa</option>
-              <option value="kPa" selected>kPa</option>
-              <option value="mbar">mbar</option>
-              <option value="bar">bar</option>
-              <option value="psi">psi</option>
-            </select>
+    <section class="tab-panel active" id="panel-red-gas" role="tabpanel" aria-labelledby="tab-red-gas" data-panel="red-gas">
+      <form id="form-red-gas" autocomplete="off">
+        <div class="seccion">
+          <h3 class="seccion-titulo">Configuración de tubería</h3>
+          <div class="fila-campos">
+            <div class="campo campo-ancho">
+              <label for="rg-regimen">Régimen de presión</label>
+              <div class="campo-con-unidad">
+                <select id="rg-regimen">
+                  <option value="<10 kPa">Baja presión (&lt;10 kPa)</option>
+                  <option value=">10 kPa">Media/alta presión (&gt;10 kPa)</option>
+                </select>
+                <select id="rg-regimen-unidad" class="select-unidad" aria-label="Unidad del umbral de régimen">
+                  <option value="Pa">Pa</option>
+                  <option value="kPa" selected>kPa</option>
+                  <option value="mbar">mbar</option>
+                  <option value="bar">bar</option>
+                  <option value="psi">psi</option>
+                </select>
+              </div>
+            </div>
+            <div class="campo" id="campo-rg-material">
+              <label for="rg-material">Material de tubería</label>
+              <select id="rg-material">
+                <option value="Acero Sch40">Acero Sch40</option>
+                <option value="Cobre tipo L">Cobre tipo L</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label for="rg-diametro">Diámetro nominal</label>
+              <select id="rg-diametro"></select>
+            </div>
+            <div class="campo campo-ancho" id="campo-rg-diametro-manual" style="display:none;">
+              <label for="rg-diametro-manual-mm">Diámetro interior manual</label>
+              <div class="campo-con-unidad">
+                <input id="rg-diametro-manual-mm" type="text" inputmode="decimal" value="50" required>
+                <span class="select-unidad unidad-fija">mm</span>
+              </div>
+              <label for="rg-diametro-manual-k" style="margin-top:6px;">Factor K (rugosidad, solo baja presión)</label>
+              <input id="rg-diametro-manual-k" type="text" inputmode="decimal" value="1800" required>
+            </div>
           </div>
         </div>
-        <div class="campo" id="campo-rg-material">
-          <label for="rg-material">Material de tubería</label>
-          <select id="rg-material">
-            <option value="Acero Sch40">Acero Sch40</option>
-            <option value="Cobre tipo L">Cobre tipo L</option>
-          </select>
-        </div>
-        <div class="campo">
-          <label for="rg-diametro">Diámetro nominal</label>
-          <select id="rg-diametro"></select>
-        </div>
-        <div class="campo campo-ancho" id="campo-rg-diametro-manual" style="display:none;">
-          <label for="rg-diametro-manual-mm">Diámetro interior manual</label>
-          <div class="campo-con-unidad">
-            <input id="rg-diametro-manual-mm" type="text" inputmode="decimal" value="50" required>
-            <span class="select-unidad unidad-fija">mm</span>
+
+        <div class="seccion">
+          <h3 class="seccion-titulo">Condiciones de operación</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="rg-potencia">Potencia objetivo [kW]</label>
+              <input id="rg-potencia" type="text" inputmode="decimal" value="30" required>
+            </div>
+            <div class="campo">
+              <label for="rg-longitud">Longitud de la línea [m]</label>
+              <input id="rg-longitud" type="text" inputmode="decimal" value="10" required>
+            </div>
+            <div class="campo">
+              <label for="rg-presion-inicial">Presión inicial</label>
+              <div class="campo-con-unidad">
+                <input id="rg-presion-inicial" type="text" inputmode="decimal" value="1000" required>
+                <select id="rg-presion-inicial-unidad" class="select-unidad" aria-label="Unidad de presión inicial">
+                  <option value="Pa" selected>Pa</option>
+                  <option value="kPa">kPa</option>
+                  <option value="mbar">mbar</option>
+                  <option value="bar">bar</option>
+                  <option value="psi">psi</option>
+                </select>
+              </div>
+            </div>
+            <div class="campo">
+              <label for="rg-temperatura">Temperatura [°C]</label>
+              <input id="rg-temperatura" type="text" inputmode="decimal" value="15" required>
+            </div>
           </div>
-          <label for="rg-diametro-manual-k" style="margin-top:6px;">Factor K (rugosidad, solo baja presión)</label>
-          <input id="rg-diametro-manual-k" type="text" inputmode="decimal" value="1800" required>
-        </div>
-        <div class="campo">
-          <label for="rg-potencia">Potencia objetivo [kW]</label>
-          <input id="rg-potencia" type="text" inputmode="decimal" value="30" required>
-        </div>
-        <div class="campo">
-          <label for="rg-longitud">Longitud de la línea [m]</label>
-          <input id="rg-longitud" type="text" inputmode="decimal" value="10" required>
-        </div>
-        <div class="campo">
-          <label for="rg-presion-inicial">Presión inicial</label>
-          <div class="campo-con-unidad">
-            <input id="rg-presion-inicial" type="text" inputmode="decimal" value="1000" required>
-            <select id="rg-presion-inicial-unidad" class="select-unidad" aria-label="Unidad de presión inicial">
-              <option value="Pa" selected>Pa</option>
-              <option value="kPa">kPa</option>
-              <option value="mbar">mbar</option>
-              <option value="bar">bar</option>
-              <option value="psi">psi</option>
-            </select>
-          </div>
-        </div>
-        <div class="campo">
-          <label for="rg-temperatura">Temperatura [°C]</label>
-          <input id="rg-temperatura" type="text" inputmode="decimal" value="15" required>
         </div>
       </form>
       <div class="resultados" id="resultados-red-gas" aria-live="polite"></div>
     </section>
 
-    <section class="tab-panel" id="panel-almacenamiento" data-panel="almacenamiento">
+    <section class="tab-panel" id="panel-almacenamiento" role="tabpanel" aria-labelledby="tab-almacenamiento" data-panel="almacenamiento">
       <div id="almacenamiento-contenido"></div>
     </section>
 
-    <section class="tab-panel" id="panel-combustion" data-panel="combustion">
+    <section class="tab-panel" id="panel-combustion" role="tabpanel" aria-labelledby="tab-combustion" data-panel="combustion">
       <div id="combustion-campos-composicion"></div>
       <p class="subtitulo">Condiciones de combustión</p>
       <form id="form-combustion" class="fila-campos" autocomplete="off">
@@ -157,72 +168,88 @@
       <div class="resultados" id="resultados-combustion" aria-live="polite"></div>
     </section>
 
-    <section class="tab-panel" id="panel-quemador" data-panel="quemador">
+    <section class="tab-panel" id="panel-quemador" role="tabpanel" aria-labelledby="tab-quemador" data-panel="quemador">
       <div id="quemador-campos-composicion"></div>
-      <p class="subtitulo">Quemador</p>
-      <form id="form-quemador" class="fila-campos" autocomplete="off">
-        <div class="campo">
-          <label for="qm-potencia">Potencia [kW]</label>
-          <input id="qm-potencia" type="text" inputmode="decimal" value="25" required>
-        </div>
-        <div class="campo">
-          <label for="qm-pci">Poder calorífico [kJ/kg]</label>
-          <input id="qm-pci" type="text" inputmode="decimal" value="45990" required>
-        </div>
-        <div class="campo">
-          <label for="qm-cant-perforaciones">Cantidad de perforaciones</label>
-          <input id="qm-cant-perforaciones" type="number" step="1" value="400" required>
-        </div>
-        <div class="campo">
-          <label for="qm-diam-perforacion">Diámetro de perforación [mm]</label>
-          <input id="qm-diam-perforacion" type="text" inputmode="decimal" value="2" required>
-        </div>
-        <div class="campo">
-          <label for="qm-cd">Coeficiente de descarga</label>
-          <input id="qm-cd" type="text" inputmode="decimal" value="0.8" required>
-        </div>
-        <div class="campo">
-          <label for="qm-diam-inyector">Diámetro de inyector [mm]</label>
-          <input id="qm-diam-inyector" type="text" inputmode="decimal" value="1.2" required>
-        </div>
-        <div class="campo">
-          <label for="qm-presion-gas">Presión de gas</label>
-          <div class="campo-con-unidad">
-            <input id="qm-presion-gas" type="text" inputmode="decimal" value="29" required>
-            <select id="qm-presion-gas-unidad" class="select-unidad" aria-label="Unidad de presión de gas">
-              <option value="Pa">Pa</option>
-              <option value="kPa">kPa</option>
-              <option value="mbar" selected>mbar</option>
-              <option value="bar">bar</option>
-              <option value="psi">psi</option>
-            </select>
+      <form id="form-quemador" autocomplete="off">
+        <div class="seccion">
+          <h3 class="seccion-titulo">Condiciones de operación</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="qm-potencia">Potencia [kW]</label>
+              <input id="qm-potencia" type="text" inputmode="decimal" value="25" required>
+            </div>
+            <div class="campo">
+              <label for="qm-pci">Poder calorífico [kJ/kg]</label>
+              <input id="qm-pci" type="text" inputmode="decimal" value="45990" required>
+            </div>
+            <div class="campo">
+              <label for="qm-presion-gas">Presión de gas</label>
+              <div class="campo-con-unidad">
+                <input id="qm-presion-gas" type="text" inputmode="decimal" value="29" required>
+                <select id="qm-presion-gas-unidad" class="select-unidad" aria-label="Unidad de presión de gas">
+                  <option value="Pa">Pa</option>
+                  <option value="kPa">kPa</option>
+                  <option value="mbar" selected>mbar</option>
+                  <option value="bar">bar</option>
+                  <option value="psi">psi</option>
+                </select>
+              </div>
+            </div>
+            <div class="campo">
+              <label for="qm-temp-gas">Temperatura del gas [°C]</label>
+              <input id="qm-temp-gas" type="text" inputmode="decimal" value="15" required>
+            </div>
+            <div class="campo">
+              <label for="qm-temp-ambiente">Temperatura ambiente [°C]</label>
+              <input id="qm-temp-ambiente" type="text" inputmode="decimal" value="15" required>
+            </div>
           </div>
         </div>
-        <div class="campo">
-          <label for="qm-relacion-aire">Relación de aire (aireación 1ª)</label>
-          <input id="qm-relacion-aire" type="text" inputmode="decimal" value="0.45" required>
+
+        <div class="seccion">
+          <h3 class="seccion-titulo">Inyector y perforaciones</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="qm-diam-inyector">Diámetro de inyector [mm]</label>
+              <input id="qm-diam-inyector" type="text" inputmode="decimal" value="1.2" required>
+            </div>
+            <div class="campo">
+              <label for="qm-relacion-aire">Relación de aire (aireación 1ª)</label>
+              <input id="qm-relacion-aire" type="text" inputmode="decimal" value="0.45" required>
+            </div>
+            <div class="campo">
+              <label for="qm-cant-perforaciones">Cantidad de perforaciones</label>
+              <input id="qm-cant-perforaciones" type="number" step="1" value="400" required>
+            </div>
+            <div class="campo">
+              <label for="qm-diam-perforacion">Diámetro de perforación [mm]</label>
+              <input id="qm-diam-perforacion" type="text" inputmode="decimal" value="2" required>
+            </div>
+            <div class="campo">
+              <label for="qm-cd">Coeficiente de descarga</label>
+              <input id="qm-cd" type="text" inputmode="decimal" value="0.8" required>
+            </div>
+          </div>
         </div>
-        <div class="campo">
-          <label for="qm-temp-gas">Temperatura del gas [°C]</label>
-          <input id="qm-temp-gas" type="text" inputmode="decimal" value="15" required>
-        </div>
-        <div class="campo">
-          <label for="qm-temp-ambiente">Temperatura ambiente [°C]</label>
-          <input id="qm-temp-ambiente" type="text" inputmode="decimal" value="15" required>
-        </div>
-        <div class="campo">
-          <label for="qm-diam-garganta">Diámetro de garganta Venturi [mm]</label>
-          <input id="qm-diam-garganta" type="text" inputmode="decimal" value="28" required>
-        </div>
-        <div class="campo">
-          <label for="qm-cant-perforaciones-garganta">Perforaciones (garganta Venturi)</label>
-          <input id="qm-cant-perforaciones-garganta" type="number" step="1" value="420" required>
+
+        <div class="seccion">
+          <h3 class="seccion-titulo">Garganta Venturi</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="qm-diam-garganta">Diámetro de garganta Venturi [mm]</label>
+              <input id="qm-diam-garganta" type="text" inputmode="decimal" value="28" required>
+            </div>
+            <div class="campo">
+              <label for="qm-cant-perforaciones-garganta">Perforaciones (garganta Venturi)</label>
+              <input id="qm-cant-perforaciones-garganta" type="number" step="1" value="420" required>
+            </div>
+          </div>
         </div>
       </form>
       <div class="resultados" id="resultados-quemador" aria-live="polite"></div>
     </section>
 
-    <section class="tab-panel" id="panel-memoria" data-panel="memoria">
+    <section class="tab-panel" id="panel-memoria" role="tabpanel" aria-labelledby="tab-memoria" data-panel="memoria">
       <div class="no-imprimir" style="display:flex; gap:8px; flex-wrap:wrap; margin: 20px 0 16px;">
         <button type="button" id="memoria-agregar-tramo">+ Agregar tramo</button>
         <button type="button" id="memoria-exportar">Exportar proyecto (.json)</button>
@@ -233,7 +260,37 @@
         <button type="button" id="memoria-imprimir">Imprimir / Guardar PDF</button>
       </div>
 
-      <div class="no-imprimir">
+      <div id="memoria-error" class="resultado-tile alerta no-imprimir" style="display:none;"></div>
+
+      <svg id="memoria-arbol" width="100%" height="220" role="img" aria-label="Diagrama de la red de tramos"></svg>
+
+      <div style="overflow-x:auto;">
+        <table id="memoria-tabla" class="no-imprimir">
+          <thead>
+            <tr>
+              <th>Tramo</th><th>Continúa desde</th>
+              <th title="Reinicia la pérdida de carga acumulada desde este tramo (ej. después de un regulador de presión)">Reinicia acum.</th>
+              <th>Régimen de presión</th>
+              <th>Material</th>
+              <th>Diámetro</th>
+              <th>Potencia [kW]</th>
+              <th>Longitud [m]</th>
+              <th>Presión inicial <select id="memoria-presion-inicial-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión inicial"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th>Temp. [°C]</th>
+              <th>Caudal objetivo [m³/h]</th>
+              <th>Velocidad [m/s]</th>
+              <th>Pérdida requerida <select id="memoria-perdida-requerida-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida requerida"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th>Pérdida acumulada <select id="memoria-perdida-acumulada-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida acumulada"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th>Presión final <select id="memoria-presion-final-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión final"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="memoria-tabla-cuerpo"></tbody>
+        </table>
+      </div>
+
+      <details class="seccion-avanzada no-imprimir">
+        <summary>Datos del informe</summary>
         <form id="form-memoria-proyecto" class="fila-campos" autocomplete="off">
           <div class="campo">
             <label for="mp-fecha">Fecha</label>
@@ -306,42 +363,13 @@
           </fieldset>
         </form>
 
-        <fieldset class="subseccion" style="margin-bottom:16px;">
+        <fieldset class="subseccion" style="margin-bottom:0;">
           <legend>Artefactos</legend>
           <div id="memoria-artefactos-cuerpo"></div>
           <button type="button" id="memoria-artefacto-agregar">+ Agregar artefacto</button>
           <div id="memoria-artefactos-total-txt" style="font-size:12px; color:var(--text-secondary); margin-top:8px;"></div>
         </fieldset>
-      </div>
-
-      <div id="memoria-error" class="resultado-tile alerta no-imprimir" style="display:none;"></div>
-
-      <svg id="memoria-arbol" width="100%" height="220" role="img" aria-label="Diagrama de la red de tramos"></svg>
-
-      <div style="overflow-x:auto;">
-        <table id="memoria-tabla" class="no-imprimir">
-          <thead>
-            <tr>
-              <th>Tramo</th><th>Continúa desde</th>
-              <th title="Reinicia la pérdida de carga acumulada desde este tramo (ej. después de un regulador de presión)">Reinicia acum.</th>
-              <th>Régimen de presión</th>
-              <th>Material</th>
-              <th>Diámetro</th>
-              <th>Potencia [kW]</th>
-              <th>Longitud [m]</th>
-              <th>Presión inicial <select id="memoria-presion-inicial-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión inicial"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
-              <th>Temp. [°C]</th>
-              <th>Caudal objetivo [m³/h]</th>
-              <th>Velocidad [m/s]</th>
-              <th>Pérdida requerida <select id="memoria-perdida-requerida-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida requerida"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
-              <th>Pérdida acumulada <select id="memoria-perdida-acumulada-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida acumulada"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
-              <th>Presión final <select id="memoria-presion-final-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión final"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="memoria-tabla-cuerpo"></tbody>
-        </table>
-      </div>
+      </details>
 
       <div id="memoria-informe-impresion" style="display:none;">
         <header class="informe-header">

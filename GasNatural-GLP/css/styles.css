@@ -32,6 +32,7 @@ main {
 }
 .tab:hover { color: var(--text-primary); }
 .tab.active { color: var(--brand-orange-ink, var(--brand-orange)); border-bottom-color: var(--brand-orange); }
+.tab:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
 .tab-panel { display: none; padding-top: 20px; }
 .tab-panel.active { display: block; }
 
@@ -41,6 +42,7 @@ main {
 .campo input, .campo select {
   font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 6px;
   border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary);
+  min-width: 0;
 }
 .campo input:focus-visible, .campo select:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
 .fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0 20px; }
@@ -58,6 +60,41 @@ main {
 .subtitulo { font-size: 13px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin: 24px 0 4px; }
 .subtitulo:first-child { margin-top: 0; }
 
+/* --- Subsección dentro de un formulario (ej. "Firma y documento" en
+   Memoria de Cálculo) — agrupa varios .campo relacionados con un borde
+   propio, en la misma pestaña/zona, sin ser una pestaña aparte. Copiado de
+   Hidrogeno/css/styles.css (faltaba acá — el CSS original solo daba estilo
+   al fieldset por defecto del navegador, que no expande a ancho completo
+   dentro de .fila-campos y deja los cajetines angostos). --- */
+.subseccion {
+  grid-column: 1 / -1; border: 1px solid var(--gridline); border-radius: 10px;
+  padding: 2px 16px 6px; margin: 4px 0 10px;
+}
+.subseccion legend { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); padding: 0 6px; }
+.subseccion .fila-campos { padding-top: 10px; }
+
+/* --- Agrupación conceptual de campos dentro de un formulario largo
+   (auditoría UX 2026-09-03, ver CLAUDE.md maestro) — separa un formulario
+   plano en bloques con propósito claro. A propósito sin caja/borde: la
+   jerarquía se logra con tipografía y un hairline entre bloques, no
+   apilando más cards. --- */
+.seccion + .seccion { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border-hairline); }
+.seccion-titulo {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-secondary); margin: 0 0 12px;
+}
+
+/* --- Calculadora independiente dentro de una misma pestaña (Almacenamiento
+   GLP: cilindros por vaporización / por consumo diario / estanque son 3
+   cálculos que no se retroalimentan) — a diferencia de .seccion, con
+   frontera propia para que sus inputs y su resultado se perciban como una
+   unidad y no se confundan con el bloque vecino. --- */
+.bloque-calculo {
+  border: 1px solid var(--gridline); border-radius: 12px; padding: 18px 20px 20px; margin-bottom: 18px;
+}
+.bloque-calculo .subtitulo { margin-top: 0; }
+.bloque-calculo .resultados:last-child { margin-bottom: 0; }
+
 /* --- Resultados --- */
 .resultados { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 16px; }
 .resultado-tile {
@@ -70,6 +107,26 @@ main {
 .resultado-tile.alerta .valor { color: var(--brand-orange-ink, var(--brand-orange)); }
 .resultado-tile.ok { border-color: #2e7d32; }
 .resultado-tile.ok .valor { color: #2e7d32; }
+
+/* --- Jerarquía de resultados: KPI (2-4 por pestaña, el resultado que de
+   verdad importa para decidir) vs. secundario/factor de verificación —
+   mismo componente .resultado-tile, distinto peso tipográfico. Mismo
+   patrón que Hidrogeno/css/styles.css. --- */
+.resultado-tile.kpi { padding: 18px 20px; }
+.resultado-tile.kpi .valor { font-size: 27px; }
+.resultado-tile.kpi .etiqueta { font-size: 13px; }
+.resultado-tile.secundario { padding: 10px 14px; }
+.resultado-tile.secundario .valor { font-size: 15px; font-weight: 700; }
+.resultado-tile.secundario .etiqueta { font-size: 11.5px; }
+
+/* --- Subtítulo de categoría dentro de una grilla de resultados (ej.
+   "Factores de verificación") — copiado de Hidrogeno/css/styles.css
+   (faltaba acá). --- */
+.resultados-subtitulo {
+  grid-column: 1 / -1; font-size: 12.5px; font-weight: 700;
+  color: var(--text-secondary); padding-top: 10px; margin-top: 4px;
+  border-top: 1px solid var(--gridline);
+}
 
 /* --- Selector de unidad inline dentro de un tile de resultado de presión --- */
 .select-unidad-inline {
@@ -86,6 +143,21 @@ main {
 table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 13px; }
 th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); }
 th { color: var(--text-secondary); font-size: 12px; }
+
+/* --- Bloque colapsable de datos secundarios (ej. "Datos del informe" en
+   Memoria de Cálculo) — copiado de Hidrogeno/css/styles.css (faltaba acá,
+   junto con el estilo base de <details>/<summary> — este módulo no usaba
+   ninguno hasta ahora). Cerrado por defecto vía el atributo HTML (ver
+   index.html): el usuario debería poder trabajar la tabla de tramos sin
+   tener que revisar los datos del informe primero. --- */
+details { margin-top: 20px; }
+summary { cursor: pointer; font-weight: 700; font-size: 13px; color: var(--text-secondary); }
+.seccion-avanzada {
+  border: 1px solid var(--gridline); border-radius: 10px; padding: 12px 16px; margin: 0 0 20px;
+}
+.seccion-avanzada summary { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+.seccion-avanzada summary::after { content: ' — opcional, solo para el informe impreso'; font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--text-muted); }
+.seccion-avanzada[open] summary { margin-bottom: 14px; }
 
 /* --- Memoria de Cálculo: barra de acciones y tabla editable --- */
 #memoria-agregar-tramo, #memoria-exportar, #memoria-imprimir {

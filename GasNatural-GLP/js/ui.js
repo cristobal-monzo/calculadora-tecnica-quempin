@@ -26,14 +26,31 @@ function numeroFlexible(valor) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Escapa texto que se interpola dentro de un atributo HTML (ej.
+// aria-label="..."). Copia funcional de la misma función en
+// Hidrogeno/js/ui.js (ver su CLAUDE.md), sin dependencia cruzada.
+function escapeAttr(texto) {
+  return String(texto).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+// Escapa texto libre de usuario (nombre de tramo/artefacto) antes de
+// insertarlo como CONTENIDO de una etiqueta (ej. <td>, <option>, <text> del
+// árbol SVG) — copia funcional de la misma función en Hidrogeno/js/ui.js
+// (ver su CLAUDE.md para el detalle del bug que la motivó), sin
+// dependencia cruzada.
+function escapeHtml(texto) {
+  return String(texto).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function initTabs() {
   const botones = document.querySelectorAll('.tab');
   const paneles = document.querySelectorAll('.tab-panel');
   botones.forEach((boton) => {
     boton.addEventListener('click', () => {
-      botones.forEach((b) => b.classList.remove('active'));
+      botones.forEach((b) => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
       paneles.forEach((p) => p.classList.remove('active'));
       boton.classList.add('active');
+      boton.setAttribute('aria-selected', 'true');
       document.querySelector(`[data-panel="${boton.dataset.tab}"]`).classList.add('active');
     });
   });
@@ -72,6 +89,16 @@ function leerPresion(inputId, selectId, unidadDestino) {
   const valor = numeroFlexible(document.getElementById(inputId).value);
   const unidadOrigen = document.getElementById(selectId).value;
   return desdePa(aPa(valor, unidadOrigen), unidadDestino);
+}
+
+// formatearPresion() usa una cantidad fija de decimales por unidad (pensada
+// para tiles numéricos, donde importa una precisión predecible) — para un
+// texto de opción/etiqueta (ej. "Baja presión (<10 kPa)") esos ceros de
+// más se ven como ruido ("<10.0000 kPa"). Recorta los ceros sobrantes sin
+// tocar unidades-presion.js (unidades-presion.test.js depende de su
+// precisión fija actual).
+function formatearPresionEtiqueta(valorPa, unidad) {
+  return Number(formatearPresion(valorPa, unidad)).toString();
 }
 
 const listeners = [];
@@ -138,7 +165,7 @@ function tilePresion(valorPa, etiqueta, clave, variante) {
   const unidad = unidadesTilesPresionRedGas[clave] || 'Pa';
   const clase = variante ? ` ${variante}` : '';
   return `<div class="resultado-tile${clase}" data-tile-presion="${clave}" data-pa="${valorPa}">
-    <div class="valor"><span class="valor-numero">${formatearPresion(valorPa, unidad)}</span><select class="select-unidad-inline" data-tile-presion-unidad="${clave}">${opcionesUnidadPresion(unidad)}</select></div>
+    <div class="valor"><span class="valor-numero">${formatearPresion(valorPa, unidad)}</span><select class="select-unidad-inline" data-tile-presion-unidad="${clave}" aria-label="Unidad de ${escapeAttr(etiqueta)}">${opcionesUnidadPresion(unidad)}</select></div>
     <div class="etiqueta">${etiqueta}</div>
   </div>`;
 }
@@ -146,15 +173,16 @@ function tilePresion(valorPa, etiqueta, clave, variante) {
 function renderResultadosRedGas(r) {
   const variante = r.tuberiaAdecuada ? 'ok' : 'alerta';
   const tiles = [
-    tile(`${r.caudalObjetivoM3H.toFixed(3)} m³/h`, 'Caudal objetivo'),
-    tile(`${r.velocidadMS.toFixed(2)} m/s`, 'Velocidad de flujo'),
-    tile(`${r.volumenTuberiaM3.toFixed(4)} m³`, 'Volumen de la tubería'),
-    tilePresion(r.perdidaPresionRequeridaPa, 'Pérdida de presión requerida', 'perdida-requerida', variante),
-    tilePresion(r.perdidaAdmisiblePa, 'Pérdida de presión admisible', 'perdida-admisible'),
-    tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar diámetro mayor', 'Tubería adecuada', variante),
+    tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar diámetro mayor', 'Tubería adecuada', `kpi ${variante}`),
+    tilePresion(r.perdidaPresionRequeridaPa, 'Pérdida de presión requerida', 'perdida-requerida', `kpi ${variante}`),
+    '<div class="resultados-subtitulo">Detalle del cálculo</div>',
+    tile(`${r.caudalObjetivoM3H.toFixed(3)} m³/h`, 'Caudal objetivo', 'secundario'),
+    tile(`${r.velocidadMS.toFixed(2)} m/s`, 'Velocidad de flujo', 'secundario'),
+    tile(`${r.volumenTuberiaM3.toFixed(4)} m³`, 'Volumen de la tubería', 'secundario'),
+    tilePresion(r.perdidaAdmisiblePa, 'Pérdida de presión admisible', 'perdida-admisible', 'secundario'),
   ];
   if (r.presionFinalPa !== null) {
-    tiles.push(tilePresion(r.presionFinalPa, 'Presión final', 'presion-final'));
+    tiles.push(tilePresion(r.presionFinalPa, 'Presión final', 'presion-final', 'secundario'));
   }
   document.getElementById('resultados-red-gas').innerHTML = tiles.join('');
 }
@@ -195,7 +223,7 @@ function initRedGas() {
   // ("<10 kPa" / ">10 kPa") no cambia.
   function actualizarEtiquetasRegimen() {
     const unidad = document.getElementById('rg-regimen-unidad').value;
-    const umbral = formatearPresion(aPa(10, 'kPa'), unidad);
+    const umbral = formatearPresionEtiqueta(aPa(10, 'kPa'), unidad);
     const select = document.getElementById('rg-regimen');
     select.options[0].textContent = `Baja presión (<${umbral} ${unidad})`;
     select.options[1].textContent = `Media/alta presión (>${umbral} ${unidad})`;
@@ -237,43 +265,49 @@ function initRedGas() {
 
 function marcadoAlmacenamientoGLP() {
   return `
-    <p class="subtitulo">Cilindros — por razón de vaporización</p>
-    <form id="form-cilindros-vap" class="fila-campos" autocomplete="off">
-      <div class="campo"><label for="cv-potencia">Potencia total [kW]</label><input id="cv-potencia" type="text" inputmode="decimal" value="90" required></div>
-      <div class="campo"><label for="cv-razon">Razón de vaporización [kW/cilindro]</label><input id="cv-razon" type="text" inputmode="decimal" value="30" required></div>
-    </form>
-    <div class="resultados" id="resultados-cilindros-vap"></div>
+    <div class="bloque-calculo">
+      <p class="subtitulo">Cilindros — por razón de vaporización</p>
+      <form id="form-cilindros-vap" class="fila-campos" autocomplete="off">
+        <div class="campo"><label for="cv-potencia">Potencia total [kW]</label><input id="cv-potencia" type="text" inputmode="decimal" value="90" required></div>
+        <div class="campo"><label for="cv-razon">Razón de vaporización [kW/cilindro]</label><input id="cv-razon" type="text" inputmode="decimal" value="30" required></div>
+      </form>
+      <div class="resultados" id="resultados-cilindros-vap"></div>
+    </div>
 
-    <p class="subtitulo">Cilindros — por consumo diario</p>
-    <form id="form-cilindros-diario" class="fila-campos" autocomplete="off">
-      <div class="campo"><label for="cd-calefont">N° calefonts</label><input id="cd-calefont" type="number" step="1" value="1" required></div>
-      <div class="campo"><label for="cd-cocinas">N° cocinas</label><input id="cd-cocinas" type="number" step="1" value="3" required></div>
-      <div class="campo"><label for="cd-estufas">N° estufas</label><input id="cd-estufas" type="number" step="1" value="0" required></div>
-      <div class="campo"><label for="cd-nivel">Nivel de consumo</label>
-        <select id="cd-nivel"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select>
-      </div>
-      <div class="campo"><label for="cd-temperatura">Temperatura ambiente [°C]</label>
-        <select id="cd-temperatura">
-          <option value="10">10</option><option value="5" selected>5</option><option value="0">0</option>
-          <option value="-5">-5</option><option value="-10">-10</option><option value="-15">-15</option><option value="-20">-20</option>
-        </select>
-      </div>
-      <div class="campo"><label for="cd-peso-cilindro">Tipo de cilindro</label>
-        <select id="cd-peso-cilindro"><option value="15">15 kg</option><option value="45" selected>45 kg</option></select>
-      </div>
-    </form>
-    <div class="resultados" id="resultados-cilindros-diario"></div>
+    <div class="bloque-calculo">
+      <p class="subtitulo">Cilindros — por consumo diario</p>
+      <form id="form-cilindros-diario" class="fila-campos" autocomplete="off">
+        <div class="campo"><label for="cd-calefont">N° calefonts</label><input id="cd-calefont" type="number" step="1" value="1" required></div>
+        <div class="campo"><label for="cd-cocinas">N° cocinas</label><input id="cd-cocinas" type="number" step="1" value="3" required></div>
+        <div class="campo"><label for="cd-estufas">N° estufas</label><input id="cd-estufas" type="number" step="1" value="0" required></div>
+        <div class="campo"><label for="cd-nivel">Nivel de consumo</label>
+          <select id="cd-nivel"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select>
+        </div>
+        <div class="campo"><label for="cd-temperatura">Temperatura ambiente [°C]</label>
+          <select id="cd-temperatura">
+            <option value="10">10</option><option value="5" selected>5</option><option value="0">0</option>
+            <option value="-5">-5</option><option value="-10">-10</option><option value="-15">-15</option><option value="-20">-20</option>
+          </select>
+        </div>
+        <div class="campo"><label for="cd-peso-cilindro">Tipo de cilindro</label>
+          <select id="cd-peso-cilindro"><option value="15">15 kg</option><option value="45" selected>45 kg</option></select>
+        </div>
+      </form>
+      <div class="resultados" id="resultados-cilindros-diario"></div>
+    </div>
 
-    <p class="subtitulo">Estanque GLP</p>
-    <form id="form-estanque" autocomplete="off">
-      <div class="fila-campos">
-        <div class="campo"><label for="es-diametro">Diámetro [m]</label><input id="es-diametro" type="text" inputmode="decimal" value="0.76" required></div>
-        <div class="campo"><label for="es-altura">Altura [m]</label><input id="es-altura" type="text" inputmode="decimal" value="1.36" required></div>
-        <div class="campo"><label for="es-capacidad">Capacidad nominal [L]</label><input id="es-capacidad" type="text" inputmode="decimal" value="500" required></div>
-      </div>
-      ${marcadoComposicionGLP({ prefijo: 'es' })}
-    </form>
-    <div class="resultados" id="resultados-estanque"></div>
+    <div class="bloque-calculo">
+      <p class="subtitulo">Estanque GLP</p>
+      <form id="form-estanque" autocomplete="off">
+        <div class="fila-campos">
+          <div class="campo"><label for="es-diametro">Diámetro [m]</label><input id="es-diametro" type="text" inputmode="decimal" value="0.76" required></div>
+          <div class="campo"><label for="es-altura">Altura [m]</label><input id="es-altura" type="text" inputmode="decimal" value="1.36" required></div>
+          <div class="campo"><label for="es-capacidad">Capacidad nominal [L]</label><input id="es-capacidad" type="text" inputmode="decimal" value="500" required></div>
+        </div>
+        ${marcadoComposicionGLP({ prefijo: 'es' })}
+      </form>
+      <div class="resultados" id="resultados-estanque"></div>
+    </div>
   `;
 }
 
@@ -304,7 +338,7 @@ function initAlmacenamiento() {
       const potenciaTotalKw = numeroFlexible(document.getElementById('cv-potencia').value);
       const razonVaporizacionKw = numeroFlexible(document.getElementById('cv-razon').value);
       const n = cilindrosPorVaporizacion({ potenciaTotalKw, razonVaporizacionKw });
-      document.getElementById('resultados-cilindros-vap').innerHTML = tile(n, 'N° de cilindros necesarios');
+      document.getElementById('resultados-cilindros-vap').innerHTML = tile(n, 'N° de cilindros necesarios', 'kpi');
       guardarEstado();
     }
 
@@ -318,8 +352,8 @@ function initAlmacenamiento() {
         pesoCilindroKg: Number(document.getElementById('cd-peso-cilindro').value),
       });
       document.getElementById('resultados-cilindros-diario').innerHTML = [
+        tile(resultado.nCilindros, 'N° de cilindros necesarios', 'kpi'),
         tile(`${resultado.consumoDiarioKwh.toFixed(2)} kWh`, 'Consumo diario estimado'),
-        tile(resultado.nCilindros, 'N° de cilindros necesarios'),
       ].join('');
       guardarEstado();
     }
@@ -332,12 +366,12 @@ function initAlmacenamiento() {
         ...leerComposicion('es'),
       });
       document.getElementById('resultados-estanque').innerHTML = [
+        tile(`${resultado.qKw.toFixed(2)} kW`, 'Capacidad de vaporización', 'kpi'),
         tile(`${resultado.capacidadRealLitros.toFixed(0)} L`, 'Capacidad real (80%)'),
-        tile(`${resultado.superficieM2.toFixed(3)} m²`, 'Superficie'),
-        tile(`${resultado.qKgH.toFixed(2)} kg/h`, 'Capacidad de vaporización'),
-        tile(`${resultado.pciKjKg.toFixed(0)} kJ/kg`, 'PCI del GLP (según composición)'),
-        tile(`${resultado.qKw.toFixed(2)} kW`, 'Capacidad de vaporización'),
-        tile(`${resultado.qMcalH.toFixed(2)} Mcal/h`, 'Capacidad de vaporización'),
+        tile(`${resultado.superficieM2.toFixed(3)} m²`, 'Superficie', 'secundario'),
+        tile(`${resultado.pciKjKg.toFixed(0)} kJ/kg`, 'PCI del GLP (según composición)', 'secundario'),
+        tile(`${resultado.qKgH.toFixed(2)} kg/h`, 'Capacidad de vaporización (másica)', 'secundario'),
+        tile(`${resultado.qMcalH.toFixed(2)} Mcal/h`, 'Capacidad de vaporización (Mcal/h)', 'secundario'),
       ].join('');
       guardarEstado();
     }
@@ -396,19 +430,20 @@ function leerComposicion(prefijo) {
 
 function renderResultadosCombustion(r) {
   document.getElementById('resultados-combustion').innerHTML = [
-    tile(r.pm.toFixed(3), 'Masa molar [kg/kmol]'),
-    tile(`${r.densidadNormal.toFixed(4)} kg/Nm³`, 'Densidad normal'),
-    tile(`${r.aireEsteq.toFixed(3)} Nm³/kg`, 'Aire estequiométrico'),
-    tile(`${r.caudalCombustibleNm3H.toFixed(3)} Nm³/h`, 'Caudal de combustible'),
-    tile(`${r.caudalAireNm3H.toFixed(2)} Nm³/h`, 'Caudal de aire'),
-    tile(`${r.caudalTotalNormalNm3H.toFixed(2)} Nm³/h`, 'Caudal total (condición normal)'),
-    tile(`${r.caudalTotalReferenciaM3H.toFixed(2)} m³/h`, 'Caudal total (condición de referencia)'),
-    tile(`${(r.composicion.co2 * 100).toFixed(2)} %`, 'CO₂ en gases de combustión'),
-    tile(`${(r.composicion.h2o * 100).toFixed(2)} %`, 'H₂O en gases de combustión'),
-    tile(`${(r.composicion.o2 * 100).toFixed(2)} %`, 'O₂ en gases de combustión'),
-    tile(`${(r.composicion.n2 * 100).toFixed(2)} %`, 'N₂ en gases de combustión'),
-    tile(`${r.emisionNoxAdmisiblePpm.toFixed(1)} ppm`, 'Emisión NOx admisible'),
-    tile(`${r.emisionCoAdmisiblePpm} ppm`, 'Emisión CO admisible (valor normativo fijo)'),
+    tile(`${r.caudalCombustibleNm3H.toFixed(3)} Nm³/h`, 'Caudal de combustible', 'kpi'),
+    tile(`${r.caudalAireNm3H.toFixed(2)} Nm³/h`, 'Caudal de aire', 'kpi'),
+    tile(`${(r.composicion.co2 * 100).toFixed(2)} %`, 'CO₂ en gases de combustión', 'kpi'),
+    tile(`${r.emisionNoxAdmisiblePpm.toFixed(1)} ppm`, 'Emisión NOx admisible', 'kpi'),
+    tile(`${r.emisionCoAdmisiblePpm} ppm`, 'Emisión CO admisible (valor normativo fijo)', 'kpi'),
+    '<div class="resultados-subtitulo">Factores de verificación</div>',
+    tile(r.pm.toFixed(3), 'Masa molar [kg/kmol]', 'secundario'),
+    tile(`${r.densidadNormal.toFixed(4)} kg/Nm³`, 'Densidad normal', 'secundario'),
+    tile(`${r.aireEsteq.toFixed(3)} Nm³/kg`, 'Aire estequiométrico', 'secundario'),
+    tile(`${r.caudalTotalNormalNm3H.toFixed(2)} Nm³/h`, 'Caudal total (condición normal)', 'secundario'),
+    tile(`${r.caudalTotalReferenciaM3H.toFixed(2)} m³/h`, 'Caudal total (condición de referencia)', 'secundario'),
+    tile(`${(r.composicion.h2o * 100).toFixed(2)} %`, 'H₂O en gases de combustión', 'secundario'),
+    tile(`${(r.composicion.o2 * 100).toFixed(2)} %`, 'O₂ en gases de combustión', 'secundario'),
+    tile(`${(r.composicion.n2 * 100).toFixed(2)} %`, 'N₂ en gases de combustión', 'secundario'),
   ].join('');
 }
 
@@ -479,15 +514,16 @@ function initCombustion() {
 
 function renderResultadosQuemador(r) {
   document.getElementById('resultados-quemador').innerHTML = [
-    tile(`${r.tasaQuemadoWMm2.toFixed(2)} W/mm²`, 'Tasa de quemado'),
-    tile(`${r.areaInyectorIn2.toFixed(6)} in²`, 'Área del inyector'),
-    tile(`${r.caudalInyectorM3H.toFixed(4)} m³/h`, 'Caudal por el inyector'),
-    tile(`${r.potenciaInyectorKw.toFixed(3)} kW`, 'Potencia que entrega el inyector'),
-    tile(r.racEstequiometricaMasica.toFixed(3), 'RAC estequiométrica másica [kg aire/kg gas]'),
-    tile(r.densidadPremezcla1.toFixed(4), 'Densidad de la premezcla 1ª [kg/Nm³]'),
-    tile(`${(r.caudalPremezcla1Nm3S * 1000).toFixed(4)} NL/s`, 'Caudal de premezcla 1ª'),
-    tile(`${r.largoLlamaMm.toFixed(2)} mm`, 'Largo de llama estimado'),
-    tile(r.relacionAreaGargantaPerforaciones.toFixed(4), 'Relación área garganta/perforaciones'),
+    tile(`${r.potenciaInyectorKw.toFixed(3)} kW`, 'Potencia que entrega el inyector', 'kpi'),
+    tile(`${r.largoLlamaMm.toFixed(2)} mm`, 'Largo de llama estimado', 'kpi'),
+    tile(`${r.tasaQuemadoWMm2.toFixed(2)} W/mm²`, 'Tasa de quemado', 'kpi'),
+    '<div class="resultados-subtitulo">Factores de verificación</div>',
+    tile(`${r.areaInyectorIn2.toFixed(6)} in²`, 'Área del inyector', 'secundario'),
+    tile(`${r.caudalInyectorM3H.toFixed(4)} m³/h`, 'Caudal por el inyector', 'secundario'),
+    tile(r.racEstequiometricaMasica.toFixed(3), 'RAC estequiométrica másica [kg aire/kg gas]', 'secundario'),
+    tile(r.densidadPremezcla1.toFixed(4), 'Densidad de la premezcla 1ª [kg/Nm³]', 'secundario'),
+    tile(`${(r.caudalPremezcla1Nm3S * 1000).toFixed(4)} NL/s`, 'Caudal de premezcla 1ª', 'secundario'),
+    tile(r.relacionAreaGargantaPerforaciones.toFixed(4), 'Relación área garganta/perforaciones', 'secundario'),
   ].join('');
 }
 
@@ -611,7 +647,7 @@ function porNombreTramoMemoria(id) {
 
 function renderTablaMemoria(resultado) {
   const opcionesPadre = (actualId) => ['<option value="">— raíz —</option>'].concat(
-    tramosMemoria.filter((t) => t.id !== actualId).map((t) => `<option value="${t.id}">${t.nombre}</option>`)
+    tramosMemoria.filter((t) => t.id !== actualId).map((t) => `<option value="${t.id}">${escapeHtml(t.nombre)}</option>`)
   ).join('');
 
   // Unidad elegida en cada cabecera de columna de presión — independiente
@@ -626,7 +662,7 @@ function renderTablaMemoria(resultado) {
 
   document.getElementById('memoria-tabla-cuerpo').innerHTML = resultado.map((t) => `
     <tr data-id="${t.id}">
-      <td><input type="text" class="mem-nombre" value="${t.nombre}"></td>
+      <td><input type="text" class="mem-nombre" value="${escapeAttr(t.nombre)}"></td>
       <td><select class="mem-padre">${opcionesPadre(t.id)}</select></td>
       <td style="text-align:center;"><input type="checkbox" class="mem-reset"${t.reseteaAcumulada ? ' checked' : ''} title="Reinicia la pérdida de carga acumulada desde este tramo (ej. después de un regulador de presión)"></td>
       <td>
@@ -660,7 +696,7 @@ function renderTablaMemoria(resultado) {
       <td class="mem-perdida-requerida">${formatearPresion(t.perdidaPresionRequeridaPa, unidadPerdidaRequerida)}</td>
       <td class="mem-perdida-acumulada">${formatearPresion(t.perdidaAcumuladaPa, unidadPerdidaAcumulada)}</td>
       <td class="mem-presion-final">${t.presionFinalPa !== null ? formatearPresion(t.presionFinalPa, unidadPresionFinal) : '—'}</td>
-      <td><button type="button" class="mem-eliminar no-imprimir">✕</button></td>
+      <td><button type="button" class="mem-eliminar no-imprimir" aria-label="Eliminar ${escapeAttr(t.nombre)}">✕</button></td>
     </tr>
   `).join('');
 
@@ -696,8 +732,8 @@ function renderArbolMemoria(resultado) {
     <g>
       ${n.t.reseteaAcumulada ? `<circle cx="${n.nivel * anchoNivel + 60}" cy="${n.fila * altoFila + 20}" r="12" fill="none" stroke="var(--text-primary)" stroke-width="2"/>` : ''}
       <circle cx="${n.nivel * anchoNivel + 60}" cy="${n.fila * altoFila + 20}" r="8" fill="var(--brand-orange)"/>
-      <title>${n.t.nombre} — ${formatearPresion(n.t.perdidaAcumuladaPa, 'Pa')} Pa acumulados, ${n.t.velocidadMS.toFixed(2)} m/s${n.t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</title>
-      <text x="${n.nivel * anchoNivel + 74}" y="${n.fila * altoFila + 24}" font-size="12" fill="var(--text-primary)">${n.t.nombre}</text>
+      <title>${escapeHtml(n.t.nombre)} — ${formatearPresion(n.t.perdidaAcumuladaPa, 'Pa')} Pa acumulados, ${n.t.velocidadMS.toFixed(2)} m/s${n.t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</title>
+      <text x="${n.nivel * anchoNivel + 74}" y="${n.fila * altoFila + 24}" font-size="12" fill="var(--text-primary)">${escapeHtml(n.t.nombre)}</text>
     </g>`).join('');
   svg.setAttribute('height', String(Math.max(...porNivel.values(), 1) * altoFila + 20));
   svg.innerHTML = lineas + circulos;
@@ -721,9 +757,9 @@ function actualizarTotalArtefactos() {
 function renderArtefactos() {
   document.getElementById('memoria-artefactos-cuerpo').innerHTML = proyecto.artefactos.map((a) => `
     <div class="artefacto-fila" data-id="${a.id}">
-      <input type="text" class="af-nombre" value="${a.nombre}" placeholder="Nombre del artefacto">
-      <input type="text" inputmode="decimal" class="af-potencia" value="${a.potenciaKw}" placeholder="kW">
-      <button type="button" class="af-eliminar no-imprimir">✕</button>
+      <input type="text" class="af-nombre" value="${escapeAttr(a.nombre)}" placeholder="Nombre del artefacto" aria-label="Nombre del artefacto">
+      <input type="text" inputmode="decimal" class="af-potencia" value="${a.potenciaKw}" placeholder="kW" aria-label="Potencia del artefacto [kW]">
+      <button type="button" class="af-eliminar no-imprimir" aria-label="Eliminar artefacto${a.nombre ? ' ' + escapeAttr(a.nombre) : ''}">✕</button>
     </div>
   `).join('');
   actualizarTotalArtefactos();
@@ -752,7 +788,7 @@ function renderInformeImpresion(resultado) {
 
   const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
   document.getElementById('informe-artefactos-cuerpo').innerHTML = proyecto.artefactos.length
-    ? proyecto.artefactos.map((a) => `<tr><td>${a.nombre}</td><td>${Number(a.potenciaKw).toFixed(2)} kW térmicos</td></tr>`).join('')
+    ? proyecto.artefactos.map((a) => `<tr><td>${escapeHtml(a.nombre)}</td><td>${Number(a.potenciaKw).toFixed(2)} kW térmicos</td></tr>`).join('')
     : '<tr><td colspan="2">—</td></tr>';
   document.getElementById('informe-artefactos-total').textContent = `${totalKw.toFixed(2)} kW térmicos`;
   document.getElementById('informe-potencia-instalada').textContent = `${totalKw.toFixed(2)} kW térmicos`;
@@ -765,8 +801,8 @@ function renderInformeImpresion(resultado) {
   document.getElementById('memoria-impresion-th-perdida').textContent = `P. Acumulada [${unidadPerdidaAcumulada}]`;
   document.getElementById('memoria-tabla-impresion-cuerpo').innerHTML = resultado.map((t) => `
     <tr>
-      <td>${t.nombre}</td>
-      <td>${porNombreTramoMemoria(t.continuaDesdeId)}${t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</td>
+      <td>${escapeHtml(t.nombre)}</td>
+      <td>${escapeHtml(porNombreTramoMemoria(t.continuaDesdeId))}${t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</td>
       <td>${formatearPresion(t.presionInicialPa, unidadPresionInicial)}</td>
       <td>${t.longitudM}</td>
       <td>${t.potenciaKw}</td>

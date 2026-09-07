@@ -208,6 +208,105 @@ con un `min-width` propio en cada `<input>`/`<select>` — la tabla se
 desborda con scroll horizontal (ya vive en un contenedor con
 `overflow-x:auto`) en vez de encoger columnas para caber.
 
+## Auditoría UX/UI: agrupación de inputs y jerarquía de resultados (`index.html`/`css/styles.css`/`ui.js`, 2026-09-03, a pedido del usuario)
+
+Mismo rediseño de estructura visual que `Hidrogeno` (ver su CLAUDE.md para
+el detalle del patrón — acá solo lo específico de este módulo, más grande
+por tener 5 pestañas). No toca fórmulas ni motores de cálculo, verificado
+con `node GasNatural-GLP/tests/run-all.js`:
+
+- **"Red de Gas"** agrupada en "Configuración de tubería" (régimen,
+  material, diámetro) + "Condiciones de operación" (potencia, longitud,
+  presión, temperatura) — mismas clases `.seccion`/`.seccion-titulo` que
+  `Hidrogeno`. KPI: Tubería adecuada + Pérdida de presión requerida;
+  Caudal objetivo/Velocidad/Volumen/Pérdida admisible/Presión final pasan
+  a `.secundario` bajo "Detalle del cálculo".
+- **"Almacenamiento" — el cambio más importante**: sus 3 calculadoras
+  independientes (cilindros por vaporización, cilindros por consumo
+  diario, estanque) vivían separadas solo por un `<p class="subtitulo">`,
+  sin frontera visual — confundible, porque hay dos resultados llamados
+  igual ("N° de cilindros necesarios") en dos calculadoras distintas. Cada
+  una ahora vive en su propio `.bloque-calculo` (nueva clase, con borde
+  propio — a diferencia de `.seccion`, acá sí se justifica una caja porque
+  son herramientas independientes, no un grupo de campos de un mismo
+  cálculo) dentro de `marcadoAlmacenamientoGLP()` en `ui.js`. El resultado
+  principal de cada bloque (N° cilindros, N° cilindros, Capacidad de
+  vaporización en kW) pasa a `.kpi`.
+- **"Combustión"**: sin cambio de agrupación de inputs (ya usaba
+  `.subtitulo` para separar Composición/Condiciones, un patrón que ya
+  cumplía el objetivo) — solo jerarquía de resultados. 13 tiles → 5 KPI
+  (caudal combustible/aire, CO₂, NOx/CO admisibles) + 8 `.secundario` bajo
+  "Factores de verificación".
+- **"Quemador Atmosférico"**: 9 tiles de resultado → 3 KPI (potencia
+  inyector, largo de llama, tasa de quemado) + 6 `.secundario`. A
+  diferencia de Combustión, sus 12 inputs sí se reagruparon (2026-09-06,
+  segunda pasada de la misma auditoría): pasaron de una única
+  `.fila-campos` plana a 3 `.seccion` según la cadena física real del
+  motor (`calc-quemador.js`: inyector → aireación primaria → garganta
+  Venturi) — "Condiciones de operación" (potencia, PCI, presión de gas,
+  temperaturas), "Inyector y perforaciones" (diámetro inyector, relación
+  de aire, cantidad/diámetro de perforaciones, coeficiente de descarga),
+  "Garganta Venturi" (diámetro, perforaciones). El `<p class="subtitulo">
+  Quemador</p>` que encabezaba el formulario se eliminó — los tres
+  `<h3 class="seccion-titulo">` nuevos ya cumplen ese rol.
+- **Etiquetas duplicadas en Estanque GLP** (2026-09-06): las 3 tiles
+  "Capacidad de vaporización" (kg/h, kW, Mcal/h — misma magnitud física en
+  3 unidades) compartían literalmente el mismo texto. La KPI (kW) mantiene
+  la etiqueta simple; las dos secundarias pasan a "Capacidad de
+  vaporización (másica)" [kg/h] y "Capacidad de vaporización (Mcal/h)" —
+  solo texto, `calcularEstanqueGLP` no cambió.
+- **Memoria de Cálculo reordenada** igual que Hidrogeno: tabla de tramos +
+  árbol primero, cajetines de proyecto/informe a un `<details
+  class="seccion-avanzada">` "Datos del informe" cerrado por defecto.
+  `#memoria-error` (propio de este módulo, Hidrogeno no lo tiene) se dejó
+  antes de la tabla, fuera del `<details>`, para que un error de cálculo
+  siga siendo visible sin tener que expandir nada.
+- **Fix de CSS real**: `.subseccion` (usada por los fieldsets "Firma y
+  documento"/"Criterios de diseño"/"Observaciones" de Memoria de Cálculo)
+  nunca se definió en este módulo — sí existía en `Hidrogeno/css/styles.css`
+  desde el informe formal del 2026-09-03 (commit `a2ad060`), pero no se
+  portó acá cuando se portó el resto del informe (commit `2cec801`). Sin
+  ella, esos fieldsets no expandían a ancho completo dentro de
+  `.fila-campos` (quedaban en ~200px, con "Observaciones" cortando texto).
+  Portada tal cual desde `Hidrogeno`. De paso se agregó `details`/`summary`
+  base (este módulo no usaba `<details>` para nada hasta ahora) y
+  `.resultados-subtitulo` (usada en Hidrogeno para "Factores de
+  verificación", tampoco estaba acá).
+- **Etiqueta de régimen de presión sin ceros de más**: "Baja presión
+  (<10.0000 kPa)" (`actualizarEtiquetasRegimen()` en `ui.js`) usaba
+  `formatearPresion()` de `unidades-presion.js`, pensada para tiles
+  numéricos con precisión fija — para texto de opción se ve como ruido.
+  Nueva `formatearPresionEtiqueta()` en `ui.js` (recorta ceros vía
+  `Number(...).toString()`) — no se tocó `unidades-presion.js` porque
+  `unidades-presion.test.js` depende de su precisión fija actual.
+- **Fix de overflow**: `min-width: 0` agregado a `.campo input, .campo
+  select` en `css/styles.css` (mismo fix que en `Hidrogeno`, ver su
+  CLAUDE.md) — acá no había un caso visible tan claro como el de "Tubería
+  manual" de Hidrogeno, pero previene el mismo problema en cualquier
+  `.fila-campos` angosto.
+- **Accesibilidad de pestañas** (2026-09-06): mismo patrón que
+  `Hidrogeno` (ver su CLAUDE.md para el detalle) — `aria-selected` +
+  `aria-controls`/`aria-labelledby` entre cada botón `.tab` y su
+  `role="tabpanel"`, sincronizado en `initTabs()`, más
+  `.tab:focus-visible` en `css/styles.css`. Acá son 5 pestañas en vez de
+  3, mismo criterio de nomenclatura (`id="tab-<nombre>"` /
+  `aria-controls="panel-<nombre>"`).
+- **Botones/selects de solo-ícono con nombre accesible + `escapeAttr()`**
+  (2026-09-06): mismo cambio que `Hidrogeno` (ver su CLAUDE.md para el
+  detalle, incluido el bug de la comilla literal en una etiqueta que
+  motivó agregar `escapeAttr()`) — `aria-label` en `.mem-eliminar`,
+  `.af-eliminar`, `af-nombre`/`af-potencia`, y en el `<select>` de unidad
+  inline de `tilePresion()`.
+- **Saneamiento de texto libre en Memoria de Cálculo** (2026-09-06, mismo
+  día, pasada siguiente — mismo cambio que `Hidrogeno`, ver su CLAUDE.md
+  para el detalle y el caso de prueba): nueva `escapeHtml()` junto a
+  `escapeAttr()`, aplicadas a `t.nombre`/`a.nombre` en
+  `renderTablaMemoria`, `renderArbolMemoria`, `renderArtefactos` y
+  `renderInformeImpresion`. `t.material` acá **no** necesitó el mismo
+  tratamiento — a diferencia de Hidrogeno, en este módulo el material de
+  cada tramo es un `<select>` con dos opciones fijas ("Acero Sch40"/
+  "Cobre tipo L"), no texto libre.
+
 ## Decisiones de reconciliación (no son bugs silenciados)
 
 **Red de Gas — Goal Seek manual reemplazado por álgebra**: en el Excel,

@@ -33,6 +33,7 @@ main {
 }
 .tab:hover { color: var(--text-primary); }
 .tab.active { color: var(--brand-orange-ink, var(--brand-orange)); border-bottom-color: var(--brand-orange); }
+.tab:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
@@ -42,6 +43,7 @@ main {
 .campo input, .campo select {
   font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 6px;
   border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary);
+  min-width: 0;
 }
 .campo input:focus-visible, .campo select:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
 .fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0 20px; padding-top: 20px; }
@@ -62,6 +64,18 @@ main {
 .subseccion legend { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); padding: 0 6px; }
 .subseccion .fila-campos { padding-top: 10px; }
 
+/* --- Agrupación conceptual de campos dentro de un formulario largo
+   (auditoría UX 2026-09-03, ver CLAUDE.md maestro) — separa un formulario
+   plano en bloques con propósito claro ("Condiciones de operación",
+   "Tubería y diseño normativo", etc.). A propósito sin caja/borde: la
+   jerarquía se logra con tipografía y un hairline entre bloques, no
+   apilando más cards. --- */
+.seccion + .seccion { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border-hairline); }
+.seccion-titulo {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-secondary); margin: 0 0 12px;
+}
+
 /* --- Resultados --- */
 .resultados { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 20px; }
 .resultado-tile {
@@ -74,6 +88,16 @@ main {
 .resultado-tile.alerta .valor { color: var(--brand-orange-ink, var(--brand-orange)); }
 .resultado-tile.ok { border-color: #2e7d32; }
 .resultado-tile.ok .valor { color: #2e7d32; }
+
+/* --- Jerarquía de resultados: KPI (2-4 por pestaña, el resultado que de
+   verdad importa para decidir) vs. secundario/factor de verificación —
+   mismo componente .resultado-tile, distinto peso tipográfico. --- */
+.resultado-tile.kpi { padding: 18px 20px; }
+.resultado-tile.kpi .valor { font-size: 30px; }
+.resultado-tile.kpi .etiqueta { font-size: 13px; }
+.resultado-tile.secundario { padding: 10px 14px; }
+.resultado-tile.secundario .valor { font-size: 16px; font-weight: 700; }
+.resultado-tile.secundario .etiqueta { font-size: 11.5px; }
 
 /* --- Subtítulo de categoría dentro de una grilla de resultados (ej.
    "Factores de verificación" al final de Tubería y Flujo) --- */
@@ -92,6 +116,19 @@ main {
 /* --- Tabla de referencia de tubería --- */
 details { margin-top: 20px; }
 summary { cursor: pointer; font-weight: 700; font-size: 13px; color: var(--text-secondary); }
+
+/* --- Bloque colapsable de datos secundarios (ej. "Datos del informe" en
+   Memoria de Cálculo) — mismo <details> nativo de arriba, con una caja
+   propia para que se note que agrupa varios campos, no solo una tabla de
+   referencia. Cerrado por defecto vía el atributo HTML (ver index.html):
+   el usuario debería poder trabajar la tabla de tramos sin tener que
+   revisar los datos del informe primero. --- */
+.seccion-avanzada {
+  border: 1px solid var(--gridline); border-radius: 10px; padding: 12px 16px; margin: 0 0 20px;
+}
+.seccion-avanzada summary { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+.seccion-avanzada summary::after { content: ' — opcional, solo para el informe impreso'; font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--text-muted); }
+.seccion-avanzada[open] summary { margin-bottom: 14px; }
 table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 13px; }
 th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); }
 th { color: var(--text-secondary); font-size: 12px; }
