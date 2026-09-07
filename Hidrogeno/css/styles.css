@@ -184,8 +184,21 @@ th { color: var(--text-secondary); font-size: 12px; }
 
   #memoria-informe-impresion { display: block !important; font-family: 'Lato', system-ui, sans-serif; color: #1a1a1a; }
 
-  .informe-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 3px solid var(--brand-orange); padding-bottom: 12px; margin-bottom: 10px; break-inside: avoid; }
-  .informe-logo { max-height: 50px; width: auto; flex-shrink: 0; }
+  /* align-items: flex-start (2026-09-07, a pedido del usuario) — el logo
+     ahora es más grande que el bloque de texto de al lado; se alinea por
+     el borde superior en vez de centrarse, como en un membrete real. */
+  .informe-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; border-bottom: 3px solid var(--brand-orange); padding-bottom: 12px; margin-bottom: 10px; break-inside: avoid; }
+  /* Logo agrandado e imagen recortada a su contenido visible (2026-09-07,
+     a pedido del usuario, ignorando a propósito el espacio de resguardo
+     que exige el manual de marca para este uso puntual) — usa
+     assets/logo-quempin-informe.png en vez de assets/LOGO QUEMPIN.PNG: ese
+     archivo oficial trae ~17-24% de margen transparente alrededor de la
+     marca, así que ampliar su altura no acercaba el trazo visible del logo
+     al texto de la derecha. La versión recortada deja el borde superior
+     del logo pegado al del bloque de texto (con align-items: flex-start).
+     El archivo oficial NO se tocó — sigue siendo la fuente de verdad para
+     cualquier otro uso del logo en el sitio. */
+  .informe-logo { max-height: 76px; width: auto; flex-shrink: 0; }
   .informe-empresa { flex: 1; font-size: 9.5px; line-height: 1.75; color: var(--brand-gray-11); }
   .informe-empresa strong, .informe-doc strong { color: #000000; font-weight: 700; }
   /* Cajetín de control del documento (N° / Revisión / Página) — tratamiento
@@ -286,7 +299,7 @@ th { color: var(--text-secondary); font-size: 12px; }
   .informe-firma { width: 260px; margin: 0 auto 28px; text-align: center; font-size: 10.5px; break-inside: avoid; }
   .informe-firma-etiqueta {
     font-size: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-    color: var(--brand-gray-7); margin-bottom: 22px;
+    color: var(--brand-gray-7); margin-bottom: 46px; /* 2026-09-07: más espacio en blanco para la firma manuscrita, a pedido del usuario (antes 22px) */
   }
   .informe-firma-linea { border-top: 1px solid #000000; margin-bottom: 6px; }
   #informe-firma-nombre { font-weight: 700; }

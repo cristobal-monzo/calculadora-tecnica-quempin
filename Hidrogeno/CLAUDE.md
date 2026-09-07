@@ -455,6 +455,77 @@ resumen, observaciones y firma. Decisiones:
   blanco puro (antes se colaba el beige de `--page-plane` del tema claro
   alrededor del informe).
 
+## Rediseño visual del informe (`css/styles.css`/`index.html`, 2026-09-06, a pedido del usuario)
+
+El informe original (sección anterior) tenía el contenido correcto pero un
+tratamiento visual básico — sin títulos de sección, tablas con grilla
+completa, colores de borde inconsistentes. Se refinó en una serie de
+pasos, todos dentro de `@media print` en `css/styles.css` (sin tocar
+`ui.js`, que sigue solo llenando `.textContent` por id):
+
+- **Eyebrows de sección** (`.informe-eyebrow`, reutilizada en `<div>` y en
+  `<caption>`): mayúscula + tracking + filete superior en `var(--gridline)`;
+  antes las 6 secciones (datos/criterios/artefactos/tramos/resumen/
+  observaciones) no tenían ningún título que las separara.
+- **Ficha de campos** (`.informe-ficha`/`.informe-campo`) reemplaza la
+  tabla etiqueta-izquierda/valor-derecha en Datos del proyecto y Criterios
+  de diseño — esa tabla partía mal las etiquetas largas ("Máxima pérdida
+  de carga acumulada" caía en 2 líneas y descuadraba la fila con su par).
+- **Cajetín de N° Doc/Revisión/Página** con borde propio, estilo title
+  block de plano técnico, en vez de texto suelto alineado a la derecha.
+- **Tabla de tramos "reglada"** (`#memoria-tabla-impresion`): solo filetes
+  horizontales + cebra, sin grilla completa (el aspecto por defecto de una
+  planilla exportada); cabecera con tinte del naranja de marca
+  (`rgba(255,81,0,0.06)`) y filete de 2px bajo la cabecera. Números con
+  `font-variant-numeric: tabular-nums`.
+- **Tarjetas de métrica** (`.informe-stat`) para "Pérdida acumulada
+  máxima"/"Velocidad máxima de flujo" — mismo lenguaje visual que los
+  tiles de resultado en pantalla (número grande + etiqueta chica), en vez
+  de una fila de tabla más. "Potencia instalada" en Artefactos también se
+  destaca (13px/900) frente a "Total" (paso intermedio).
+- **Etiqueta "Firma" + pie de página de cierre** (RUT/nombre/"Memoria de
+  Cálculo, Red de Gas Hidrógeno") — antes la línea de firma no explicaba
+  qué iba ahí y el documento terminaba de golpe tras la firma.
+- **Paleta de bordes unificada a los tokens de marca** (`var(--gridline)`
+  para filetes finos, `var(--brand-gray-7)` para filetes de más peso,
+  `var(--brand-gray-11)` para texto secundario) — se habían acumulado 5
+  grises de borde ligeramente distintos entre los pasos anteriores.
+  Esquinas rectas en todo el informe (se sacó el único `border-radius` que
+  quedaba, en Observaciones) — un documento controlado se lee más formal
+  sin esquinas de tarjeta de app.
+- **Resiliencia de paginado**: `#memoria-tabla-impresion thead { display:
+  table-header-group }` (repite la cabecera si la tabla pasa a una 2ª
+  página) y `break-inside: avoid` en filas/tarjetas/firma/header/
+  observaciones — el caso feliz de 1 página ya se veía bien sin esto, pero
+  una red con muchos tramos puede desbordar a más de una página.
+
+Verificado en cada paso con un viewport de ~700px (aprox. el área útil de
+una A4 con márgenes de 14mm) en vez del ancho de escritorio, que
+distorsiona el juicio sobre cómo se ve realmente el PDF impreso.
+
+## Ajustes de membrete y firma (2026-09-07, a pedido del usuario)
+
+- **Logo agrandado y recortado a su contenido visible** — el archivo
+  oficial `assets/LOGO QUEMPIN.PNG` trae ~17-24% de margen transparente
+  alrededor de la marca (confirmado inspeccionando el canal alfa), así que
+  agrandar su altura en CSS no acercaba el trazo visible del logo al texto
+  de al lado. Se generó `assets/logo-quempin-informe.png` (recorte al
+  bounding box del canal alfa + ~2% de aire) específicamente para este uso
+  — el archivo oficial NO se tocó, sigue siendo la fuente de verdad para
+  cualquier otro uso del logo en el sitio. `.informe-logo` pasó de 50px a
+  76px de alto y `.informe-header` de `align-items: center` a `flex-start`
+  para que el borde superior del logo quede a la altura del texto de la
+  derecha (RUT/Giro/Dirección) — a pedido explícito del usuario, ignorando
+  a propósito el espacio de resguardo que exigiría el manual de marca para
+  este uso puntual.
+- **Más espacio en blanco para la firma manuscrita**:
+  `.informe-firma-etiqueta` (la etiqueta "FIRMA") pasó de `margin-bottom:
+  22px` a `46px` antes de la línea.
+- **N° de documento**: pendiente — el usuario pidió que sea el siguiente
+  al que indica "el control de documentos en la fila 18" (una planilla de
+  control externa al repo, no confirmada aún cuál/dónde queda). Sigue en
+  "01" (default original) hasta que se confirme el número real a usar.
+
 ## Fuera de alcance (v1)
 
 - Gas Natural / GLP — sitio separado con selector de gas, otro ciclo de
