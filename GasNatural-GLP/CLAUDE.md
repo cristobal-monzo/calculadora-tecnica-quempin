@@ -307,6 +307,40 @@ con `node GasNatural-GLP/tests/run-all.js`:
   cada tramo es un `<select>` con dos opciones fijas ("Acero Sch40"/
   "Cobre tipo L"), no texto libre.
 
+## Ajustes de membrete, firma y numeración de documento (2026-09-07, a pedido del usuario)
+
+Mismos 3 ajustes que en `Hidrogeno` (ver su `CLAUDE.md` para el detalle
+completo, acá solo lo específico de este módulo):
+
+- **Logo agrandado (56px→76px) y recortado a su contenido visible** —
+  usa `assets/logo-quempin-informe.png` (el recorte al canal alfa del
+  logo oficial, generado para el informe de Hidrógeno, reutilizado tal
+  cual acá — no es específico de un módulo). `.informe-header` ya tenía
+  `align-items: flex-start` desde que se portó el informe (a diferencia
+  de Hidrógeno, que había pasado por `center` en una iteración de diseño
+  intermedia y hubo que revertir) — no necesitó cambio para la alineación
+  superior con el texto.
+  **Pendiente, no pedido hoy**: este módulo no tiene el resto del
+  rediseño visual del informe de Hidrógeno (eyebrows de sección, ficha de
+  campos, tabla reglada, tarjetas de métrica, cajetín de N° Doc con
+  borde) — su informe sigue en el estado del port original
+  (`2cec801`). Si se quiere emparejar visualmente con Hidrógeno, es un
+  trabajo aparte.
+- **Más espacio para la firma manuscrita**: como este módulo no tiene la
+  etiqueta "FIRMA" que sí tiene Hidrógeno (tampoco portada), el espacio se
+  agregó como `margin-top: 46px` en `.informe-firma-linea` directamente
+  (mismo resultado visual — un área en blanco antes de la línea — sin
+  agregar la etiqueta, que no se pidió acá).
+- **N° de documento**: default de `numeroDoc` pasó de "01" a **"402604"**
+  — mismo código `40XXXX`/fila 18 de `QUEMPIN_Control de Documentos
+  2026.xlsx` que usa Hidrógeno (a pedido explícito del usuario, en vez del
+  código más específico `41XXXX`/fila 19 "Memoria de cálculo de red de
+  gas"), siguiente disponible después del `402603` que tomó Hidrógeno.
+  Ver el `CLAUDE.md` de `Hidrogeno` para el detalle del formato del código
+  y el criterio de mantenimiento (hay que subir el default a mano cada vez
+  que se emite una memoria real — la app no puede escribir en la
+  planilla).
+
 ## Decisiones de reconciliación (no son bugs silenciados)
 
 **Red de Gas — Goal Seek manual reemplazado por álgebra**: en el Excel,

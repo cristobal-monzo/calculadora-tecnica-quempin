@@ -521,10 +521,34 @@ distorsiona el juicio sobre cómo se ve realmente el PDF impreso.
 - **Más espacio en blanco para la firma manuscrita**:
   `.informe-firma-etiqueta` (la etiqueta "FIRMA") pasó de `margin-bottom:
   22px` a `46px` antes de la línea.
-- **N° de documento**: pendiente — el usuario pidió que sea el siguiente
-  al que indica "el control de documentos en la fila 18" (una planilla de
-  control externa al repo, no confirmada aún cuál/dónde queda). Sigue en
-  "01" (default original) hasta que se confirme el número real a usar.
+- **N° de documento correlativo con el control de documentos QUEMPIN**:
+  el default de `numeroDoc` pasó de "01" a **"402603"**. Fuente:
+  `QUEMPIN_Control de Documentos 2026.xlsx` (vive en la raíz del repo,
+  **gitignored** por `*.xlsx` — no se versiona, es una planilla de gestión
+  externa al código, igual criterio que `Calculos H2.xlsx`/`Libro11111111.xlsx`),
+  hoja "Chile", fila 18: código `40XXXX` ("Cálculo de ingeniería" /
+  "Memoria de cálculo"), columna "Último Emitido" = `402602` al
+  2026-09-07. Formato del código: `TT` (tipo de documento, 2 dígitos) +
+  `AA` (año, 2 dígitos) + `NN` (correlativo del año, 2 dígitos) — ej.
+  `402602` = tipo 40, año 2026, 2º emitido ese año; confirmado contra
+  todas las demás filas de la planilla (el año del código coincide con el
+  año real de emisión en cada fila salvo esta, que tiene la columna
+  "Fecha"/"Nombre de Archivo" desactualizada un emitido respecto a
+  "Último Emitido" — se confía en "Último Emitido" por ser la columna con
+  ese nombre explícito). **GasNatural-GLP usa el mismo código 40XXXX**
+  (a pedido explícito del usuario, aunque existe un código más específico
+  — `41XXXX`, fila 19, "Memoria de cálculo de red de gas" — se decidió no
+  usarlo para no fragmentar el correlativo en dos numeraciones paralelas).
+  Como los dos módulos comparten una única numeración de la fila 18,
+  Hidrógeno tomó `402603` y GasNatural-GLP `402604` (siguiente disponible
+  después de asignar el de Hidrógeno) — ver el `CLAUDE.md` de
+  `GasNatural-GLP` para el mismo detalle.
+  **Mantenimiento**: este número NO se actualiza solo — la app es estática
+  y no tiene forma de escribir en la planilla. Cada vez que el usuario
+  confirme que emitió/entregó una memoria de cálculo real, hay que (1)
+  actualizar "Último Emitido" en la planilla (y agregar la fila con
+  autor/fecha/referencia si corresponde) y (2) subir el default de
+  `numeroDoc` de ambos módulos al siguiente número disponible.
 
 ## Fuera de alcance (v1)
 

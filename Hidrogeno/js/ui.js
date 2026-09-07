@@ -407,7 +407,7 @@ const OBSERVACIONES_DEFECTO =
 function proyectoPorDefecto() {
   return {
     fecha: '', proyecto: '', instalador: '', contacto: '', direccion: '', comuna: '',
-    cargoInstalador: '', runInstalador: '', numeroDoc: '01', revision: '1',
+    cargoInstalador: '', runInstalador: '', numeroDoc: '402603', revision: '1',
     velocidadMaxFlujoDisenoMS: 20, velocidadErosionDisenoMS: null, perdidaMaxAcumuladaDisenoPa: null,
     artefactos: [], observaciones: OBSERVACIONES_DEFECTO,
   };

@@ -218,7 +218,12 @@ summary { cursor: pointer; font-weight: 700; font-size: 13px; color: var(--text-
   #memoria-informe-impresion { display: block !important; font-family: 'Lato', system-ui, sans-serif; color: #1a1a1a; }
 
   .informe-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; border-bottom: 2px solid var(--brand-orange); padding-bottom: 10px; margin-bottom: 10px; }
-  .informe-logo { max-height: 56px; width: auto; }
+  /* Logo agrandado y con la imagen recortada a su contenido visible
+     (2026-09-07, a pedido del usuario, mismo criterio que Hidrogeno — ver
+     su CLAUDE.md para el detalle del recorte del canal alfa). Usa
+     assets/logo-quempin-informe.png en vez del archivo oficial de marca,
+     que trae ~17-24% de margen transparente alrededor de la marca. */
+  .informe-logo { max-height: 76px; width: auto; }
   .informe-empresa { flex: 1; font-size: 10px; line-height: 1.6; color: #333333; }
   .informe-empresa strong, .informe-doc strong { color: #000000; }
   .informe-doc { font-size: 10px; text-align: right; line-height: 1.6; white-space: nowrap; color: #333333; }
@@ -249,7 +254,7 @@ summary { cursor: pointer; font-weight: 700; font-size: 13px; color: var(--text-
   .informe-observaciones { font-size: 9.5px; color: #333333; border: 1px solid #cccccc; border-radius: 4px; padding: 8px 10px; margin-bottom: 30px; }
 
   .informe-firma { width: 260px; margin: 0 auto; text-align: center; font-size: 10.5px; }
-  .informe-firma-linea { border-top: 1px solid #000000; margin-bottom: 6px; }
+  .informe-firma-linea { border-top: 1px solid #000000; margin-top: 46px; margin-bottom: 6px; } /* 2026-09-07: más espacio en blanco para la firma manuscrita, a pedido del usuario */
   #informe-firma-nombre { font-weight: 700; }
   #informe-firma-cargo, #informe-firma-run { color: #333333; }
 }

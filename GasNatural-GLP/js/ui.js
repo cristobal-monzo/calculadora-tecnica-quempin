@@ -613,7 +613,7 @@ const OBSERVACIONES_DEFECTO =
 function proyectoPorDefecto() {
   return {
     fecha: '', proyecto: '', instalador: '', contacto: '', direccion: '', comuna: '',
-    cargoInstalador: '', runInstalador: '', numeroDoc: '01', revision: '1',
+    cargoInstalador: '', runInstalador: '', numeroDoc: '402604', revision: '1',
     // A diferencia de Hidrógeno (que precompleta 20 m/s, el límite NFPA 2 ya
     // usado en "Tubería y Flujo"), acá se deja sin valor por defecto: no hay
     // una norma de referencia ya usada en este módulo de la que tomar un
