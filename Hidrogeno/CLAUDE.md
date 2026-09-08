@@ -550,6 +550,65 @@ distorsiona el juicio sobre cómo se ve realmente el PDF impreso.
   autor/fecha/referencia si corresponde) y (2) subir el default de
   `numeroDoc` de ambos módulos al siguiente número disponible.
 
+## Fix de foco al escribir en la Memoria de Cálculo (`ui.js`, 2026-09-08, a pedido del usuario)
+
+Bug reportado por el usuario: en la tabla de tramos y en la lista de
+artefactos de "Memoria de Cálculo" solo se podía tipear **un carácter a la
+vez** (y nunca la coma decimal) — cada tecla dejaba el cajetín sin foco y
+había que volver a hacer clic para seguir escribiendo. Causa raíz:
+`recalcularMemoria()`, disparada por el listener de `'input'` delegado en
+`#memoria-tabla-cuerpo` y en `#memoria-artefactos-cuerpo`, reescribía el
+`innerHTML` completo de esos contenedores en **cada tecla** — destruye y
+recrea los `<input>` (pierde el foco) y vuelve a serializar el valor ya
+convertido a número vía `numeroFlexible()` (descarta cualquier "," recién
+tipeada antes del siguiente carácter).
+
+Este mismo bug ya se había corregido en `GasNatural-GLP/js/ui.js` el
+2026-09-03 (ver su `CLAUDE.md`) pero explícitamente **no se portó acá** en
+esa sesión, para no interferir con el informe formal que se mergeaba en
+paralelo — quedó documentado como pendiente. Portado ahora, mismo patrón:
+
+- **`recalcularMemoriaLigero()`** (nueva función): recalcula la red
+  (`calcularRed(tramos)`) pero solo actualiza las celdas de **resultado**
+  de cada fila (de solo lectura, identificadas con las clases nuevas
+  `.mem-densidad`/`.mem-velocidad`/`.mem-perdida-parcial`/
+  `.mem-perdida-acumulada` agregadas en `renderTablaMemoria()`) vía
+  `textContent`, más el árbol SVG y el informe impreso — nunca toca ningún
+  `<input>`/`<select>` de la fila, así que el foco y lo que el usuario ya
+  escribió se conservan. El listener de `'input'` en
+  `#memoria-tabla-cuerpo` ahora decide por `evento.target.tagName`: un
+  `<select>` (tubería, padre — cambia estructura de la fila) sigue
+  llamando `recalcularMemoria()` completo; cualquier `<input>` de
+  texto/checkbox (incluido el checkbox "Reinicia acum.", que no cambia
+  estructura) llama `recalcularMemoriaLigero()`.
+- **Artefactos**: el listener de `'input'` en `#memoria-artefactos-cuerpo`
+  ya no llama a `recalcularMemoria()` completo (que a su vez llamaba
+  `renderArtefactos()`, reescribiendo la lista entera) — ahora solo llama
+  `actualizarTotalArtefactos()` (nueva función, extraída de
+  `renderArtefactos()`) y `renderInformeImpresion(ultimoResultadoMemoria)`.
+  Agregar/quitar un artefacto sigue regenerando la lista completa vía
+  `renderArtefactos()` (no tiene el problema, no es tecla a tecla).
+- **Cajetines de proyecto** (`#form-memoria-proyecto`, fecha/instalador/
+  criterios/observaciones): tampoco se regeneran vía `innerHTML`, así que
+  no tenían el problema de foco en sí — pero el listener llamaba
+  `recalcularMemoria()` completo igual (recalculaba y redibujaba toda la
+  tabla de tramos sin necesidad). Cambiado a llamar solo
+  `renderInformeImpresion(ultimoResultadoMemoria)`, igual que
+  `GasNatural-GLP`.
+- **`ultimoResultadoMemoria`** (nueva variable de módulo, mismo nombre que
+  en `GasNatural-GLP`): cachea el último resultado de `calcularRed(tramos)`
+  para que los cajetines de artefactos/proyecto puedan refrescar el
+  informe impreso sin recalcular la red entera.
+
+Verificado en navegador (no solo con la regresión de fórmulas, que no
+cubre `ui.js`): escribir un decimal completo con coma
+("12,5") carácter por carácter en Longitud, Nombre, y en Nombre/Potencia
+de un artefacto, sin perder el foco ni ningún carácter. Los `<select>`
+(unidad de columna, tubería manual, padre) y el checkbox de reseteo siguen
+actualizando la tabla/estructura correctamente. `node
+Hidrogeno/tests/run-all.js` sigue en verde (este fix es solo de `ui.js`,
+no toca ningún motor de cálculo).
+
 ## Fuera de alcance (v1)
 
 - Gas Natural / GLP — sitio separado con selector de gas, otro ciclo de

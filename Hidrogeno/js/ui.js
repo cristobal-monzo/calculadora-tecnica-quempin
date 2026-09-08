@@ -393,6 +393,7 @@ let tramos = [];
 let contadorId = 0;
 let proyecto = null;
 let contadorArtefactoId = 0;
+let ultimoResultadoMemoria = [];
 
 // Texto de observaciones por defecto (2026-09-02, a pedido del usuario) —
 // mismo texto que trae el documento de ejemplo de QUEMPIN (Q=vA en vez del
@@ -463,10 +464,10 @@ function renderTablaMemoria(resultado) {
       </td>
       <td><input type="text" class="mem-material" value="${escapeAttr(t.material)}"></td>
       <td><input type="text" inputmode="decimal" class="mem-temp" value="${t.temperaturaC}"></td>
-      <td>${formatearNumero(t.densidadKgM3)}</td>
-      <td>${formatearNumero(t.velocidadFlujoMS)}</td>
-      <td>${formatearPresionBonita(aPa(t.perdidaParcialMbar, 'mbar'), unidadPerdidaParcial)}</td>
-      <td>${formatearPresionBonita(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td>
+      <td class="mem-densidad">${formatearNumero(t.densidadKgM3)}</td>
+      <td class="mem-velocidad">${formatearNumero(t.velocidadFlujoMS)}</td>
+      <td class="mem-perdida-parcial">${formatearPresionBonita(aPa(t.perdidaParcialMbar, 'mbar'), unidadPerdidaParcial)}</td>
+      <td class="mem-perdida-acumulada">${formatearPresionBonita(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td>
       <td><button type="button" class="mem-eliminar no-imprimir" aria-label="Eliminar ${escapeAttr(t.nombre)}">✕</button></td>
     </tr>
   `).join('');
@@ -523,6 +524,12 @@ function formatearCriterio(valor, unidad) {
     ? `- [${unidad}]` : `${formatearNumero(valor)} [${unidad}]`;
 }
 
+function actualizarTotalArtefactos() {
+  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
+  document.getElementById('memoria-artefactos-total-txt').textContent =
+    `Total: ${formatearNumero(totalKw)} kW térmicos — Potencia instalada: ${formatearNumero(totalKw)} kW térmicos (no se considera operación simultánea)`;
+}
+
 function renderArtefactos() {
   document.getElementById('memoria-artefactos-cuerpo').innerHTML = proyecto.artefactos.map((a) => `
     <div class="artefacto-fila" data-id="${a.id}">
@@ -531,9 +538,7 @@ function renderArtefactos() {
       <button type="button" class="af-eliminar no-imprimir" aria-label="Eliminar artefacto${a.nombre ? ' ' + escapeAttr(a.nombre) : ''}">✕</button>
     </div>
   `).join('');
-  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
-  document.getElementById('memoria-artefactos-total-txt').textContent =
-    `Total: ${formatearNumero(totalKw)} kW térmicos — Potencia instalada: ${formatearNumero(totalKw)} kW térmicos (no se considera operación simultánea)`;
+  actualizarTotalArtefactos();
 }
 
 function renderInformeImpresion(resultado) {
@@ -601,9 +606,56 @@ function recalcularMemoria() {
       `<tr><td colspan="14" class="resultado-tile alerta">${error.message}</td></tr>`;
     return;
   }
+  ultimoResultadoMemoria = resultado;
   renderTablaMemoria(resultado);
   renderArbol(resultado);
   renderArtefactos();
+  renderInformeImpresion(resultado);
+  guardar('memoria', tramos);
+  guardar('memoria-proyecto', proyecto);
+}
+
+// Fix de foco al escribir (bug reportado por el usuario 2026-09-08, mismo
+// patrón que GasNatural-GLP corrigió el 2026-09-03 — ver su CLAUDE.md; acá
+// había quedado pendiente de portar): recalcularMemoria() reescribe el
+// innerHTML completo de #memoria-tabla-cuerpo en cada tecla, destruyendo el
+// foco del cajetín y volviendo a serializar el valor ya convertido a
+// número, descartando cualquier "," recién tipeada antes del siguiente
+// carácter — en la práctica, escribir un decimal solo dejaba entrar el
+// primer dígito. recalcularMemoriaLigero() solo actualiza las celdas de
+// resultado (de solo lectura, identificadas con las clases nuevas
+// .mem-densidad/.mem-velocidad/.mem-perdida-parcial/.mem-perdida-acumulada
+// en renderTablaMemoria()) vía textContent y sincroniza las etiquetas de
+// "Continúa desde" de las demás filas si el nombre cambió — nunca toca
+// ningún <input>/<select>, así que el foco y lo que el usuario ya escribió
+// se conservan. Los <select> de la fila (tubería, padre) siguen pasando
+// por recalcularMemoria() completo, ver el listener en initMemoria().
+function recalcularMemoriaLigero() {
+  let resultado;
+  try {
+    resultado = calcularRed(tramos);
+  } catch (error) {
+    document.getElementById('memoria-tabla-cuerpo').innerHTML =
+      `<tr><td colspan="14" class="resultado-tile alerta">${error.message}</td></tr>`;
+    return;
+  }
+  ultimoResultadoMemoria = resultado;
+  const unidadPerdidaParcial = document.getElementById('memoria-perdida-parcial-unidad').value;
+  const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
+  resultado.forEach((t) => {
+    const fila = document.querySelector(`#memoria-tabla-cuerpo tr[data-id="${t.id}"]`);
+    if (!fila) return;
+    fila.querySelector('.mem-densidad').textContent = formatearNumero(t.densidadKgM3);
+    fila.querySelector('.mem-velocidad').textContent = formatearNumero(t.velocidadFlujoMS);
+    fila.querySelector('.mem-perdida-parcial').textContent = formatearPresionBonita(aPa(t.perdidaParcialMbar, 'mbar'), unidadPerdidaParcial);
+    fila.querySelector('.mem-perdida-acumulada').textContent = formatearPresionBonita(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada);
+  });
+  tramos.forEach((t) => {
+    document.querySelectorAll(`#memoria-tabla-cuerpo .mem-padre option[value="${t.id}"]`).forEach((opcion) => {
+      opcion.textContent = t.nombre;
+    });
+  });
+  renderArbol(resultado);
   renderInformeImpresion(resultado);
   guardar('memoria', tramos);
   guardar('memoria-proyecto', proyecto);
@@ -706,12 +758,20 @@ function initMemoria() {
     recalcularMemoria();
   });
 
+  // Un <select> cambia la estructura de la fila (opciones de padre,
+  // visibilidad de sub-campos manuales) y necesita el re-render completo;
+  // un <input> de texto/checkbox solo actualiza los resultados calculados
+  // sin tocar ningún elemento de ingreso — ver recalcularMemoriaLigero().
   document.getElementById('memoria-tabla-cuerpo').addEventListener('input', (evento) => {
     const fila = evento.target.closest('tr[data-id]');
     if (!fila) return;
     const actualizado = leerFilaMemoria(fila);
     tramos = tramos.map((t) => (t.id === actualizado.id ? actualizado : t));
-    recalcularMemoria();
+    if (evento.target.tagName === 'SELECT') {
+      recalcularMemoria();
+    } else {
+      recalcularMemoriaLigero();
+    }
   });
 
   document.getElementById('memoria-tabla-cuerpo').addEventListener('click', (evento) => {
@@ -722,21 +782,30 @@ function initMemoria() {
   });
 
   // Cajetines de datos del proyecto (fecha, instalador, artefactos, etc.) —
-  // un único listener de 'input' delegado en el <form>, igual que las otras
-  // 2 pestañas leen sus formularios estáticos. Los artefactos NO viven
+  // un único listener de 'input' delegado en el <form>; nunca se regeneran
+  // vía innerHTML (solo se leen y se guardan), así que no tienen el
+  // problema de foco de la tabla de tramos — solo hace falta refrescar el
+  // informe impreso, no recalcular toda la red. Los artefactos NO viven
   // dentro de este <form> (ver más abajo) para que su propio re-render no
   // dispare este listener dos veces.
   document.getElementById('form-memoria-proyecto').addEventListener('input', () => {
     proyecto = { ...proyecto, ...leerProyecto() };
-    recalcularMemoria();
+    renderInformeImpresion(ultimoResultadoMemoria);
+    guardar('memoria-proyecto', proyecto);
   });
 
+  // Artefactos: escribir en un cajetín solo actualiza el total y el
+  // informe (sin regenerar la lista, mismo criterio que
+  // recalcularMemoriaLigero()); agregar/quitar sí necesita regenerar la
+  // lista completa (ver el listener 'click' debajo).
   document.getElementById('memoria-artefactos-cuerpo').addEventListener('input', (evento) => {
     const fila = evento.target.closest('.artefacto-fila');
     if (!fila) return;
     const actualizado = leerFilaArtefacto(fila);
     proyecto.artefactos = proyecto.artefactos.map((a) => (a.id === actualizado.id ? actualizado : a));
-    recalcularMemoria();
+    actualizarTotalArtefactos();
+    renderInformeImpresion(ultimoResultadoMemoria);
+    guardar('memoria-proyecto', proyecto);
   });
 
   document.getElementById('memoria-artefactos-cuerpo').addEventListener('click', (evento) => {
