@@ -732,7 +732,36 @@ function etiquetaTuberia(t) {
   return t.tuberiaPulgadas === 'manual' ? `Manual ${t.tuberiaManual.diMm} mm` : formatearPulgadas(t.tuberiaPulgadas);
 }
 
+// El informe debe entrar siempre en una sola hoja (2026-09-08, a pedido
+// del usuario) — con una red de muchos tramos, la tabla puede crecer más
+// alto que una A4. En vez de dejarlo desbordar a una 2ª página, se mide el
+// alto real ya renderizado con los estilos de impresión aplicados
+// (beforeprint dispara después de que el navegador cambia a @media print)
+// y, si no entra, se reduce todo el informe con `zoom` — a diferencia de
+// `transform: scale()`, `zoom` sí reduce el alto de layout de la caja, así
+// que la paginación de impresión ve el tamaño ya achicado y no corta una
+// 2ª hoja. Alto disponible = A4 (297mm) menos los 2 márgenes de 14mm del
+// `@page` en css/styles.css, convertido a px CSS (96px = 25.4mm, fijo por
+// spec, no depende del DPI real de pantalla/impresora). Sin piso mínimo
+// de escala a propósito — la instrucción es "siempre entra en una hoja",
+// no "entra salvo que haya demasiados tramos".
+function ajustarEscalaImpresion() {
+  const el = document.getElementById('memoria-informe-impresion');
+  if (!el) return;
+  el.style.zoom = '';
+  // ×0.98: margen de seguridad contra el redondeo de `zoom` (medido ~3px
+  // de diferencia entre el alto pedido y el alto final renderizado).
+  const altoDisponiblePx = (297 - 2 * 14) * (96 / 25.4) * 0.98;
+  const altoNaturalPx = el.scrollHeight;
+  el.style.zoom = altoNaturalPx > altoDisponiblePx ? altoDisponiblePx / altoNaturalPx : '';
+}
+
 function initMemoria() {
+  window.addEventListener('beforeprint', ajustarEscalaImpresion);
+  window.addEventListener('afterprint', () => {
+    const el = document.getElementById('memoria-informe-impresion');
+    if (el) el.style.zoom = '';
+  });
   tramos = cargar('memoria', null) ?? [tramoPorDefecto()];
   contadorId = tramos.length;
   proyecto = cargar('memoria-proyecto', null) ?? proyectoPorDefecto();

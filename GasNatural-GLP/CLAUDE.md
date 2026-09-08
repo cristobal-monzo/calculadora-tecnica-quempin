@@ -312,14 +312,15 @@ con `node GasNatural-GLP/tests/run-all.js`:
 Mismos 3 ajustes que en `Hidrogeno` (ver su `CLAUDE.md` para el detalle
 completo, acá solo lo específico de este módulo):
 
-- **Logo agrandado (56px→76px) y recortado a su contenido visible** —
-  usa `assets/logo-quempin-informe.png` (el recorte al canal alfa del
-  logo oficial, generado para el informe de Hidrógeno, reutilizado tal
-  cual acá — no es específico de un módulo). `.informe-header` ya tenía
-  `align-items: flex-start` desde que se portó el informe (a diferencia
-  de Hidrógeno, que había pasado por `center` en una iteración de diseño
-  intermedia y hubo que revertir) — no necesitó cambio para la alineación
-  superior con el texto.
+- **Logo agrandado y recortado a su contenido visible** — usa
+  `assets/logo-quempin-informe.png` (el recorte al canal alfa del logo
+  oficial, generado para el informe de Hidrógeno, reutilizado tal cual
+  acá — no es específico de un módulo). Pasó por 56px→76px→**60px** (el
+  mismo ajuste que Hidrógeno, revertido ~20% el mismo día tras revisión
+  visual — 76px quedaba muy grande) y `.informe-header` de
+  `align-items: flex-start` (como quedó al portar el informe) a
+  **`center`**, igual criterio que Hidrógeno: con el logo ya en un tamaño
+  comedido, centrado se ve mejor que alineado por el borde superior.
   **Pendiente, no pedido hoy**: este módulo no tiene el resto del
   rediseño visual del informe de Hidrógeno (eyebrows de sección, ficha de
   campos, tabla reglada, tarjetas de métrica, cajetín de N° Doc con
@@ -340,6 +341,15 @@ completo, acá solo lo específico de este módulo):
   y el criterio de mantenimiento (hay que subir el default a mano cada vez
   que se emite una memoria real — la app no puede escribir en la
   planilla).
+
+## El informe siempre entra en una sola hoja (`ui.js`, 2026-09-08, a pedido del usuario)
+
+Mismo mecanismo que `Hidrogeno` (ver su `CLAUDE.md` para el detalle
+completo): `ajustarEscalaImpresion()`, enganchada a `beforeprint`/
+`afterprint`, mide el alto real del informe ya renderizado con `@media
+print` aplicado y lo reduce con `zoom` (no `transform: scale()`, que no
+reduce el alto de layout de la caja) si no entra en una A4 con márgenes
+de 14mm. Sin piso mínimo de escala — la instrucción es "siempre".
 
 ## Decisiones de reconciliación (no son bugs silenciados)
 

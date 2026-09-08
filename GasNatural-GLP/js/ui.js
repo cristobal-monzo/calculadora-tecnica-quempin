@@ -964,7 +964,32 @@ function leerFilaMemoria(fila) {
   };
 }
 
+// El informe debe entrar siempre en una sola hoja (2026-09-08, a pedido
+// del usuario, mismo criterio que Hidrogeno — ver su CLAUDE.md para el
+// detalle). Con una red de muchos tramos la tabla puede crecer más alto
+// que una A4; en vez de desbordar a una 2ª página, se mide el alto real
+// ya renderizado con los estilos de impresión aplicados (beforeprint
+// dispara después de que el navegador cambia a @media print) y, si no
+// entra, se reduce todo el informe con `zoom` (a diferencia de
+// `transform: scale()`, sí reduce el alto de layout de la caja, así que
+// la paginación de impresión ve el tamaño ya achicado).
+function ajustarEscalaImpresion() {
+  const el = document.getElementById('memoria-informe-impresion');
+  if (!el) return;
+  el.style.zoom = '';
+  // ×0.98: margen de seguridad contra el redondeo de `zoom` (mismo
+  // criterio que Hidrogeno, ver su CLAUDE.md).
+  const altoDisponiblePx = (297 - 2 * 14) * (96 / 25.4) * 0.98;
+  const altoNaturalPx = el.scrollHeight;
+  el.style.zoom = altoNaturalPx > altoDisponiblePx ? altoDisponiblePx / altoNaturalPx : '';
+}
+
 function initMemoria() {
+  window.addEventListener('beforeprint', ajustarEscalaImpresion);
+  window.addEventListener('afterprint', () => {
+    const el = document.getElementById('memoria-informe-impresion');
+    if (el) el.style.zoom = '';
+  });
   tramosMemoria = cargar('memoria-red-gas', null) ?? [tramoMemoriaPorDefecto()];
   contadorIdMemoria = tramosMemoria.length;
   proyecto = cargar('memoria-proyecto', null) ?? proyectoPorDefecto();

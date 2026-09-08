@@ -517,7 +517,10 @@ distorsiona el juicio sobre cómo se ve realmente el PDF impreso.
   para que el borde superior del logo quede a la altura del texto de la
   derecha (RUT/Giro/Dirección) — a pedido explícito del usuario, ignorando
   a propósito el espacio de resguardo que exigiría el manual de marca para
-  este uso puntual.
+  este uso puntual. **Ajustado de nuevo el mismo día tras revisión visual**:
+  76px quedaba demasiado grande — bajó a **60px** (~20% menos) y
+  `align-items` volvió a `center` (con el logo más chico, centrado se ve
+  mejor que alineado por el borde superior).
 - **Más espacio en blanco para la firma manuscrita**:
   `.informe-firma-etiqueta` (la etiqueta "FIRMA") pasó de `margin-bottom:
   22px` a `46px` antes de la línea.
@@ -549,6 +552,33 @@ distorsiona el juicio sobre cómo se ve realmente el PDF impreso.
   actualizar "Último Emitido" en la planilla (y agregar la fila con
   autor/fecha/referencia si corresponde) y (2) subir el default de
   `numeroDoc` de ambos módulos al siguiente número disponible.
+
+## El informe siempre entra en una sola hoja (`ui.js`, 2026-09-08, a pedido del usuario)
+
+Con una red de muchos tramos, la tabla de `#memoria-informe-impresion`
+puede crecer más alto que una A4 y desbordar a una 2ª página — la
+"resiliencia de paginado" agregada en el rediseño visual (`thead {
+display: table-header-group }`, `break-inside: avoid`, ver sección de
+arriba) asumía que eso era aceptable como fallback. El usuario pidió que
+el informe **siempre** quepa en una sola hoja, sin excepción.
+
+`ajustarEscalaImpresion()` (nueva función en `ui.js`) mide el alto real
+del informe ya renderizado con los estilos de `@media print` aplicados
+(engachada a los eventos globales `beforeprint`/`afterprint` de la
+ventana, no solo al botón "Imprimir/Guardar PDF" — así también cubre
+Ctrl+P o el menú nativo del navegador) y, si no entra en el alto
+disponible de una A4 con márgenes de 14mm (`(297 - 28) * 96/25.4 * 0.98`
+px CSS, con 2% de margen de seguridad contra el redondeo de `zoom`,
+medido empíricamente en ~0.3-0.5%), reduce todo el informe con la
+propiedad CSS `zoom`. Se prefirió `zoom` sobre `transform: scale()`
+porque `zoom` sí reduce el alto de **layout** de la caja (no solo el
+pintado visual) — con `transform`, el motor de paginado de impresión
+seguiría viendo el alto original sin escalar y podría igual cortar una 2ª
+página aunque el contenido se vea más chico. `afterprint` resetea el zoom
+a `''` para no dejar la vista en pantalla achicada. Sin piso mínimo de
+escala a propósito — la instrucción es "siempre", no "salvo que haya
+demasiados tramos". Verificado con 20 tramos (bastante más de lo que el
+caso de uso típico necesita): factor ~0.76, cabe cómodo dentro de una A4.
 
 ## Fix de foco al escribir en la Memoria de Cálculo (`ui.js`, 2026-09-08, a pedido del usuario)
 
