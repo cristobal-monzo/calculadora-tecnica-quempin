@@ -469,6 +469,13 @@
     });
   })();
 </script>
-<script type="module" src="js/ui.js"></script>
+<!-- Carga con cache-buster: GitHub Pages sirve los .js con Cache-Control:
+     max-age=600, así que tras publicar un arreglo el navegador seguía
+     ejecutando el ui.js viejo (y una pestaña abierta desde antes, para
+     siempre). El import dinámico con timestamp fuerza traer el módulo de
+     entrada fresco en cada carga — ver CLAUDE.md. -->
+<script type="module">
+  import(`./js/ui.js?v=${Date.now()}`);
+</script>
 </body>
 </html>

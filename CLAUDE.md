@@ -70,6 +70,47 @@ clientes). El repo completo es el sitio; publicar es `git push` a `main`.
 Sin gate de contraseña — es una herramienta de referencia de ingeniería,
 menos sensible que los dashboards financieros que sí lo justifican.
 
+### Caché del navegador y el `?v=` del módulo de entrada (2026-09-08)
+
+GitHub Pages sirve los `.js` con `Cache-Control: max-age=600` y **no se
+puede cambiar esa cabecera** desde el repo. Consecuencia real (nos costó
+una sesión entera de depuración): después de publicar un arreglo, el
+usuario seguía viendo el bug porque su navegador ejecutaba el `ui.js`
+viejo — y una pestaña abierta desde antes del arreglo nunca vuelve a
+pedir el archivo, así que se queda con el código viejo indefinidamente.
+
+Por eso el `index.html` de cada módulo **no** carga `js/ui.js` con
+`<script type="module" src>`, sino con un import dinámico con timestamp:
+
+```html
+<script type="module">
+  import(`./js/ui.js?v=${Date.now()}`);
+</script>
+```
+
+Así el módulo de entrada se trae fresco en cada carga de página. Cuesta
+una request sin caché de un archivo chico — irrelevante para una
+herramienta interna, y a cambio ningún arreglo queda escondido tras la
+caché.
+
+**Limitación conocida, a propósito**: el `?v=` NO se propaga a los
+módulos que `ui.js` importa (`calc-*.js`, `physics.js`, `gas-*.js`,
+`storage.js`, `unidades-presion.js`) — esos siguen sujetos al `max-age`
+de 10 minutos. Se aceptó así porque la lógica de UI (donde aparecen los
+bugs que solo se ven en el navegador) vive toda en `ui.js`; los motores
+de cálculo cambian poco y están cubiertos por los tests de regresión. Si
+alguna vez hay que forzar un motor, esperar 10 minutos o pedirle al
+usuario un recargado forzado (Ctrl+Shift+R).
+
+**Al depurar un "no se arregló"**: antes de tocar código, confirmar qué
+código está corriendo realmente. Dos trampas ya vividas en este repo —
+(1) servidores `python -m http.server` viejos quedados de sesiones
+anteriores sirviendo una copia obsoleta del repo (llegó a haber 3
+escuchando el mismo puerto a la vez, con snapshots de días distintos), y
+(2) la caché del navegador de arriba. Verificar con
+`curl -s <url>/js/ui.js | grep <función nueva>` y con `netstat -ano |
+grep <puerto>` que haya un solo servidor.
+
 ## Herramientas dinámicas y datos
 
 No aplica el mandato de "export estático saneado desde un Excel/JSON
