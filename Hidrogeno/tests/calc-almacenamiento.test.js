@@ -17,15 +17,21 @@ const r = calcularAlmacenamiento({
   unidadCaudalReferencia: '[m³/h]',
 });
 
-cerca(r.masaAlmacenadaKg, 2.619197844806117);       // H6
-assert.equal(r.zAlmacenamiento, 1.2);                 // C7
+// H6/C7 RE-BASELINEADOS 2026-09-08 (a pedido del usuario): C7 era una
+// función escalón que devolvía 1.2 para cualquier presión entre 200 y 300
+// bar. Con la correlación continua de NIST, a 200 bar abs y 20°C el valor
+// real es 1.1247527..., y la masa almacenada sube de 2.6192 a 2.7944 kg
+// (+6.7%: el escalón sobrestimaba Z y por lo tanto subestimaba la masa).
+// Ver tests/factor-z-h2.test.js y Hidrogeno/CLAUDE.md.
+cerca(r.masaAlmacenadaKg, 2.7944252008282993);        // H6
+cerca(r.zAlmacenamiento, 1.124752744441221);          // C7
 cerca(r.consumoKgH, 1.800600200066689);               // C11 (PCI propio de Sheet3, 119960)
-cerca(r.volumenNormalizadoNm3, 29.42918926748446);    // H9
+cerca(r.volumenNormalizadoNm3, 31.398035964362915);   // H9 (= masa/densidad normal, sigue a H6)
 cerca(r.autonomiaHoras, r.masaAlmacenadaKg / r.consumoKgH);
 cerca(r.caudalReferenciaM3H, 0.020311562223333333);   // H10
 cerca(r.velocidadReferenciaMS, 0.17815724773249608, 1e-3); // H11
 cerca(r.tiempoLlenadoHoras, r.volumenNormalizadoNm3 / 4); // H12
 
-assert.equal(formatearHoras(r.autonomiaHoras), '01:27:17');
+assert.equal(formatearHoras(r.autonomiaHoras), '01:33:07');
 
 console.log('calc-almacenamiento.test.js: OK');

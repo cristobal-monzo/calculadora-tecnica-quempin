@@ -5,6 +5,7 @@
 await import('./unidades-presion.test.js');
 await import('./physics.test.js');
 await import('./gas-h2.test.js');
+await import('./factor-z-h2.test.js');
 await import('./calc-flujo.test.js');
 await import('./calc-almacenamiento.test.js');
 await import('./calc-memoria.test.js');

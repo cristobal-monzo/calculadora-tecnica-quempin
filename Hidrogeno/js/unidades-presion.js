@@ -1,8 +1,11 @@
 // Conversión de unidades de presión para los selectores independientes de
 // cada campo/resultado (Pa, kPa, mbar, bar, MPa, psi). No depende de ningún
 // motor de cálculo — estos siguen esperando la unidad interna de siempre
-// (Pa/kPa/mbar/bar/MPa según el caso); la conversión ocurre solo en ui.js al
-// leer el formulario y al mostrar resultados.
+// (Pa/kPa/mbar/bar/MPa según el caso); la conversión ocurre en ui.js al leer
+// el formulario y al mostrar resultados, y en los adaptadores de unidades de
+// `factorZDesdeBarG` / `factorZDesdeBarAbs` (gas-h2.js), que necesitan MPa
+// absolutos para la correlación de Z y reutilizan `desdePa` en vez de
+// repetir el factor Pa→MPa (2026-09-08).
 //
 // Copia funcional también en GasNatural-GLP/js/unidades-presion.js (mismo
 // contrato, sin dependencia cruzada entre sitios — ver CLAUDE.md raíz,

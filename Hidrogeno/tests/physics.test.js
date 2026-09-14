@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
   reynolds, rugosidadRelativa, factorFriccionHaaland, densidadReal,
   barGaugeAPaAbs, barAbsAPaAbs, presionMaximaDiseno, velocidadErosion,
-  perdidaCargaTramo,
+  perdidaCargaTramo, chequeoCaidaPresion,
 } from '../js/physics.js';
 
 function cerca(actual, esperado, tolerancia = 1e-9) {
@@ -73,5 +73,83 @@ cerca(
   perdidaCargaTramo({ factorFriccion: 0.03781741551718751, longitudM: 20, diametroM: 12.7 / 1000, densidad: 0.14881834275071656, velocidad: 26.522607427443383, sumaCoeficientesLocales: 0 }),
   31.17288681188844
 ); // C16 — antes de la corrección de C31/C32 daba 109.75 mbar (~3.5x más alto)
+
+/* ---------------------------------------------------------------------- */
+/* chequeoCaidaPresion — screening simplificado de caída de presión /      */
+/* flujo sónico (AGREGADO 2026-09-08, a pedido del usuario).               */
+/* NO es API RP 14E: es un chequeo adicional e independiente, ver          */
+/* Hidrogeno/CLAUDE.md. Los casos 1-4 son los fixtures pedidos             */
+/* explícitamente por el usuario, en presión ABSOLUTA.                     */
+/* ---------------------------------------------------------------------- */
+
+// El límite crítico de gas ideal para gamma=1.40 — (2/(gamma+1))^(gamma/(gamma-1)).
+// Valor de referencia publicado: 0.5283. Se verifica contra el resultado
+// expuesto por la función, no contra una constante hardcodeada aparte.
+const limite = chequeoCaidaPresion({ presionAguasArribaAbs: 100, presionAguasAbajoAbs: 95, gamma: 1.4 });
+cerca(limite.relacionPresionCritica, 0.5282817877171742);
+cerca(limite.caidaPresionCritica, 0.4717182122828258);
+assert.ok(Math.abs(limite.relacionPresionCritica - 0.528) < 0.001, 'límite crítico ≈ 0.528');
+assert.ok(Math.abs(limite.caidaPresionCritica - 0.472) < 0.001, 'caída crítica ≈ 0.472');
+
+// Caso 1 — P1=100 abs, P2=95 abs -> x=0.05, OK
+const caso1 = chequeoCaidaPresion({ presionAguasArribaAbs: 100, presionAguasAbajoAbs: 95, gamma: 1.4 });
+assert.equal(caso1.aplica, true);
+cerca(caso1.x, 0.05);
+cerca(caso1.caidaPresionPorcentaje, 5);
+cerca(caso1.relacionPresion, 0.95);
+assert.equal(caso1.estado, 'ok');
+
+// Caso 2 — P1=100 abs, P2=80 abs -> x=0.20, ADVERTENCIA
+const caso2 = chequeoCaidaPresion({ presionAguasArribaAbs: 100, presionAguasAbajoAbs: 80, gamma: 1.4 });
+cerca(caso2.x, 0.20);
+cerca(caso2.caidaPresionPorcentaje, 20);
+cerca(caso2.relacionPresion, 0.80);
+assert.equal(caso2.estado, 'advertencia');
+
+// Caso 3 — P1=100 abs, P2=52.8 abs -> justo en el límite crítico, CRÍTICO.
+// 0.528 <= 0.5282817... , o sea x=0.472 >= 0.47171... : cae del lado crítico.
+const caso3 = chequeoCaidaPresion({ presionAguasArribaAbs: 100, presionAguasAbajoAbs: 52.8, gamma: 1.4 });
+cerca(caso3.x, 0.472);
+cerca(caso3.relacionPresion, 0.528);
+assert.equal(caso3.estado, 'critico');
+
+// Caso 4 — P1=100 abs, P2=40 abs -> bien pasado el límite, CRÍTICO
+const caso4 = chequeoCaidaPresion({ presionAguasArribaAbs: 100, presionAguasAbajoAbs: 40, gamma: 1.4 });
+cerca(caso4.x, 0.60);
+cerca(caso4.relacionPresion, 0.40);
+assert.equal(caso4.estado, 'critico');
+
+// Fronteras exactas de la clasificación: x=0.10 es OK (<=), y apenas por
+// encima ya es advertencia. Sin esto, un `<` en vez de `<=` pasaría el
+// caso 1 igual y el bug quedaría vivo.
+assert.equal(chequeoCaidaPresion({ presionAguasArribaAbs: 100, presionAguasAbajoAbs: 90, gamma: 1.4 }).estado, 'ok');
+assert.equal(chequeoCaidaPresion({ presionAguasArribaAbs: 100, presionAguasAbajoAbs: 89.9, gamma: 1.4 }).estado, 'advertencia');
+
+// Validaciones: fuera de dominio -> no aplica, sin ratios inventados.
+const p1Cero = chequeoCaidaPresion({ presionAguasArribaAbs: 0, presionAguasAbajoAbs: 0, gamma: 1.4 });
+assert.equal(p1Cero.aplica, false);
+assert.equal(p1Cero.estado, 'no-aplica');
+assert.equal(p1Cero.x, null);
+assert.equal(p1Cero.relacionPresion, null);
+
+assert.equal(chequeoCaidaPresion({ presionAguasArribaAbs: -1, presionAguasAbajoAbs: -2, gamma: 1.4 }).estado, 'no-aplica');
+assert.equal(chequeoCaidaPresion({ presionAguasArribaAbs: 100, presionAguasAbajoAbs: -0.1, gamma: 1.4 }).estado, 'no-aplica');
+
+// P2 > P1: no es una caída de presión, el screening no aplica.
+const contraflujo = chequeoCaidaPresion({ presionAguasArribaAbs: 100, presionAguasAbajoAbs: 120, gamma: 1.4 });
+assert.equal(contraflujo.aplica, false);
+assert.equal(contraflujo.estado, 'no-aplica');
+
+// P2 = P1 (sin caída) sí aplica: x=0, OK.
+const sinCaida = chequeoCaidaPresion({ presionAguasArribaAbs: 100, presionAguasAbajoAbs: 100, gamma: 1.4 });
+assert.equal(sinCaida.aplica, true);
+cerca(sinCaida.x, 0);
+assert.equal(sinCaida.estado, 'ok');
+
+// Agnóstica de unidad: mismas presiones en Pa dan idéntico resultado que en bar.
+const enBar = chequeoCaidaPresion({ presionAguasArribaAbs: 1.8, presionAguasAbajoAbs: 1.44, gamma: 1.4 });
+const enPa = chequeoCaidaPresion({ presionAguasArribaAbs: 180000, presionAguasAbajoAbs: 144000, gamma: 1.4 });
+cerca(enBar.x, enPa.x);
+assert.equal(enBar.estado, enPa.estado);
 
 console.log('physics.test.js: OK');

@@ -4,8 +4,9 @@
 import {
   barGaugeAPaAbs, densidadReal, presionMaximaDiseno, velocidadErosion,
   reynolds, rugosidadRelativa, factorFriccionHaaland, perdidaCargaTramo,
+  chequeoCaidaPresion,
 } from './physics.js';
-import { H2, buscarTuberia, factorZDiseno, factorZErosion, factorHf, factorT } from './gas-h2.js';
+import { H2, buscarTuberia, factorZDesdeBarG, factorHf, factorT } from './gas-h2.js';
 
 const FACTOR_SL_MIN = 17.5817; // constante fuente (Cálculo!C11/C12/C15)
 
@@ -68,8 +69,10 @@ export function calcularFlujo(inputs) {
   // Cálculo!C13
   const flujoMasicoKgH = (potenciaKw / pciKjKg) * 3600;
 
-  // Cálculo!C26
-  const zDiseno = factorZDiseno({ presionBarG, temperaturaC });
+  // Cálculo!C26 — correlación NIST de Z, ahora alimentada con presión
+  // ABSOLUTA en MPa y temperatura en K (2026-09-08, a pedido del usuario:
+  // antes se le pasaba la presión manométrica y T+273). Ver gas-h2.js.
+  const zDiseno = factorZDesdeBarG({ presionBarG, temperaturaC });
 
   // Cálculo!C20
   const densidadKgM3 = densidadReal({
@@ -87,8 +90,12 @@ export function calcularFlujo(inputs) {
     ? flujoMasicoKgH / densidadKgM3
     : (FACTOR_SL_MIN * flujoMasicoKgH) / densidadKgM3;
 
-  // Cálculo!C27
-  const zErosion = factorZErosion(presionMinBarG);
+  // Cálculo!C27 — el Excel usaba acá una función escalón propia
+  // (<20→1, <50→1.02, <200→1.1, <300→1.2). Reemplazada 2026-09-08 por la
+  // misma correlación continua que el resto de la app, evaluada en la
+  // presión mínima del tramo y la temperatura que el formulario ya pide (no
+  // se agrega ningún campo nuevo). Ver Hidrogeno/CLAUDE.md.
+  const zErosion = factorZDesdeBarG({ presionBarG: presionMinBarG, temperaturaC });
 
   // Cálculo!C14
   const velocidadErosionMS = velocidadErosion({
@@ -115,11 +122,27 @@ export function calcularFlujo(inputs) {
     velocidad: velocidadFlujoMS, sumaCoeficientesLocales,
   });
 
+  // Screening de caída de presión / flujo sónico (AGREGADO 2026-09-08, a
+  // pedido del usuario). ADICIONAL a la velocidad erosional de API RP 14E,
+  // que queda intacta arriba. No pide ningún input nuevo: reutiliza la
+  // presión de operación como aguas arriba, y esa misma presión menos la
+  // pérdida de carga ya calculada como aguas abajo.
+  //
+  // La conversión manométrica -> ABSOLUTA ocurre acá, con el mismo
+  // barGaugeAPaAbs() (y el mismo supuesto de 1 bar atmosférico) que ya usa
+  // la densidad real más arriba — no se duplica la conversión.
+  const presionAguasAbajoBarG = presionBarG - perdidaCargaMbar / 1000;
+  const chequeoSonico = chequeoCaidaPresion({
+    presionAguasArribaAbs: barGaugeAPaAbs(presionBarG),
+    presionAguasAbajoAbs: barGaugeAPaAbs(presionAguasAbajoBarG),
+    gamma: H2.gammaIdeal,
+  });
+
   return {
     tuberia, presionMaxDisenoBar, factorHfAplicado, factorTAplicado, tuberiaAdecuada,
     flujoMasicoKgH, zDiseno, densidadKgM3,
     flujoVolNormalizado, flujoVolH2, zErosion, velocidadErosionMS,
     velocidadFlujoMS, reynolds: reynoldsNum, rugosidadRelativa: rugosidadRel,
-    factorFriccion, perdidaCargaMbar,
+    factorFriccion, perdidaCargaMbar, chequeoSonico,
   };
 }

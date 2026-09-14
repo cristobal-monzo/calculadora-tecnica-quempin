@@ -4,25 +4,22 @@
 // pestaña, no con las de la pestaña "Tubería y Flujo" (ver
 // Hidrogeno/CLAUDE.md, sección "Discrepancias del Excel fuente").
 //
-// El PCI (119960 kJ/kg) y el corte de la función escalón de Z usados acá
-// son los propios de Sheet3 en el Excel fuente, intencionalmente distintos
-// de los de calc-flujo.js (120000 kJ/kg) — ver la misma sección del
-// CLAUDE.md antes de "unificarlos".
+// El PCI (119960 kJ/kg) usado acá es el propio de Sheet3 en el Excel
+// fuente, intencionalmente distinto del de calc-flujo.js (120000 kJ/kg) —
+// ver la misma sección del CLAUDE.md antes de "unificarlo".
+//
+// El factor Z, en cambio, SÍ se unificó (2026-09-08, a pedido del usuario):
+// Sheet3!C7 era una función escalón (IFS(H4<50,1.02,H4<200,1.1,H4<300,1.2))
+// que hacía saltar la masa almacenada ~9% de golpe al cruzar 200 bar. Ahora
+// se usa la misma correlación continua de NIST que "Tubería y Flujo" — ver
+// factorZHidrogeno en gas-h2.js y Hidrogeno/CLAUDE.md.
 
-import { densidadReal, barAbsAPaAbs } from './physics.js';
-import { H2 } from './gas-h2.js';
+import { densidadReal, barAbsAPaAbs, celsiusAKelvin } from './physics.js';
+import { H2, factorZDesdeBarAbs } from './gas-h2.js';
 
 const PCI_ALMACENAMIENTO_KJ_KG = 119960; // Sheet3!C4
 const CONSTANTE_R_BAR_CM3 = 83.14472;    // Sheet3!H6 (R en cm3·bar/(mol·K))
 const MASA_MOLAR_G_MOL = 2.016;          // Sheet3!H6
-
-function factorZAlmacenamiento(presionBarAbs) {
-  // Sheet3!C7 = IFS(H4<50,1.02,H4<200,1.1,H4<300,1.2)
-  if (presionBarAbs < 50) return 1.02;
-  if (presionBarAbs < 200) return 1.1;
-  if (presionBarAbs < 300) return 1.2;
-  throw new Error('Presión de almacenamiento fuera del rango de la correlación Z (< 300 bar)');
-}
 
 export function formatearHoras(horasDecimal) {
   const totalSegundos = Math.round(horasDecimal * 3600);
@@ -39,13 +36,14 @@ export function calcularAlmacenamiento(inputs) {
     unidadCaudalReferencia = '[m³/h]',
   } = inputs;
 
-  // Sheet3!C7
-  const zAlmacenamiento = factorZAlmacenamiento(presionBarAbs);
+  // Sheet3!C7 — presión ABSOLUTA (así la pide el formulario de esta
+  // pestaña) y temperatura en °C; el adaptador convierte a MPa abs y K.
+  const zAlmacenamiento = factorZDesdeBarAbs({ presionBarAbs, temperaturaC });
 
   // Sheet3!H6 — PV=ZnRT, puerto literal (validado contra el valor cacheado del Excel)
   const masaAlmacenadaKg =
     (1000 * (presionBarAbs / 1000) * (volumenM3 * 1000) * MASA_MOLAR_G_MOL) /
-    (zAlmacenamiento * (CONSTANTE_R_BAR_CM3 * (temperaturaC + 273.15)));
+    (zAlmacenamiento * (CONSTANTE_R_BAR_CM3 * celsiusAKelvin(temperaturaC)));
 
   // Corrección deliberada respecto al Excel: densidad propia de esta pestaña
   const densidadRealKgM3 = densidadReal({
@@ -66,7 +64,7 @@ export function calcularAlmacenamiento(inputs) {
   const volumenNormalizadoNm3 = masaAlmacenadaKg / H2.densidadNormalKgM3;
 
   // Sheet3!H10 — caudal de referencia en línea capilar Ø¼", puerto literal
-  const baseCaudal = ((360 / 2.16) / 60) * (CONSTANTE_R_BAR_CM3 * (temperaturaC + 273.15)) / (presionBarAbs * 1000);
+  const baseCaudal = ((360 / 2.16) / 60) * (CONSTANTE_R_BAR_CM3 * celsiusAKelvin(temperaturaC)) / (presionBarAbs * 1000);
   const caudalReferenciaM3H = unidadCaudalReferencia === '[L/min]' ? baseCaudal : (baseCaudal * 60) / 1000;
 
   // Sheet3!H11 — velocidad en línea capilar Ø¼" (diámetro interno 6.35 mm), puerto literal

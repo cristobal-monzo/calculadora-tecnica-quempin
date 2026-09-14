@@ -15,6 +15,24 @@ function formatearNumero(valor) {
   return FORMATO_NUMERO.format(valor);
 }
 
+// El factor de compresibilidad Z necesita más resolución que el resto de los
+// resultados (2026-09-08): con 2 decimales, el Z de "Tubería y Flujo"
+// (1,0011 a baja presión) se mostraba como "1" y el de Almacenamiento
+// perdía el detalle que justamente hace visible que ya no hay escalones.
+// El cálculo interno siempre usa precisión completa; esto es solo formato.
+const FORMATO_Z = new Intl.NumberFormat('es-CL', { minimumFractionDigits: 3, maximumFractionDigits: 4 });
+function formatearZ(valor) {
+  return FORMATO_Z.format(valor);
+}
+
+// Relaciones de presión adimensionales del screening de flujo sónico
+// (2026-09-08): 3 decimales fijos, para que el límite crítico se lea
+// "0,528" tal como se cita en la literatura y no "0,53".
+const FORMATO_RATIO = new Intl.NumberFormat('es-CL', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+function formatearRatio(valor) {
+  return FORMATO_RATIO.format(valor);
+}
+
 // Parseo de las cajas de ingreso manual (2026-09-02, a pedido del usuario):
 // son <input type="text" inputmode="decimal"> en vez de type="number" para
 // que "," y "." funcionen indistintamente como separador decimal — con
@@ -225,6 +243,53 @@ function leerFlujoForm() {
 
 const unidadesTilesPresionFlujo = cargar('unidades-tiles-presion-flujo', {});
 
+// Presentación del screening de caída de presión / flujo sónico
+// (AGREGADO 2026-09-08, a pedido del usuario). Mapea el `estado` que
+// devuelve chequeoCaidaPresion() a la etiqueta, la variante visual y el
+// texto auxiliar. Los textos son los provistos por el usuario.
+//
+// IMPORTANTE: esto NO es API RP 14E ni lo reemplaza — el par de tiles
+// "Velocidad erosión (I-3.4.5)" / "Velocidad de flujo" sigue arriba, con su
+// criterio del 80% intacto. Este bloque es un chequeo adicional, y su
+// alcance es un SCREENING SIMPLIFICADO de gas ideal: sin Cv, sin xT, sin
+// datos del fabricante. Un OK acá no certifica que una válvula o regulador
+// sea apto para H₂.
+const ESTADOS_SONICO = {
+  ok: {
+    etiqueta: 'OK — Baja caída de presión',
+    variante: 'ok',
+    nota: 'Caída de presión ≤ 10 % de la presión aguas arriba. No se identifica una condición relevante de aceleración hacia flujo sónico mediante este screening simplificado.',
+  },
+  advertencia: {
+    etiqueta: 'ADVERTENCIA — Revisar válvulas/reguladores',
+    variante: 'alerta',
+    nota: 'Caída de presión > 10 %. En servicio de H₂ se recomienda revisar especialmente válvulas, reguladores y restricciones por posible alta velocidad local, ruido, erosión o abrasión.',
+  },
+  critico: {
+    etiqueta: 'CRÍTICO — Posible flujo sónico / choked flow',
+    variante: 'critico',
+    nota: 'La relación de presiones alcanza el límite crítico aproximado para H₂ ideal (γ = 1,40). Puede existir flujo estrangulado en una restricción. Se requiere verificación específica de la válvula/regulador con datos del fabricante.',
+  },
+  'no-aplica': {
+    etiqueta: 'No aplica',
+    variante: 'alerta',
+    nota: 'La presión aguas abajo no es menor que la aguas arriba (o queda fuera de rango físico), así que esto no constituye una caída de presión. Revise la presión de operación y la pérdida de carga antes de interpretar este screening.',
+  },
+};
+
+function tilesChequeoSonico(c) {
+  const { etiqueta, variante, nota } = ESTADOS_SONICO[c.estado];
+  const valor = (v, sufijo = '') => (v === null ? '—' : `${formatearNumero(v)}${sufijo}`);
+  return [
+    '<div class="resultados-subtitulo">Caída de presión / flujo sónico — H₂ (screening simplificado, no reemplaza API RP 14E)</div>',
+    tile(valor(c.caidaPresionPorcentaje, ' %'), 'ΔP/P₁ (sobre presión absoluta)'),
+    tile(c.relacionPresion === null ? '—' : formatearRatio(c.relacionPresion), 'P₂/P₁'),
+    tile(formatearRatio(c.relacionPresionCritica), 'Límite crítico aprox. P₂/P₁ (γ = 1,40)', 'secundario'),
+    tile(etiqueta, 'Estado', variante),
+    `<div class="resultados-nota">${nota}</div>`,
+  ].join('');
+}
+
 // Orden y etiquetas (2026-09-02, a pedido del usuario): los resultados de
 // mayor relevancia para la decisión de dimensionamiento van primero
 // (presión/adecuación, caudales, velocidades, pérdida de carga); los
@@ -243,11 +308,12 @@ function renderResultadosFlujo(r) {
     tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad erosión (I-3.4.5)'),
     tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo', cercaDeErosion),
     tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdidas de carga', 'perdida-carga', unidadesTilesPresionFlujo),
+    tilesChequeoSonico(r.chequeoSonico),
     '<div class="resultados-subtitulo">Factores de verificación</div>',
     tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad real', 'secundario'),
     tile(formatearNumero(r.factorHfAplicado), 'Factor Hf aplicado (Tabla IX-5A, fragilización por H₂)', 'secundario'),
     tile(formatearNumero(r.factorTAplicado), 'Factor T aplicado (Tabla PL-3.7.1(b)(8), derating por temperatura)', 'secundario'),
-    tile(formatearNumero(r.zDiseno), 'Factor Z (diseño)', 'secundario'),
+    tile(formatearZ(r.zDiseno), 'Factor Z (compresibilidad, correlación NIST)', 'secundario'),
     tile(formatearNumero(r.reynolds), 'Número de Reynolds', 'secundario'),
     tile(formatearNumero(r.factorFriccion), 'Factor de fricción (Haaland)', 'secundario'),
   ].join('');
@@ -341,7 +407,7 @@ function renderResultadosAlmacenamiento(r) {
     tile(`${formatearNumero(r.masaAlmacenadaKg)} kg`, 'Masa de H₂ almacenada (PV=ZnRT)', 'kpi'),
     tile(formatearHoras(r.autonomiaHoras), 'Autonomía (hh:mm:ss)', 'kpi'),
     '<div class="resultados-subtitulo">Detalle del cálculo</div>',
-    tile(formatearNumero(r.zAlmacenamiento), 'Factor de compresibilidad Z', 'secundario'),
+    tile(formatearZ(r.zAlmacenamiento), 'Factor de compresibilidad Z', 'secundario'),
     tile(`${formatearNumero(r.densidadRealKgM3)} kg/m³`, 'Densidad real en el estanque', 'secundario'),
     tile(`${formatearNumero(r.volumenNormalizadoNm3)} Nm³`, 'Volumen normalizado', 'secundario'),
     tile(`${formatearNumero(r.consumoKgH)} kg/h`, 'Consumo del quemador', 'secundario'),

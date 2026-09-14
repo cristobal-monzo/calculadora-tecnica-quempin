@@ -11,7 +11,7 @@
 //     Hidrogeno/CLAUDE.md.
 
 import { barGaugeAPaAbs, densidadReal, reynolds, rugosidadRelativa, factorFriccionHaaland, perdidaCargaTramo } from './physics.js';
-import { H2, buscarTuberia, factorZDiseno } from './gas-h2.js';
+import { H2, buscarTuberia, factorZDesdeBarG } from './gas-h2.js';
 
 function calcularTramoIndividual(tramo) {
   const presionBarG = tramo.presionMPa * 10;
@@ -22,7 +22,7 @@ function calcularTramoIndividual(tramo) {
   const diametroM = tuberia.diMm / 1000;
 
   const flujoMasicoKgH = (tramo.potenciaKw / H2.pciKjKg) * 3600;
-  const zDiseno = factorZDiseno({ presionBarG, temperaturaC: tramo.temperaturaC });
+  const zDiseno = factorZDesdeBarG({ presionBarG, temperaturaC: tramo.temperaturaC });
   const densidadKgM3 = densidadReal({
     presionAbsPa: barGaugeAPaAbs(presionBarG), temperaturaC: tramo.temperaturaC,
     masaMolar: H2.masaMolarKgMol, constanteR: H2.constanteR, z: zDiseno,

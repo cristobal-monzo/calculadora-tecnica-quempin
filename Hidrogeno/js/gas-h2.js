@@ -1,6 +1,9 @@
 // Propiedades físicas y tablas de referencia específicas de hidrógeno.
 // Fuente: Calculos H2.xlsx, hoja "Cálculo" (celdas citadas por bloque). Analizado 2026-09-01.
 
+import { barGaugeAPaAbs, barAbsAPaAbs, celsiusAKelvin } from './physics.js';
+import { desdePa } from './unidades-presion.js';
+
 export const H2 = {
   masaMolarKgMol: 0.002016,     // Cálculo!C18
   constanteR: 8.314,             // Cálculo!C19  [J/mol·K]
@@ -9,6 +12,12 @@ export const H2 = {
   gravedadEspecifica: 0.0695,     // Cálculo!C25
   densidadNormalKgM3: 0.089,      // Sheet3!C6 (0°C, 1 bar)
   viscosidadPaS: 0.00001,         // Cálculo!C30 (denominador fijo en el Excel)
+  // AGREGADA 2026-09-08 (a pedido del usuario): relación de calores
+  // específicos cp/cv del H₂, aproximación fija para el screening de
+  // flujo sónico de chequeoCaidaPresion(). No viene del Excel fuente y
+  // NO es un input editable — es una constante del gas. Valor real ~1.405
+  // a 20°C y 1 atm; se adopta 1.40 como pide el criterio de screening.
+  gammaIdeal: 1.40,
 };
 
 // Tabla de tubería — Cálculo!H33:L38
@@ -27,8 +36,21 @@ export function buscarTuberia(pulgadas) {
   return fila;
 }
 
-// Correlación de compresibilidad Z (9 términos) — Cálculo!B84:D92, total en B93.
-// Z = 1 + Σ ai · (100/(T+273))^bi · (P/10)^ci   [T en °C, P en bar manométrico]
+// Correlación de compresibilidad Z del hidrógeno (9 términos) —
+// Cálculo!B84:D92, total en B93. Los coeficientes del Excel fuente resultan
+// ser exactamente los de la ecuación estandarizada de NIST:
+//
+//   Lemmon, E. W.; Huber, M. L.; Leachman, J. W. "Revised Standardized
+//   Equation for Hydrogen Gas Densities for Fuel Consumption Applications",
+//   Journal of Research of the NIST, Vol. 113, No. 6, 2008.
+//
+//   Z = 1 + Σ[i=1..9] ai · (100/T)^bi · P^ci   [T en K, P ABSOLUTA en MPa]
+//
+// Verificado contra los 5 puntos de validación de la Tabla 2 de esa
+// publicación (tests/factor-z-h2.test.js). Es una ecuación para DENSIDAD de
+// hidrógeno GASEOSO, no una EOS universal; su rango publicado es 220-1000 K
+// y hasta 200 MPa (2000 bar), que cubre de sobra el almacenamiento de H₂
+// comprimido de la app (100-700 bar).
 const COEFICIENTES_Z = [
   { a: 0.0588846,     b: 1.325, c: 1 },
   { a: -0.06136111,   b: 1.87,  c: 1 },
@@ -41,21 +63,38 @@ const COEFICIENTES_Z = [
   { a: 1.264403e-10,  b: 4,     c: 5 },
 ];
 
-export function factorZDiseno({ presionBarG, temperaturaC }) {
+// FUENTE ÚNICA de Z para hidrógeno en toda la app (2026-09-08, a pedido del
+// usuario). Antes había tres caminos distintos para el mismo estado
+// termodinámico: esta correlación mal alimentada (factorZDiseno, con presión
+// MANOMÉTRICA y T+273), y dos funciones escalón con los mismos valores
+// mágicos 1.02/1.1/1.2 (factorZErosion acá y factorZAlmacenamiento en
+// calc-almacenamiento.js). Ver Hidrogeno/CLAUDE.md.
+export function factorZHidrogeno({ presionAbsMPa, temperaturaK }) {
   const suma = COEFICIENTES_Z.reduce(
-    (acc, { a, b, c }) => acc + a * Math.pow(100 / (temperaturaC + 273), b) * Math.pow(presionBarG / 10, c),
+    (acc, { a, b, c }) => acc + a * Math.pow(100 / temperaturaK, b) * Math.pow(presionAbsMPa, c),
     0
   );
   return 1 + suma;
 }
 
-// Factor Z para velocidad de erosión — Cálculo!C27 = IFS(C7<20,1,C7<50,1.02,C7<200,1.1,C7<300,1.2)
-export function factorZErosion(presionMinBarG) {
-  if (presionMinBarG < 20) return 1;
-  if (presionMinBarG < 50) return 1.02;
-  if (presionMinBarG < 200) return 1.1;
-  if (presionMinBarG < 300) return 1.2;
-  throw new Error('Presión mínima fuera del rango de la correlación Z (< 300 bar)');
+// Adaptadores de unidades: son el único lugar donde se traduce lo que pide
+// cada pestaña (bar manométrico o bar absoluto, °C) a lo que exige la
+// correlación (MPa ABSOLUTOS, K). Reutilizan las conversiones que ya
+// existían — barGaugeAPaAbs/barAbsAPaAbs (physics.js, con el supuesto de 1
+// bar de atmósfera de todo el módulo), desdePa (unidades-presion.js) y
+// celsiusAKelvin (physics.js) — para no repetir ninguna constante.
+export function factorZDesdeBarG({ presionBarG, temperaturaC }) {
+  return factorZHidrogeno({
+    presionAbsMPa: desdePa(barGaugeAPaAbs(presionBarG), 'MPa'),
+    temperaturaK: celsiusAKelvin(temperaturaC),
+  });
+}
+
+export function factorZDesdeBarAbs({ presionBarAbs, temperaturaC }) {
+  return factorZHidrogeno({
+    presionAbsMPa: desdePa(barAbsAPaAbs(presionBarAbs), 'MPa'),
+    temperaturaK: celsiusAKelvin(temperaturaC),
+  });
 }
 
 // Tabla Hf — ASME B31.12, Tabla IX-5A "Carbon Steel Pipeline Materials

@@ -22,7 +22,8 @@ analizado celda por celda el 2026-09-01 — hojas `Cálculo`, `Sheet3`, `MC`,
 
 Compartido entre las tres: `js/physics.js` (funciones puras de mecánica de
 fluidos, gas-agnósticas) y `js/gas-h2.js` (constantes de hidrógeno, tabla
-de tubería, correlación de compresibilidad Z, Tabla Hf de ASME B31.12).
+de tubería, correlación de compresibilidad Z —fuente única, ecuación de
+NIST, ver más abajo—, Tabla Hf de ASME B31.12).
 
 ## Unidades de presión (2026-09-02, a pedido del usuario)
 
@@ -141,9 +142,59 @@ hoja del Excel, no acoples cruzados. Antes de "unificarlas" en una futura
 revisión, decidirlo explícitamente con Cristóbal:
 - PCI usado en Tubería y Flujo: 120000 kJ/kg (`Cálculo!C21`). PCI usado en
   Almacenamiento: 119960 kJ/kg (`Sheet3!C4`).
-- Factor Z por presión mínima en Tubería y Flujo (`Cálculo!C27`):
-  `<20→1, <50→1.02, <200→1.1, <300→1.2`. Factor Z en Almacenamiento
-  (`Sheet3!C7`): `<50→1.02, <200→1.1, <300→1.2` (sin el tramo `<20→1`).
+
+**Corregida en la app (2026-09-08, a pedido del usuario)** — **factor de
+compresibilidad Z unificado**. Había tres cálculos distintos de Z para el
+mismo gas, y dos de ellos eran funciones escalón con los mismos valores
+mágicos:
+
+| Dónde | Antes | Ahora |
+|---|---|---|
+| Tubería y Flujo, densidad (`Cálculo!C26`) | correlación de 9 términos, pero evaluada con presión **manométrica** y `T+273` | `factorZDesdeBarG` → correlación con presión **absoluta** en MPa y `T+273.15` K |
+| Tubería y Flujo, velocidad de erosión (`Cálculo!C27`) | escalón `<20→1, <50→1.02, <200→1.1, <300→1.2` | la misma correlación, evaluada en la presión mínima del tramo |
+| Almacenamiento (`Sheet3!C7`) | escalón `<50→1.02, <200→1.1, <300→1.2` | la misma correlación, evaluada en la presión absoluta del estanque |
+| Memoria de Cálculo (por tramo) | misma correlación mal alimentada que Flujo | la misma correlación, por tramo |
+
+`factorZHidrogeno({ presionAbsMPa, temperaturaK })` en `gas-h2.js` es ahora
+la **única** implementación; `factorZDesdeBarG` / `factorZDesdeBarAbs` son
+adaptadores de unidades (el único lugar donde se traduce bar manométrico o
+absoluto + °C a MPa absolutos + K, reutilizando `barGaugeAPaAbs` /
+`barAbsAPaAbs` / `celsiusAKelvin` de `physics.js` y `desdePa` de
+`unidades-presion.js` — no se agregó ninguna conversión nueva ni ningún
+campo al formulario).
+
+Los coeficientes del Excel (`Cálculo!B84:D92`) resultaron ser exactamente
+los de la ecuación estandarizada de NIST (Lemmon, Huber & Leachman, *J.
+Res. NIST* **113**(6), 2008): reproducen los 5 puntos de validación de la
+Tabla 2 de esa publicación con diferencias de ~1e-9, limitadas por las 9
+cifras significativas con que la publicación entrega los `ai`. Lo que
+estaba mal no eran los coeficientes sino cómo se los alimentaba. Es una
+ecuación para **densidad de hidrógeno gaseoso** (rango publicado 220-1000 K
+y hasta 200 MPa), no una EOS universal — cubre de sobra el almacenamiento
+de H₂ comprimido de 100-700 bar, donde el escalón anterior directamente
+tiraba error sobre 300 bar.
+
+**Impacto numérico** (casos por defecto, re-baselineados en los tests):
+
+- Almacenamiento, 200 bar abs / 20°C: Z 1.2 → 1.1247527, masa 2.6192 →
+  2.7944 kg (+6.7%). El escalón sobrestimaba Z justo en el valor por
+  defecto de la app y por lo tanto subestimaba la masa; además saltaba
+  ~9% de golpe al cruzar 200 bar, que es lo que motivó el cambio.
+- Tubería y Flujo, 0.8 barG / 20°C: Z 1.0004759 → 1.0010703, densidad
+  0.148818 → 0.148730 kg/m³, pérdida de carga 31.173 → 31.191 mbar.
+  Velocidad de erosión 77.564 → 77.495 m/s (Z de erosión 1.02 → 1.0181923).
+  El número de Reynolds **no** cambia: `Re = ρ·v·D/µ` con `v = ṁ/(ρ·A)`, o
+  sea `ρ·v` no depende de Z — sirve de verificación cruzada.
+- `ui.js` muestra Z con 3-4 decimales (`formatearZ`), no con los 2
+  decimales del resto de los resultados: con 2 el Z de Flujo se mostraba
+  como "1" y el de Almacenamiento perdía justamente el detalle que hace
+  visible que ya no hay escalones. El cálculo interno siempre va con
+  precisión completa.
+
+Tests: `tests/factor-z-h2.test.js` (los 5 puntos NIST, continuidad de Z y
+de la masa almacenada en 199.9/200.0/200.1 bar, igualdad exacta del Z entre
+Tubería y Flujo y Almacenamiento para el mismo estado, y barrido monótono
+100-700 bar sin excepciones).
 
 ## Tabla Hf de ASME B31.12 (`TABLA_HF_ASME_B31_12` en `gas-h2.js`)
 
@@ -247,10 +298,12 @@ por `formatearNumero()` (`Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 
 coma decimal, punto de miles, hasta 2 decimales (recorta ceros de más). El
 cálculo interno sigue con precisión completa — esto solo cambia cómo se
 muestran. Nota: esto aplana factores adimensionales de verificación como
-"Factor Z (diseño)" (`1,0004759...` → `1,00`) o "Factor de fricción"
-(`0,03782` → `0,04`) a una resolución más gruesa que antes; si en el
-futuro hace falta más precisión visible para contrastar contra el Excel,
-esos tiles puntuales son buenos candidatos a una excepción explícita.
+"Factor de fricción" (`0,03782` → `0,04`) a una resolución más gruesa que
+antes; si en el futuro hace falta más precisión visible para contrastar
+contra el Excel, esos tiles puntuales son buenos candidatos a una
+excepción explícita. **El factor Z ya es una de esas excepciones**
+(2026-09-08): usa `formatearZ()` con 3-4 decimales, ver la sección del
+factor Z unificado más arriba.
 `unidades-presion.js` NO se tocó (sigue con `formatearPresion()`, string
 de precisión fija) porque `unidades-presion.test.js` depende de poder
 `Number()`-earlo; `ui.js` tiene su propio `formatearPresionBonita()` que
@@ -638,6 +691,97 @@ de un artefacto, sin perder el foco ni ningún carácter. Los `<select>`
 actualizando la tabla/estructura correctamente. `node
 Hidrogeno/tests/run-all.js` sigue en verde (este fix es solo de `ui.js`,
 no toca ningún motor de cálculo).
+
+## Screening de caída de presión / flujo sónico (`physics.js`/`calc-flujo.js`/`ui.js`, 2026-09-08, a pedido del usuario)
+
+Chequeo **adicional** en "Tubería y Flujo", complementario —no sustituto—
+del de velocidad erosional de API RP 14E. Responde otra pregunta: no "¿la
+velocidad erosiona la pared?" sino "¿la caída de presión es lo bastante
+grande como para que alguna restricción esté cerca de estrangular el
+flujo?".
+
+**API RP 14E quedó intacto**: `velocidadErosion()` en `physics.js`, el tile
+"Velocidad erosión (I-3.4.5)" y el umbral del 80% del tile "Velocidad de
+flujo" no se tocaron ni se fusionaron con este chequeo. Son dos criterios
+que conviven, cada uno con su propio estado.
+
+`chequeoCaidaPresion({ presionAguasArribaAbs, presionAguasAbajoAbs, gamma })`
+en `physics.js` (pura, gas-agnóstica, agnóstica de unidad mientras ambas
+presiones sean absolutas y la misma unidad):
+
+```
+x                      = (P1_abs - P2_abs) / P1_abs
+relacionPresion        = P2_abs / P1_abs
+relacionPresionCritica = (2/(gamma+1))^(gamma/(gamma-1))   [gas ideal]
+caidaPresionCritica    = 1 - relacionPresionCritica
+```
+
+Clasificación: `x <= 0.10` → `ok`; `0.10 < x < caidaPresionCritica` →
+`advertencia`; `x >= caidaPresionCritica` → `critico`. La frontera superior
+usa el valor **calculado** (0.4717182…), no el 0.472 redondeado, para que
+sea consistente con `relacionPresionCritica` (0.5282817…) que se muestra en
+pantalla como 0,528.
+
+### Decisiones de mapeo (por qué estas variables y no otras)
+
+- **No se agregó ningún input al formulario.** El requisito explícito era
+  reutilizar variables existentes: sin Cv, sin xT, sin geometría de válvula
+  ni diámetro de asiento.
+- **P1 = `presionBarG`** (presión de operación) y **P2 = P1 menos
+  `perdidaCargaMbar`**, la pérdida de carga de la línea que el motor ya
+  calcula. Elegido explícitamente por Cristóbal el 2026-09-08 entre tres
+  mapeos posibles. La alternativa descartada era usar `presionMinBarG`
+  (29,5 barG por defecto) como aguas arriba, interpretando el par como
+  entrada/salida de un regulador — se descartó porque `presionMinBarG` es
+  un parámetro de API RP 14E, no una presión aguas arriba.
+  **Consecuencia conocida y aceptada:** como las pérdidas de carga están en
+  mbar sobre presiones en bar, el screening da `ok` en casi toda línea
+  realista; el estado `critico` solo aparece en líneas muy largas o muy
+  finas a baja presión. No detecta reguladores ni válvulas.
+- **γ = 1.40** vive como `H2.gammaIdeal` en `gas-h2.js`, junto al resto de
+  las constantes del gas. **No es un input editable** (requisito explícito).
+  No viene del Excel fuente; el valor real del H₂ es ~1.405 a 20 °C.
+- **La conversión manométrica → absoluta** se hace una sola vez en
+  `calc-flujo.js`, con el mismo `barGaugeAPaAbs()` (y el mismo supuesto de
+  1 bar atmosférico) que ya usa la densidad real. No se duplicó ninguna
+  conversión existente.
+- **Fuera de dominio** (`P1_abs <= 0`, `P2_abs < 0`, `P2_abs > P1_abs`):
+  devuelve `aplica: false`, `estado: 'no-aplica'` y los ratios en `null` —
+  no inventa un número. Se alcanza de verdad cuando la pérdida de carga
+  supera la presión absoluta disponible (p.ej. 1/4", 60 m a 0,8 barG).
+
+### Alcance del resultado — cómo NO leerlo
+
+La UI lo rotula "screening simplificado, no reemplaza API RP 14E" en el
+subtítulo, y cada estado lleva su texto auxiliar. Es deliberado: un `ok`
+acá **no** certifica que una válvula o regulador sea apto para H₂, y el
+límite de 47,2 % es una aproximación de **gas ideal** — una válvula real
+estrangula a otra relación de presión según su geometría y su `xT`. Ningún
+estado de este bloque es una certificación general de seguridad.
+
+### Rojo de estado crítico — extrapolación de marca
+
+El manual de marca **no define un rojo**. Como `.resultado-tile.ok` ya
+había extrapolado con Material green 800 (`#2e7d32`), `.resultado-tile.critico`
+extrapola en la misma línea con Material red 800 (`#c62828`), más `#ef5350`
+bajo `prefers-color-scheme: dark` para conservar contraste sobre la
+superficie oscura. Anotado acá según manda el `CLAUDE.md` raíz. También se
+agregó `.resultados-nota` (texto auxiliar a ancho completo dentro de la
+grilla de resultados, espejo de `.resultados-subtitulo`).
+
+### Tests
+
+`tests/physics.test.js` cubre la función pura: los 4 casos de referencia
+(100/95 → x=0,05 `ok`; 100/80 → x=0,20 `advertencia`; 100/52,8 → límite,
+`critico`; 100/40 → `critico`), el límite crítico ≈ 0,528 / 0,472, las
+fronteras exactas de clasificación (x=0,10 es `ok`, 0,1001 ya es
+`advertencia` — atrapa un `<` puesto donde va `<=`), las tres validaciones
+de dominio, el caso sin caída (x=0) y la equivalencia bar/Pa.
+`tests/calc-flujo.test.js` cubre la integración: que el ratio se calcule
+sobre 1,8 bar **absolutos** y no sobre 0,8 manométricos (con contraprueba
+de que el x manométrico sería 2,25× mayor), los estados `advertencia` /
+`critico` / `no-aplica` end-to-end, y que `velocidadErosionMS` siga
+devolviendo sus valores baselineados en todos esos escenarios.
 
 ## Fuera de alcance (v1)
 
