@@ -783,6 +783,92 @@ de que el x manométrico sería 2,25× mayor), los estados `advertencia` /
 `critico` / `no-aplica` end-to-end, y que `velocidadErosionMS` siga
 devolviendo sus valores baselineados en todos esos escenarios.
 
+## Rediseño UX/UI de las pestañas (`index.html`/`css/styles.css`/`ui.js`, 2026-09-24, a pedido del usuario)
+
+Pedido abierto ("mejora el UX/UI de los dashboards"). No toca motores de
+cálculo ni el diseño del informe impreso; `node Hidrogeno/tests/run-all.js`
+sigue en verde. Mismo cambio en `GasNatural-GLP` (ver su `CLAUDE.md`).
+
+- **Layout entradas | resultados** (`.calc-layout`, ≥960px): antes los
+  resultados iban debajo del formulario y había que bajar para ver el
+  efecto de cada cambio. La columna de resultados es `position: sticky`
+  — solo actúa cuando es más corta que la de entradas. Encabezado
+  "Resultados · Se actualizan al escribir" porque no hay botón Calcular.
+- **Ancho de contenido = cabecera** (1180px, antes 1100px): el borde del
+  logo y el de los formularios no calzaban.
+- **Barra de pestañas fija** (`.barra-pestanas`, sticky) y, en móvil,
+  pestañas con scroll horizontal en vez de partirse en 2 líneas. Al
+  cambiar de pestaña estando abajo, `initTabs()` vuelve al inicio del
+  panel.
+- **Pestaña activa en el hash** (`#flujo`/`#almacenamiento`/`#memoria`):
+  recargar ya no vuelve a la primera pestaña, y el hub enlaza directo a
+  cada herramienta (`herramientas` en `assets/gases.js`). `replaceState`,
+  no un paso de historial por clic.
+- **Resultados en grupos** (`grupo()` en `ui.js`): cada grupo tiene su
+  propia grilla auto-fit, así los 2 KPI llenan el ancho en vez de dejar
+  columnas vacías. Mismos KPI/secundarios y mismo orden que la auditoría
+  del 2026-09-03, salvo en el screening de flujo sónico: el tile **Estado**
+  pasa primero y a fila completa (`.ancho`), con ΔP/P₁, P₂/P₁ y el límite
+  crítico debajo — el veredicto antes que los números que lo respaldan.
+  "Caudal de referencia" pasa a `.secundario` como el resto de su grupo
+  (`tileConUnidad()` acepta ahora `variante`).
+- **Tokens de estado** `--estado-ok/-alerta/-critico` (+ `-tinte`) en
+  `.viz-root`: en tema oscuro, verde Material 400 (`#66bb6a`) en vez del
+  800 (quedaba ~3:1 sobre `#221f1c`) y el rojo `#ef5350` que ya existía.
+  Se declaran en los mismos 3 selectores de tema que `assets/brand.css`
+  — **arregla un bug**: `.critico` oscuro usaba solo
+  `@media (prefers-color-scheme: dark)` e ignoraba el botón "Modo
+  oscuro/claro". Los tiles de estado suman barra lateral + tinte suave
+  del mismo color (el estado se lee también por forma, no solo por color).
+  Extrapolación de marca conservadora, igual que el verde/rojo originales.
+- **Etiquetas de tile** en `--text-secondary` (antes `--text-muted`, ~3,5:1
+  sobre la card blanca). Selector de unidad inline sin caja hasta hover.
+- **Validación visible**: `initValidacionNumerica()` pone `aria-invalid`
+  (borde rojo + tooltip) en un `inputmode="decimal"` con texto no numérico
+  — `numeroFlexible()` lo calcula como 0 y antes eso pasaba sin aviso.
+  Vacío no cuenta (hay campos opcionales).
+- **Tubería manual**: los 4 cajetines (DI/espesor/límite elástico/
+  rugosidad) pasan de una fila sin rótulos bajo una etiqueta larga a un
+  `<fieldset class="subseccion">` con etiqueta visible por campo. Mismos
+  `id`, `ui.js` no cambió. Accesorios en 3 columnas (`.fila-campos.compacta`).
+- **Memoria de Cálculo**: barra de acciones con jerarquía (Imprimir como
+  botón primario naranja), "Importar" como botón (`<label>` de un
+  `<input type=file>` visualmente oculto) en vez del control nativo sin
+  estilo, línea de estado `#memoria-estado` que confirma exportar/importar
+  y avisa si el `.json` es inválido (antes la promesa rechazada fallaba en
+  silencio), el `<input>` se vacía tras importar para poder reimportar el
+  mismo archivo, foco al nombre del tramo recién agregado, títulos
+  "Diagrama de la red"/"Tramos" (`.no-imprimir`), columnas calculadas
+  sombreadas (`--tinte-calculado`) y anchos mínimos en Tramo/Continúa
+  desde/Material (se veían "Tramc"/"AISI 31"). `.tabla-contenedor` lleva
+  `position: relative` a propósito: sin eso, el texto `.visualmente-oculto`
+  (absoluto) de la cabecera escapaba del scroll y ensanchaba la página.
+- **Móvil (≤600px)**: 2 tiles por fila (la pestaña Tubería y Flujo medía
+  ~3000px de alto con 1 por fila, ahora ~2350px), subtítulo de la cabecera
+  oculto, desvanecido a la derecha de las pestañas como pista de scroll.
+
+## Fix de ids de tramo/artefacto repetidos en la Memoria de Cálculo (`ui.js`, 2026-09-24, a pedido del usuario)
+
+Al cargar (localStorage) o importar un proyecto, los contadores
+`contadorId`/`contadorArtefactoId` partían de la **cantidad** de
+elementos. Tras borrar uno intermedio (quedaban `t1`,`t3`) y recargar, el
+contador quedaba en 2 y "Agregar tramo" volvía a crear `t3`: dos filas con
+el mismo `data-id`, y como `tramos.map()` reemplaza por id, editar una
+pisaba a la otra en el modelo (se veía al recargar: ambas con el mismo
+nombre/valores); eliminar una borraba las dos. Mismo problema con los
+artefactos (`a<N>`) y por la vía de "Importar proyecto".
+
+- `maxSufijoId()` — los contadores parten del **mayor** sufijo numérico
+  existente, no de la cantidad.
+- `repararIdsDuplicados()` — al cargar e importar, la 2ª aparición de un
+  id repetido (datos ya corruptos por el bug, en el navegador de alguien o
+  en un `.json` exportado) recibe uno nuevo; un "Continúa desde" que
+  apuntaba a ese id queda colgado del primero.
+
+Verificado en navegador (borrar intermedio + recargar + agregar, importar
+con ids salteados, y localStorage con ids ya repetidos). Mismo fix en
+`GasNatural-GLP/js/ui.js`.
+
 ## Fuera de alcance (v1)
 
 - Gas Natural / GLP — sitio separado con selector de gas, otro ciclo de

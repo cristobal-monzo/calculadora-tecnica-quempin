@@ -23,26 +23,32 @@
     </div>
   </header>
 
-  <main>
-    <div class="selector-combustible">
-      <label for="selector-combustible">Combustible</label>
-      <select id="selector-combustible">
-        <option value="GLP">GLP</option>
-        <option value="GN">Gas Natural</option>
-      </select>
-      <span class="nota" id="nota-combustible"></span>
+  <div class="barra-pestanas">
+    <div class="barra-pestanas-interior">
+      <nav class="tabs" role="tablist">
+        <button class="tab active" id="tab-red-gas" role="tab" aria-selected="true" aria-controls="panel-red-gas" data-tab="red-gas">Red de Gas</button>
+        <button class="tab" id="tab-almacenamiento" role="tab" aria-selected="false" aria-controls="panel-almacenamiento" data-tab="almacenamiento">Almacenamiento</button>
+        <button class="tab" id="tab-combustion" role="tab" aria-selected="false" aria-controls="panel-combustion" data-tab="combustion">Combustión</button>
+        <button class="tab" id="tab-quemador" role="tab" aria-selected="false" aria-controls="panel-quemador" data-tab="quemador">Quemador Atmosférico</button>
+        <button class="tab" id="tab-memoria" role="tab" aria-selected="false" aria-controls="panel-memoria" data-tab="memoria">Memoria de Cálculo</button>
+      </nav>
+      <!-- Combustible: afecta a las 5 pestañas, por eso vive en la barra de
+           pestañas (fija al hacer scroll) y no dentro de una de ellas. -->
+      <div class="selector-combustible" role="radiogroup" aria-labelledby="etiqueta-combustible">
+        <span class="selector-combustible-etiqueta" id="etiqueta-combustible">Combustible</span>
+        <div class="segmentado">
+          <label><input type="radio" name="combustible" value="GLP"><span>GLP</span></label>
+          <label><input type="radio" name="combustible" value="GN"><span>Gas Natural</span></label>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <nav class="tabs" role="tablist">
-      <button class="tab active" id="tab-red-gas" role="tab" aria-selected="true" aria-controls="panel-red-gas" data-tab="red-gas">Red de Gas</button>
-      <button class="tab" id="tab-almacenamiento" role="tab" aria-selected="false" aria-controls="panel-almacenamiento" data-tab="almacenamiento">Almacenamiento</button>
-      <button class="tab" id="tab-combustion" role="tab" aria-selected="false" aria-controls="panel-combustion" data-tab="combustion">Combustión</button>
-      <button class="tab" id="tab-quemador" role="tab" aria-selected="false" aria-controls="panel-quemador" data-tab="quemador">Quemador Atmosférico</button>
-      <button class="tab" id="tab-memoria" role="tab" aria-selected="false" aria-controls="panel-memoria" data-tab="memoria">Memoria de Cálculo</button>
-    </nav>
+  <main>
 
     <section class="tab-panel active" id="panel-red-gas" role="tabpanel" aria-labelledby="tab-red-gas" data-panel="red-gas">
-      <form id="form-red-gas" autocomplete="off">
+      <div class="calc-layout">
+      <form id="form-red-gas" class="calc-entradas" autocomplete="off">
         <div class="seccion">
           <h3 class="seccion-titulo">Configuración de tubería</h3>
           <div class="fila-campos">
@@ -116,7 +122,14 @@
           </div>
         </div>
       </form>
-      <div class="resultados" id="resultados-red-gas" aria-live="polite"></div>
+      <div class="calc-resultados">
+        <div class="resultados-encabezado">
+          <h2>Resultados</h2>
+          <span class="en-vivo">Se actualizan al escribir</span>
+        </div>
+        <div class="resultados" id="resultados-red-gas" aria-live="polite"></div>
+      </div>
+      </div>
     </section>
 
     <section class="tab-panel" id="panel-almacenamiento" role="tabpanel" aria-labelledby="tab-almacenamiento" data-panel="almacenamiento">
@@ -124,8 +137,11 @@
     </section>
 
     <section class="tab-panel" id="panel-combustion" role="tabpanel" aria-labelledby="tab-combustion" data-panel="combustion">
-      <div id="combustion-campos-composicion"></div>
-      <p class="subtitulo">Condiciones de combustión</p>
+      <div class="calc-layout">
+      <div class="calc-entradas">
+      <div id="combustion-campos-composicion" class="seccion"></div>
+      <div class="seccion">
+      <h3 class="seccion-titulo">Condiciones de combustión</h3>
       <form id="form-combustion" class="fila-campos" autocomplete="off">
         <div class="campo">
           <label for="cb-potencia">Potencia [kW]</label>
@@ -165,11 +181,22 @@
           <input id="cb-pci-simplificado" type="text" inputmode="decimal" value="10">
         </div>
       </form>
-      <div class="resultados" id="resultados-combustion" aria-live="polite"></div>
+      </div>
+      </div>
+      <div class="calc-resultados">
+        <div class="resultados-encabezado">
+          <h2>Resultados</h2>
+          <span class="en-vivo">Se actualizan al escribir</span>
+        </div>
+        <div class="resultados" id="resultados-combustion" aria-live="polite"></div>
+      </div>
+      </div>
     </section>
 
     <section class="tab-panel" id="panel-quemador" role="tabpanel" aria-labelledby="tab-quemador" data-panel="quemador">
-      <div id="quemador-campos-composicion"></div>
+      <div class="calc-layout">
+      <div class="calc-entradas">
+      <div id="quemador-campos-composicion" class="seccion"></div>
       <form id="form-quemador" autocomplete="off">
         <div class="seccion">
           <h3 class="seccion-titulo">Condiciones de operación</h3>
@@ -246,25 +273,36 @@
           </div>
         </div>
       </form>
-      <div class="resultados" id="resultados-quemador" aria-live="polite"></div>
+      </div>
+      <div class="calc-resultados">
+        <div class="resultados-encabezado">
+          <h2>Resultados</h2>
+          <span class="en-vivo">Se actualizan al escribir</span>
+        </div>
+        <div class="resultados" id="resultados-quemador" aria-live="polite"></div>
+      </div>
+      </div>
     </section>
 
     <section class="tab-panel" id="panel-memoria" role="tabpanel" aria-labelledby="tab-memoria" data-panel="memoria">
-      <div class="no-imprimir" style="display:flex; gap:8px; flex-wrap:wrap; margin: 20px 0 16px;">
-        <button type="button" id="memoria-agregar-tramo">+ Agregar tramo</button>
-        <button type="button" id="memoria-exportar">Exportar proyecto (.json)</button>
-        <label style="display:inline-flex; align-items:center; gap:6px; font-size: 12.5px; color: var(--text-secondary);">
-          Importar proyecto
-          <input type="file" id="memoria-importar" accept="application/json">
-        </label>
-        <button type="button" id="memoria-imprimir">Imprimir / Guardar PDF</button>
+      <div class="barra-acciones no-imprimir">
+        <button type="button" id="memoria-agregar-tramo" class="btn">+ Agregar tramo</button>
+        <div class="barra-acciones-grupo">
+          <input type="file" id="memoria-importar" class="visualmente-oculto" accept="application/json">
+          <label for="memoria-importar" class="btn">Importar proyecto (.json)</label>
+          <button type="button" id="memoria-exportar" class="btn">Exportar proyecto (.json)</button>
+          <button type="button" id="memoria-imprimir" class="btn btn-primario">Imprimir / Guardar PDF</button>
+        </div>
+        <p class="barra-acciones-estado" id="memoria-estado" role="status" aria-live="polite"></p>
       </div>
 
       <div id="memoria-error" class="resultado-tile alerta no-imprimir" style="display:none;"></div>
 
+      <h3 class="seccion-titulo no-imprimir">Diagrama de la red</h3>
       <svg id="memoria-arbol" width="100%" height="220" role="img" aria-label="Diagrama de la red de tramos"></svg>
 
-      <div style="overflow-x:auto;">
+      <h3 class="seccion-titulo no-imprimir">Tramos <span class="seccion-titulo-nota">— las columnas sombreadas se calculan solas</span></h3>
+      <div class="tabla-contenedor no-imprimir">
         <table id="memoria-tabla" class="no-imprimir">
           <thead>
             <tr>
@@ -277,12 +315,12 @@
               <th>Longitud [m]</th>
               <th>Presión inicial <select id="memoria-presion-inicial-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión inicial"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
               <th>Temp. [°C]</th>
-              <th>Caudal objetivo [m³/h]</th>
-              <th>Velocidad [m/s]</th>
-              <th>Pérdida requerida <select id="memoria-perdida-requerida-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida requerida"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
-              <th>Pérdida acumulada <select id="memoria-perdida-acumulada-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida acumulada"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
-              <th>Presión final <select id="memoria-presion-final-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión final"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
-              <th></th>
+              <th class="col-calculada">Caudal objetivo [m³/h]</th>
+              <th class="col-calculada">Velocidad [m/s]</th>
+              <th class="col-calculada">Pérdida requerida <select id="memoria-perdida-requerida-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida requerida"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th class="col-calculada">Pérdida acumulada <select id="memoria-perdida-acumulada-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida acumulada"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th class="col-calculada">Presión final <select id="memoria-presion-final-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión final"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th><span class="visualmente-oculto">Acciones</span></th>
             </tr>
           </thead>
           <tbody id="memoria-tabla-cuerpo"></tbody>
@@ -359,15 +397,15 @@
 
           <fieldset class="subseccion">
             <legend>Observaciones</legend>
-            <textarea id="mp-observaciones" rows="4" style="width:100%; font:inherit; font-size:13px; padding:8px 10px; border-radius:6px; border:1px solid var(--gridline); background:var(--surface-card); color:var(--text-primary);"></textarea>
+            <textarea id="mp-observaciones" rows="4" aria-label="Observaciones"></textarea>
           </fieldset>
         </form>
 
         <fieldset class="subseccion" style="margin-bottom:0;">
           <legend>Artefactos</legend>
           <div id="memoria-artefactos-cuerpo"></div>
-          <button type="button" id="memoria-artefacto-agregar">+ Agregar artefacto</button>
-          <div id="memoria-artefactos-total-txt" style="font-size:12px; color:var(--text-secondary); margin-top:8px;"></div>
+          <button type="button" id="memoria-artefacto-agregar" class="btn">+ Agregar artefacto</button>
+          <div id="memoria-artefactos-total-txt" class="artefactos-total"></div>
         </fieldset>
       </details>
 

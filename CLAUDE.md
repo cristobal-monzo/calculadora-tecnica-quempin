@@ -48,10 +48,26 @@ UI) salvo dos cosas que siempre se comparten desde `assets/`:
   módulos y el selector "Cambiar de gas" de la cabecera, que permite
   moverse entre herramientas sin volver al hub. Al agregar un módulo nuevo:
   agregarlo a `GASES` en `assets/gases.js` (una sola vez — el hub y el
-  selector de cada módulo lo leen de ahí), y en el `index.html` del módulo
+  selector de cada módulo lo leen de ahí), con su lista `herramientas`
+  (`id` = el `data-tab` de cada pestaña del módulo: el hub las enlaza
+  directo como `<ruta>#<id>`), y en el `index.html` del módulo
   nuevo agregar `<select id="selector-gas">` en la cabecera + llamar
   `initSelectorGas({ actualId: '<id-del-gas>', profundidad: 1 })` desde su
-  `ui.js` (ver `Hidrogeno/js/ui.js` como referencia). La decisión de "un sitio por gas vs. un selector
+  `ui.js` (ver `Hidrogeno/js/ui.js` como referencia). Copiar también
+  `initTabs()` de ese `ui.js`: activa la pestaña desde el hash de la URL,
+  que es lo que hace funcionar esos enlaces directos del hub.
+
+## Patrón de UI de los módulos (rediseño UX/UI 2026-09-24)
+
+Ambos módulos comparten la misma estructura de pantalla, copiada (no
+importada) en cada `css/styles.css` — mantenerlas iguales al tocar una:
+barra de pestañas fija (`.barra-pestanas`), cada calculadora en
+`.calc-layout` = entradas (`.calc-entradas`) | resultados
+(`.calc-resultados`, fijos al hacer scroll si caben), resultados armados
+con `grupo()` en `ui.js` (un grupo `kpis` arriba + grupos con subtítulo),
+tokens de estado `--estado-ok/alerta/critico` con variante propia en tema
+oscuro, y `aria-invalid` en cajetines numéricos con texto no numérico. El
+detalle y el porqué de cada decisión está en el `CLAUDE.md` de cada módulo. La decisión de "un sitio por gas vs. un selector
 compartido entre gases" se toma módulo por módulo — Hidrógeno tiene su
 propio sitio; Gas Natural y GLP (cuando se construyan) compartirán uno con
 selector interno, porque son más similares entre sí en normativa aplicable

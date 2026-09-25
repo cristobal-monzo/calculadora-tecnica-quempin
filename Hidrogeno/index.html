@@ -23,15 +23,20 @@
     </div>
   </header>
 
-  <nav class="tabs" role="tablist">
-    <button class="tab active" id="tab-flujo" role="tab" aria-selected="true" aria-controls="panel-flujo" data-tab="flujo">Tubería y Flujo</button>
-    <button class="tab" id="tab-almacenamiento" role="tab" aria-selected="false" aria-controls="panel-almacenamiento" data-tab="almacenamiento">Almacenamiento</button>
-    <button class="tab" id="tab-memoria" role="tab" aria-selected="false" aria-controls="panel-memoria" data-tab="memoria">Memoria de Cálculo</button>
-  </nav>
+  <div class="barra-pestanas">
+    <div class="barra-pestanas-interior">
+      <nav class="tabs" role="tablist">
+        <button class="tab active" id="tab-flujo" role="tab" aria-selected="true" aria-controls="panel-flujo" data-tab="flujo">Tubería y Flujo</button>
+        <button class="tab" id="tab-almacenamiento" role="tab" aria-selected="false" aria-controls="panel-almacenamiento" data-tab="almacenamiento">Almacenamiento</button>
+        <button class="tab" id="tab-memoria" role="tab" aria-selected="false" aria-controls="panel-memoria" data-tab="memoria">Memoria de Cálculo</button>
+      </nav>
+    </div>
+  </div>
 
   <main>
     <section class="tab-panel active" id="panel-flujo" role="tabpanel" aria-labelledby="tab-flujo" data-panel="flujo">
-      <form id="form-flujo" autocomplete="off">
+      <div class="calc-layout">
+      <form id="form-flujo" class="calc-entradas" autocomplete="off">
         <div class="seccion">
           <h3 class="seccion-titulo">Condiciones de operación</h3>
           <div class="fila-campos">
@@ -85,24 +90,37 @@
               <label for="flujo-tuberia">Tubería utilizada</label>
               <select id="flujo-tuberia" required></select>
             </div>
-            <div class="campo campo-ancho" id="campo-flujo-tuberia-manual" style="display:none;">
-              <label for="flujo-tuberia-manual-di">Tubería manual — DI [mm] / espesor [mm] / límite elástico [MPa] / rugosidad [mm]</label>
-              <div class="fila-campos" style="padding-top:0; grid-template-columns:repeat(4, minmax(0, 1fr));">
-                <input id="flujo-tuberia-manual-di" type="text" inputmode="decimal" value="12.7" required aria-label="Diámetro interior manual [mm]">
-                <input id="flujo-tuberia-manual-espesor" type="text" inputmode="decimal" value="1.2" required aria-label="Espesor de pared manual [mm]">
-                <input id="flujo-tuberia-manual-limite" type="text" inputmode="decimal" value="170" required aria-label="Límite elástico manual [MPa]">
-                <input id="flujo-tuberia-manual-rugosidad" type="text" inputmode="decimal" value="0.002" required aria-label="Rugosidad manual [mm]">
-              </div>
-            </div>
             <div class="campo">
               <label for="flujo-factor-diseno">Factor de diseño F (ASME B31.12)</label>
               <select id="flujo-factor-diseno" required></select>
             </div>
           </div>
 
+          <fieldset class="subseccion" id="campo-flujo-tuberia-manual" style="display:none;">
+            <legend>Tubería manual</legend>
+            <div class="fila-campos">
+              <div class="campo">
+                <label for="flujo-tuberia-manual-di">Diámetro interior [mm]</label>
+                <input id="flujo-tuberia-manual-di" type="text" inputmode="decimal" value="12.7" required>
+              </div>
+              <div class="campo">
+                <label for="flujo-tuberia-manual-espesor">Espesor de pared [mm]</label>
+                <input id="flujo-tuberia-manual-espesor" type="text" inputmode="decimal" value="1.2" required>
+              </div>
+              <div class="campo">
+                <label for="flujo-tuberia-manual-limite">Límite elástico [MPa]</label>
+                <input id="flujo-tuberia-manual-limite" type="text" inputmode="decimal" value="170" required>
+              </div>
+              <div class="campo">
+                <label for="flujo-tuberia-manual-rugosidad">Rugosidad [mm]</label>
+                <input id="flujo-tuberia-manual-rugosidad" type="text" inputmode="decimal" value="0.002" required>
+              </div>
+            </div>
+          </fieldset>
+
           <fieldset class="subseccion">
             <legend>Accesorios (pérdidas locales)</legend>
-            <div class="fila-campos">
+            <div class="fila-campos compacta">
               <div class="campo">
                 <label for="flujo-codos">Codos</label>
                 <input id="flujo-codos" type="number" step="1" min="0" value="0">
@@ -120,7 +138,14 @@
         </div>
       </form>
 
-      <div class="resultados" id="resultados-flujo" aria-live="polite"></div>
+      <div class="calc-resultados">
+        <div class="resultados-encabezado">
+          <h2>Resultados</h2>
+          <span class="en-vivo">Se actualizan al escribir</span>
+        </div>
+        <div class="resultados" id="resultados-flujo" aria-live="polite"></div>
+      </div>
+      </div>
 
       <details class="no-imprimir">
         <summary>Tabla de tubería (referencia)</summary>
@@ -129,51 +154,68 @@
     </section>
 
     <section class="tab-panel" id="panel-almacenamiento" role="tabpanel" aria-labelledby="tab-almacenamiento" data-panel="almacenamiento">
-      <form id="form-almacenamiento" class="fila-campos" autocomplete="off">
-        <div class="campo">
-          <label for="alm-potencia">Potencia de consumo [kW]</label>
-          <input id="alm-potencia" type="text" inputmode="decimal" value="60" required>
-        </div>
-        <div class="campo">
-          <label for="alm-temperatura">Temperatura [°C]</label>
-          <input id="alm-temperatura" type="text" inputmode="decimal" value="20" required>
-        </div>
-        <div class="campo">
-          <label for="alm-presion">Presión de almacenamiento [abs]</label>
-          <div class="campo-con-unidad">
-            <input id="alm-presion" type="text" inputmode="decimal" value="200" required>
-            <select id="alm-presion-unidad" class="select-unidad" aria-label="Unidad de presión de almacenamiento">
-              <option value="Pa">Pa</option>
-              <option value="kPa">kPa</option>
-              <option value="mbar">mbar</option>
-              <option value="bar" selected>bar</option>
-              <option value="MPa">MPa</option>
-              <option value="psi">psi</option>
-            </select>
+      <div class="calc-layout">
+      <form id="form-almacenamiento" class="calc-entradas" autocomplete="off">
+        <div class="seccion">
+          <h3 class="seccion-titulo">Estanque y consumo</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="alm-potencia">Potencia de consumo [kW]</label>
+              <input id="alm-potencia" type="text" inputmode="decimal" value="60" required>
+            </div>
+            <div class="campo">
+              <label for="alm-temperatura">Temperatura [°C]</label>
+              <input id="alm-temperatura" type="text" inputmode="decimal" value="20" required>
+            </div>
+            <div class="campo">
+              <label for="alm-presion">Presión de almacenamiento [abs]</label>
+              <div class="campo-con-unidad">
+                <input id="alm-presion" type="text" inputmode="decimal" value="200" required>
+                <select id="alm-presion-unidad" class="select-unidad" aria-label="Unidad de presión de almacenamiento">
+                  <option value="Pa">Pa</option>
+                  <option value="kPa">kPa</option>
+                  <option value="mbar">mbar</option>
+                  <option value="bar" selected>bar</option>
+                  <option value="MPa">MPa</option>
+                  <option value="psi">psi</option>
+                </select>
+              </div>
+            </div>
+            <div class="campo">
+              <label for="alm-volumen">Volumen del estanque [m³]</label>
+              <input id="alm-volumen" type="text" inputmode="decimal" value="0.19" required>
+            </div>
           </div>
         </div>
-        <div class="campo">
-          <label for="alm-volumen">Volumen del estanque [m³]</label>
-          <input id="alm-volumen" type="text" inputmode="decimal" value="0.19" required>
-        </div>
       </form>
-      <div class="resultados" id="resultados-almacenamiento" aria-live="polite"></div>
+
+      <div class="calc-resultados">
+        <div class="resultados-encabezado">
+          <h2>Resultados</h2>
+          <span class="en-vivo">Se actualizan al escribir</span>
+        </div>
+        <div class="resultados" id="resultados-almacenamiento" aria-live="polite"></div>
+      </div>
+      </div>
     </section>
 
     <section class="tab-panel" id="panel-memoria" role="tabpanel" aria-labelledby="tab-memoria" data-panel="memoria">
-      <div class="no-imprimir" style="display:flex; gap:8px; flex-wrap:wrap; margin: 20px 0 16px;">
-        <button type="button" id="memoria-agregar-tramo">+ Agregar tramo</button>
-        <button type="button" id="memoria-exportar">Exportar proyecto (.json)</button>
-        <label style="display:inline-flex; align-items:center; gap:6px; font-size: 12.5px; color: var(--text-secondary);">
-          Importar proyecto
-          <input type="file" id="memoria-importar" accept="application/json">
-        </label>
-        <button type="button" id="memoria-imprimir">Imprimir / Guardar PDF</button>
+      <div class="barra-acciones no-imprimir">
+        <button type="button" id="memoria-agregar-tramo" class="btn">+ Agregar tramo</button>
+        <div class="barra-acciones-grupo">
+          <input type="file" id="memoria-importar" class="visualmente-oculto" accept="application/json">
+          <label for="memoria-importar" class="btn">Importar proyecto (.json)</label>
+          <button type="button" id="memoria-exportar" class="btn">Exportar proyecto (.json)</button>
+          <button type="button" id="memoria-imprimir" class="btn btn-primario">Imprimir / Guardar PDF</button>
+        </div>
+        <p class="barra-acciones-estado" id="memoria-estado" role="status" aria-live="polite"></p>
       </div>
 
+      <h3 class="seccion-titulo no-imprimir">Diagrama de la red</h3>
       <svg id="memoria-arbol" width="100%" height="220" role="img" aria-label="Diagrama de la red de tramos"></svg>
 
-      <div style="overflow-x:auto;">
+      <h3 class="seccion-titulo no-imprimir">Tramos <span class="seccion-titulo-nota">— las columnas sombreadas se calculan solas</span></h3>
+      <div class="tabla-contenedor no-imprimir">
         <table id="memoria-tabla" class="no-imprimir">
           <thead>
             <tr>
@@ -182,10 +224,10 @@
               <th>Presión <select id="memoria-presion-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa" selected>MPa</option><option value="psi">psi</option></select></th>
               <th>Longitud [m]</th>
               <th>Potencia [kW]</th><th>Diámetro</th><th>Material</th><th>Temp. [°C]</th>
-              <th>Densidad [kg/m³]</th><th>Velocidad [m/s]</th>
-              <th>Pérdida parcial <select id="memoria-perdida-parcial-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida parcial"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar" selected>mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
-              <th>Pérdida acumulada <select id="memoria-perdida-acumulada-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida acumulada"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar" selected>mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
-              <th></th>
+              <th class="col-calculada">Densidad [kg/m³]</th><th class="col-calculada">Velocidad [m/s]</th>
+              <th class="col-calculada">Pérdida parcial <select id="memoria-perdida-parcial-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida parcial"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar" selected>mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th class="col-calculada">Pérdida acumulada <select id="memoria-perdida-acumulada-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida acumulada"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar" selected>mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th><span class="visualmente-oculto">Acciones</span></th>
             </tr>
           </thead>
           <tbody id="memoria-tabla-cuerpo"></tbody>
@@ -262,15 +304,15 @@
 
           <fieldset class="subseccion">
             <legend>Observaciones</legend>
-            <textarea id="mp-observaciones" rows="4" style="width:100%; font:inherit; font-size:13px; padding:8px 10px; border-radius:6px; border:1px solid var(--gridline); background:var(--surface-card); color:var(--text-primary);"></textarea>
+            <textarea id="mp-observaciones" rows="4" aria-label="Observaciones"></textarea>
           </fieldset>
         </form>
 
         <fieldset class="subseccion" style="margin-bottom:0;">
           <legend>Artefactos</legend>
           <div id="memoria-artefactos-cuerpo"></div>
-          <button type="button" id="memoria-artefacto-agregar">+ Agregar artefacto</button>
-          <div id="memoria-artefactos-total-txt" style="font-size:12px; color:var(--text-secondary); margin-top:8px;"></div>
+          <button type="button" id="memoria-artefacto-agregar" class="btn">+ Agregar artefacto</button>
+          <div id="memoria-artefactos-total-txt" class="artefactos-total"></div>
         </fieldset>
       </details>
 

@@ -8,36 +8,64 @@
   <link rel="stylesheet" href="assets/brand.css">
   <style>
     body { margin: 0; }
-    main { max-width: 900px; margin: 0 auto; padding: 0 20px 60px; }
+    /* Mismo ancho que la cabecera (.viz-container) para que el borde del
+       logo y el de las tarjetas calcen. */
+    main { max-width: 1180px; margin: 0 auto; padding: 8px 20px 60px; }
 
-    .hub-hero { text-align: center; padding: 8px 0 8px; }
-    .hub-hero p { font-size: 13.5px; color: var(--text-secondary); max-width: 640px; margin: 0 auto; line-height: 1.6; }
+    .hub-hero { max-width: 700px; padding: 8px 0 28px; }
+    .hub-hero h2 { font-size: 24px; font-weight: 900; line-height: 1.25; margin: 0 0 8px; color: var(--text-primary); }
+    .hub-hero p { font-size: 14px; color: var(--text-secondary); margin: 0; line-height: 1.6; }
 
     .hub-section-title {
-      font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
-      color: var(--text-secondary); margin: 0; padding-top: 20px; border-top: 1px solid var(--border-hairline);
+      font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-secondary); margin: 0;
     }
-    .hub-section-title:first-of-type { border-top: none; padding-top: 0; }
-    .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; padding: 16px 0 12px; }
+    .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 14px 0 12px; }
     .hub-card {
       background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 14px;
-      padding: 24px; display: flex; flex-direction: column; gap: 10px;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      padding: 24px; display: flex; flex-direction: column; gap: 14px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     }
-    .hub-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); }
-    .hub-card .icon { font-size: 32px; line-height: 1; }
-    .hub-card h3 { font-size: 16px; font-weight: 700; margin: 0; }
-    .hub-card p.desc { font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin: 0; flex: 1; }
+    .hub-card:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); border-color: var(--baseline); }
+    @media (prefers-reduced-motion: reduce) { .hub-card, .hub-card:hover { transition: none; transform: none; } }
+    .hub-card-cabecera { display: flex; align-items: center; gap: 14px; }
+    .hub-card .icon {
+      font-size: 26px; line-height: 1; width: 48px; height: 48px; flex: 0 0 auto;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 12px; background: var(--page-plane);
+    }
+    .hub-card h3 { font-size: 17px; font-weight: 900; margin: 0; }
+    .hub-normas { font-size: 12px; font-weight: 700; color: var(--brand-orange-ink); margin-top: 3px; }
+    .hub-card p.desc { font-size: 13px; color: var(--text-secondary); line-height: 1.55; margin: 0; }
+
+    /* Herramientas del módulo como enlaces directos a cada pestaña
+       (`<ruta>#<id>`, ver `herramientas` en assets/gases.js). */
+    .hub-herramientas { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; flex: 1; align-content: flex-start; }
+    .hub-herramientas a {
+      display: inline-block; font-size: 12.5px; font-weight: 700; color: var(--text-primary);
+      text-decoration: none; padding: 5px 10px; border-radius: 999px;
+      border: 1px solid var(--gridline); background: var(--page-plane);
+    }
+    .hub-herramientas a:hover { border-color: var(--brand-orange); color: var(--brand-orange-ink); }
+    .hub-herramientas a:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; }
+
     .hub-card a.btn {
       align-self: flex-start; background: var(--brand-orange); color: #000000; font-weight: 900;
-      font-size: 13px; text-decoration: none; padding: 9px 16px; border-radius: 8px; margin-top: 4px;
+      font-size: 13px; text-decoration: none; padding: 9px 16px; border-radius: 8px;
     }
     .hub-card a.btn:hover { filter: brightness(1.08); }
     .hub-card a.btn:focus-visible { outline: 2px solid var(--brand-orange-ink, var(--brand-orange)); outline-offset: 2px; }
     .hub-card.proximamente { opacity: 0.6; }
     .hub-card.proximamente a.btn { background: var(--gridline); color: var(--text-muted); pointer-events: none; }
 
-    .hub-footnote { font-size: 12px; color: var(--text-muted); text-align: center; margin: 12px 0 0; line-height: 1.6; }
+    .hub-footnote { font-size: 12px; color: var(--text-muted); margin: 20px 0 0; line-height: 1.6; }
+    .hub-footnote a { color: var(--brand-orange-ink); font-weight: 700; }
+
+    @media (max-width: 600px) {
+      .viz-titleblock p { display: none; }
+      .hub-hero h2 { font-size: 20px; }
+      .hub-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -55,12 +83,13 @@
 
   <main class="viz-container">
     <div class="hub-hero">
-      <p>Herramientas de ingeniería para dimensionar instalaciones de gas — diámetro de tuberías,
-      presión máxima de diseño, y volumen/masa/autonomía de almacenamiento. Cada tarjeta abre en
-      una pestaña nueva.</p>
+      <h2>Herramientas de ingeniería para instalaciones de gas</h2>
+      <p>Diámetro de tuberías, presión máxima de diseño, volumen/masa/autonomía de almacenamiento
+      y memorias de cálculo. Elige un gas, o entra directo a una de sus herramientas — cada enlace
+      abre en una pestaña nueva.</p>
     </div>
 
-    <h2 class="hub-section-title">Gases</h2>
+    <h2 class="hub-section-title">Calculadoras por gas</h2>
     <div class="hub-grid" id="hub-grid"></div>
 
     <p class="hub-footnote">Publicado en GitHub Pages, código abierto en
@@ -98,9 +127,18 @@
 
   document.getElementById('hub-grid').innerHTML = GASES.map((gas) => `
     <article class="hub-card${gas.disponible ? '' : ' proximamente'}">
-      <div class="icon" aria-hidden="true">${gas.icono}</div>
-      <h3>${gas.nombre}</h3>
+      <div class="hub-card-cabecera">
+        <div class="icon" aria-hidden="true">${gas.icono}</div>
+        <div>
+          <h3>${gas.nombre}</h3>
+          ${gas.normas ? `<div class="hub-normas">${gas.normas}</div>` : ''}
+        </div>
+      </div>
       <p class="desc">${gas.desc}</p>
+      ${gas.disponible && gas.herramientas?.length ? `
+        <ul class="hub-herramientas" aria-label="Herramientas de ${gas.nombre}">
+          ${gas.herramientas.map((h) => `<li><a href="${enlaceGas(gas, 0)}#${h.id}" target="_blank" rel="noopener">${h.nombre}</a></li>`).join('')}
+        </ul>` : ''}
       ${gas.disponible
         ? `<a class="btn" href="${enlaceGas(gas, 0)}" target="_blank" rel="noopener">Abrir calculadora →</a>`
         : `<a class="btn" href="#" aria-disabled="true">Próximamente</a>`}

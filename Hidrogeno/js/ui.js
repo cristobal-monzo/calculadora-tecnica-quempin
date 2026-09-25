@@ -75,17 +75,56 @@ function escapeHtml(texto) {
   return String(texto).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// La pestaña activa vive en el hash de la URL (#flujo, #almacenamiento,
+// #memoria — el data-tab de cada botón, 2026-09-24): recargar la página ya
+// no devuelve siempre a la primera pestaña, y el hub puede enlazar directo
+// a una herramienta. replaceState en vez de asignar location.hash para no
+// llenar el historial con un paso por cada clic de pestaña.
 function initTabs() {
-  const botones = document.querySelectorAll('.tab');
+  const botones = Array.from(document.querySelectorAll('.tab'));
   const paneles = document.querySelectorAll('.tab-panel');
+  function activar(nombre) {
+    const boton = botones.find((b) => b.dataset.tab === nombre);
+    if (!boton) return;
+    botones.forEach((b) => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+    paneles.forEach((p) => p.classList.remove('active'));
+    boton.classList.add('active');
+    boton.setAttribute('aria-selected', 'true');
+    document.querySelector(`[data-panel="${nombre}"]`).classList.add('active');
+  }
   botones.forEach((boton) => {
     boton.addEventListener('click', () => {
-      botones.forEach((b) => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
-      paneles.forEach((p) => p.classList.remove('active'));
-      boton.classList.add('active');
-      boton.setAttribute('aria-selected', 'true');
-      document.querySelector(`[data-panel="${boton.dataset.tab}"]`).classList.add('active');
+      activar(boton.dataset.tab);
+      history.replaceState(null, '', `#${boton.dataset.tab}`);
+      // La barra de pestañas queda fija arriba al hacer scroll: si se cambia
+      // de pestaña estando más abajo, volver al inicio del contenido en vez
+      // de dejar al usuario a media altura de un panel distinto.
+      const panel = document.querySelector('.tab-panel.active');
+      const barra = document.querySelector('.barra-pestanas');
+      const destino = panel.getBoundingClientRect().top + window.scrollY - barra.offsetHeight - 16;
+      if (window.scrollY > destino) window.scrollTo({ top: destino });
     });
+  });
+  activar(decodeURIComponent(location.hash.slice(1)));
+  window.addEventListener('hashchange', () => activar(decodeURIComponent(location.hash.slice(1))));
+}
+
+// Marca en rojo (aria-invalid, estilo en css/styles.css) un cajetín
+// numérico cuyo texto no se puede leer como número — numeroFlexible() lo
+// trata como 0, y antes eso pasaba sin ningún aviso (2026-09-24). Vacío no
+// cuenta como inválido: hay campos opcionales (criterios de diseño).
+function initValidacionNumerica() {
+  document.addEventListener('input', (evento) => {
+    const el = evento.target;
+    if (!(el instanceof HTMLInputElement) || el.inputMode !== 'decimal') return;
+    const bruto = el.value.trim();
+    if (bruto !== '' && !Number.isFinite(Number(bruto.replace(',', '.')))) {
+      el.setAttribute('aria-invalid', 'true');
+      el.title = 'No es un número válido — se calcula como 0';
+    } else if (el.hasAttribute('aria-invalid')) {
+      el.removeAttribute('aria-invalid');
+      el.removeAttribute('title');
+    }
   });
 }
 
@@ -95,6 +134,15 @@ function initTabs() {
 function tile(valor, etiqueta, variante = false) {
   const clase = variante === true ? ' alerta' : variante ? ` ${variante}` : '';
   return `<div class="resultado-tile${clase}"><div class="valor">${valor}</div><div class="etiqueta">${etiqueta}</div></div>`;
+}
+
+// Agrupa tiles de resultado bajo un subtítulo opcional, cada grupo con su
+// propia grilla auto-fit (2026-09-24): así el par de KPI ocupa todo el
+// ancho en vez de dejar columnas vacías de una grilla común a todos los
+// tiles. `clase` = 'kpis' para el grupo de KPI del tope (tiles más anchos).
+function grupo(titulo, tiles, clase = '') {
+  const subtitulo = titulo ? `<div class="resultados-subtitulo">${titulo}</div>` : '';
+  return `<div class="grupo-resultados${clase ? ` ${clase}` : ''}">${subtitulo}${tiles.join('')}</div>`;
 }
 
 /* --- Selectores de unidad de presión, uno independiente por campo/resultado --- */
@@ -159,12 +207,12 @@ function initTilesPresion(contenedorId, unidadesTiles, claveStorage) {
 // ver unidadNormalizado/unidadH2 en calc-flujo.js). El <select> se
 // regenera en cada render (igual que poblarSelectTuberia), así que
 // `seleccionada` fija cuál opción queda marcada.
-function tileConUnidad(valorFormateado, etiqueta, selectId, opciones, seleccionada) {
+function tileConUnidad(valorFormateado, etiqueta, selectId, opciones, seleccionada, variante = '') {
   const opcionesHtml = opciones.map((o) => {
     const texto = o.replace(/[[\]]/g, '').replace('m3', 'm³');
     return `<option value="${o}"${o === seleccionada ? ' selected' : ''}>${texto}</option>`;
   }).join('');
-  return `<div class="resultado-tile">
+  return `<div class="resultado-tile${variante ? ` ${variante}` : ''}">
     <div class="valor"><span class="valor-numero">${valorFormateado}</span><select class="select-unidad-inline" id="${selectId}" aria-label="Unidad de ${escapeAttr(etiqueta)}">${opcionesHtml}</select></div>
     <div class="etiqueta">${etiqueta}</div>
   </div>`;
@@ -280,14 +328,13 @@ const ESTADOS_SONICO = {
 function tilesChequeoSonico(c) {
   const { etiqueta, variante, nota } = ESTADOS_SONICO[c.estado];
   const valor = (v, sufijo = '') => (v === null ? '—' : `${formatearNumero(v)}${sufijo}`);
-  return [
-    '<div class="resultados-subtitulo">Caída de presión / flujo sónico — H₂ (screening simplificado, no reemplaza API RP 14E)</div>',
+  return grupo('Caída de presión / flujo sónico — H₂ (screening simplificado, no reemplaza API RP 14E)', [
+    tile(etiqueta, 'Estado', `${variante} ancho`),
     tile(valor(c.caidaPresionPorcentaje, ' %'), 'ΔP/P₁ (sobre presión absoluta)'),
     tile(c.relacionPresion === null ? '—' : formatearRatio(c.relacionPresion), 'P₂/P₁'),
     tile(formatearRatio(c.relacionPresionCritica), 'Límite crítico aprox. P₂/P₁ (γ = 1,40)', 'secundario'),
-    tile(etiqueta, 'Estado', variante),
     `<div class="resultados-nota">${nota}</div>`,
-  ].join('');
+  ]);
 }
 
 // Orden y etiquetas (2026-09-02, a pedido del usuario): los resultados de
@@ -299,23 +346,27 @@ function renderResultadosFlujo(r) {
   const cercaDeErosion = r.velocidadFlujoMS >= r.velocidadErosionMS * 0.8;
   const varianteAdecuada = r.tuberiaAdecuada ? 'ok' : 'alerta';
   document.getElementById('resultados-flujo').innerHTML = [
-    tilePresion(r.presionMaxDisenoBar, 'bar', 'Presión máxima diseño (PL-3.7.1)', 'presion-max-diseno', unidadesTilesPresionFlujo, `kpi ${varianteAdecuada}`),
-    tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar tubería de mayor espesor o menor diámetro', 'Tubería adecuada', `kpi ${varianteAdecuada}`),
-    '<div class="resultados-subtitulo">Caudal y velocidad</div>',
-    tileConUnidad(formatearNumero(r.flujoVolNormalizado), 'Flujo volum. Norm.', 'flujo-unidad-normalizado', OPCIONES_UNIDAD_NORMALIZADO, unidadNormalizadoFlujo),
-    tileConUnidad(formatearNumero(r.flujoVolH2), 'Flujo volum. de H₂', 'flujo-unidad-h2', OPCIONES_UNIDAD_H2, unidadH2Flujo),
-    tile(`${formatearNumero(r.flujoMasicoKgH)} kg/h`, 'Flujo másico de H₂'),
-    tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad erosión (I-3.4.5)'),
-    tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo', cercaDeErosion),
-    tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdidas de carga', 'perdida-carga', unidadesTilesPresionFlujo),
+    grupo(null, [
+      tilePresion(r.presionMaxDisenoBar, 'bar', 'Presión máxima diseño (PL-3.7.1)', 'presion-max-diseno', unidadesTilesPresionFlujo, `kpi ${varianteAdecuada}`),
+      tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar tubería de mayor espesor o menor diámetro', 'Tubería adecuada', `kpi ${varianteAdecuada}`),
+    ], 'kpis'),
+    grupo('Caudal y velocidad', [
+      tileConUnidad(formatearNumero(r.flujoVolNormalizado), 'Flujo volum. Norm.', 'flujo-unidad-normalizado', OPCIONES_UNIDAD_NORMALIZADO, unidadNormalizadoFlujo),
+      tileConUnidad(formatearNumero(r.flujoVolH2), 'Flujo volum. de H₂', 'flujo-unidad-h2', OPCIONES_UNIDAD_H2, unidadH2Flujo),
+      tile(`${formatearNumero(r.flujoMasicoKgH)} kg/h`, 'Flujo másico de H₂'),
+      tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad erosión (I-3.4.5)'),
+      tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo', cercaDeErosion),
+      tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdidas de carga', 'perdida-carga', unidadesTilesPresionFlujo),
+    ]),
     tilesChequeoSonico(r.chequeoSonico),
-    '<div class="resultados-subtitulo">Factores de verificación</div>',
-    tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad real', 'secundario'),
-    tile(formatearNumero(r.factorHfAplicado), 'Factor Hf aplicado (Tabla IX-5A, fragilización por H₂)', 'secundario'),
-    tile(formatearNumero(r.factorTAplicado), 'Factor T aplicado (Tabla PL-3.7.1(b)(8), derating por temperatura)', 'secundario'),
-    tile(formatearZ(r.zDiseno), 'Factor Z (compresibilidad, correlación NIST)', 'secundario'),
-    tile(formatearNumero(r.reynolds), 'Número de Reynolds', 'secundario'),
-    tile(formatearNumero(r.factorFriccion), 'Factor de fricción (Haaland)', 'secundario'),
+    grupo('Factores de verificación', [
+      tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad real', 'secundario'),
+      tile(formatearNumero(r.factorHfAplicado), 'Factor Hf aplicado (Tabla IX-5A, fragilización por H₂)', 'secundario'),
+      tile(formatearNumero(r.factorTAplicado), 'Factor T aplicado (Tabla PL-3.7.1(b)(8), derating por temperatura)', 'secundario'),
+      tile(formatearZ(r.zDiseno), 'Factor Z (compresibilidad, correlación NIST)', 'secundario'),
+      tile(formatearNumero(r.reynolds), 'Número de Reynolds', 'secundario'),
+      tile(formatearNumero(r.factorFriccion), 'Factor de fricción (Haaland)', 'secundario'),
+    ]),
   ].join('');
 }
 
@@ -404,17 +455,20 @@ function leerAlmacenamientoForm() {
 
 function renderResultadosAlmacenamiento(r) {
   document.getElementById('resultados-almacenamiento').innerHTML = [
-    tile(`${formatearNumero(r.masaAlmacenadaKg)} kg`, 'Masa de H₂ almacenada (PV=ZnRT)', 'kpi'),
-    tile(formatearHoras(r.autonomiaHoras), 'Autonomía (hh:mm:ss)', 'kpi'),
-    '<div class="resultados-subtitulo">Detalle del cálculo</div>',
-    tile(formatearZ(r.zAlmacenamiento), 'Factor de compresibilidad Z', 'secundario'),
-    tile(`${formatearNumero(r.densidadRealKgM3)} kg/m³`, 'Densidad real en el estanque', 'secundario'),
-    tile(`${formatearNumero(r.volumenNormalizadoNm3)} Nm³`, 'Volumen normalizado', 'secundario'),
-    tile(`${formatearNumero(r.consumoKgH)} kg/h`, 'Consumo del quemador', 'secundario'),
-    tile(`${formatearNumero(r.consumoNm3H)} Nm³/h`, 'Consumo del quemador (normalizado)', 'secundario'),
-    tileConUnidad(formatearNumero(r.caudalReferenciaM3H), 'Caudal de referencia (línea capilar Ø¼")', 'alm-unidad-caudal', OPCIONES_UNIDAD_CAUDAL_ALM, unidadCaudalAlm),
-    tile(`${formatearNumero(r.velocidadReferenciaMS)} m/s`, 'Velocidad de referencia (línea capilar Ø¼")', 'secundario'),
-    tile(formatearHoras(r.tiempoLlenadoHoras), 'Tiempo de llenado (hh:mm:ss)', 'secundario'),
+    grupo(null, [
+      tile(`${formatearNumero(r.masaAlmacenadaKg)} kg`, 'Masa de H₂ almacenada (PV=ZnRT)', 'kpi'),
+      tile(formatearHoras(r.autonomiaHoras), 'Autonomía (hh:mm:ss)', 'kpi'),
+    ], 'kpis'),
+    grupo('Detalle del cálculo', [
+      tile(formatearZ(r.zAlmacenamiento), 'Factor de compresibilidad Z', 'secundario'),
+      tile(`${formatearNumero(r.densidadRealKgM3)} kg/m³`, 'Densidad real en el estanque', 'secundario'),
+      tile(`${formatearNumero(r.volumenNormalizadoNm3)} Nm³`, 'Volumen normalizado', 'secundario'),
+      tile(`${formatearNumero(r.consumoKgH)} kg/h`, 'Consumo del quemador', 'secundario'),
+      tile(`${formatearNumero(r.consumoNm3H)} Nm³/h`, 'Consumo del quemador (normalizado)', 'secundario'),
+      tileConUnidad(formatearNumero(r.caudalReferenciaM3H), 'Caudal de referencia (línea capilar Ø¼")', 'alm-unidad-caudal', OPCIONES_UNIDAD_CAUDAL_ALM, unidadCaudalAlm, 'secundario'),
+      tile(`${formatearNumero(r.velocidadReferenciaMS)} m/s`, 'Velocidad de referencia (línea capilar Ø¼")', 'secundario'),
+      tile(formatearHoras(r.tiempoLlenadoHoras), 'Tiempo de llenado (hh:mm:ss)', 'secundario'),
+    ]),
   ].join('');
 }
 
@@ -483,6 +537,33 @@ function proyectoPorDefecto() {
 function artefactoPorDefecto() {
   contadorArtefactoId += 1;
   return { id: `a${contadorArtefactoId}`, nombre: '', potenciaKw: 0 };
+}
+
+// Mayor sufijo numérico entre ids "t<N>" / "a<N>" — punto de partida de
+// los contadores de tramos y artefactos al cargar o importar (2026-09-24).
+// Antes se usaba la CANTIDAD de elementos: tras borrar uno intermedio
+// (t1,t3) y recargar, el contador quedaba en 2 y el siguiente "Agregar"
+// volvía a crear t3 — dos filas con el mismo data-id, y editar una pisaba
+// a la otra en el modelo (se veía al recargar).
+function maxSufijoId(items) {
+  return items.reduce((max, item) => Math.max(max, Number(String(item.id).slice(1)) || 0), 0);
+}
+
+// Quien ya se topó con ese bug tiene ids repetidos guardados (localStorage
+// o un .json exportado): la 2ª aparición de un id recibe uno nuevo al
+// cargar/importar. Un "Continúa desde" que apuntaba al id repetido queda
+// colgado del primero.
+function repararIdsDuplicados(items, prefijo) {
+  const vistos = new Set();
+  let siguiente = maxSufijoId(items);
+  return items.map((item) => {
+    if (!vistos.has(item.id)) {
+      vistos.add(item.id);
+      return item;
+    }
+    siguiente += 1;
+    return { ...item, id: `${prefijo}${siguiente}` };
+  });
 }
 
 function tramoPorDefecto() {
@@ -829,9 +910,11 @@ function initMemoria() {
     if (el) el.style.zoom = '';
   });
   tramos = cargar('memoria', null) ?? [tramoPorDefecto()];
-  contadorId = tramos.length;
+  tramos = repararIdsDuplicados(tramos, 't');
+  contadorId = maxSufijoId(tramos);
   proyecto = cargar('memoria-proyecto', null) ?? proyectoPorDefecto();
-  contadorArtefactoId = proyecto.artefactos.length;
+  proyecto.artefactos = repararIdsDuplicados(proyecto.artefactos, 'a');
+  contadorArtefactoId = maxSufijoId(proyecto.artefactos);
   aplicarProyectoAForm();
 
   // Unidad de cada columna de presión de la tabla — independiente entre
@@ -848,9 +931,13 @@ function initMemoria() {
     });
   });
 
+  // Tras agregar un tramo, el foco pasa a su nombre (seleccionado) para
+  // poder escribirlo de inmediato, sin buscar la fila nueva al final.
   document.getElementById('memoria-agregar-tramo').addEventListener('click', () => {
     tramos.push(tramoPorDefecto());
     recalcularMemoria();
+    const nombre = document.querySelector('#memoria-tabla-cuerpo tr:last-child .mem-nombre');
+    if (nombre) { nombre.focus(); nombre.select(); }
   });
 
   // Un <select> cambia la estructura de la fila (opciones de padre,
@@ -915,14 +1002,37 @@ function initMemoria() {
     recalcularMemoria();
   });
 
+  // Línea de estado bajo la barra de acciones (2026-09-24): confirma
+  // importar/exportar — antes no había ninguna respuesta visible, y un
+  // .json inválido fallaba en silencio (promesa rechazada sin capturar).
+  const estado = document.getElementById('memoria-estado');
+  function mostrarEstado(texto, esError = false) {
+    estado.textContent = texto;
+    estado.classList.toggle('error', esError);
+  }
+
   document.getElementById('memoria-exportar').addEventListener('click', () => {
     exportarJSON('proyecto-hidrogeno.json', { tramos, proyecto });
+    mostrarEstado('Proyecto exportado como proyecto-hidrogeno.json.');
   });
 
   document.getElementById('memoria-importar').addEventListener('change', async (evento) => {
     const archivo = evento.target.files[0];
     if (!archivo) return;
-    const datos = await importarJSON(archivo);
+    // Se vacía el <input> para que volver a elegir el mismo archivo (p.ej.
+    // tras editarlo) dispare 'change' de nuevo.
+    evento.target.value = '';
+    let datos;
+    try {
+      datos = await importarJSON(archivo);
+    } catch (error) {
+      mostrarEstado(`No se pudo importar "${archivo.name}": no es un archivo JSON válido.`, true);
+      return;
+    }
+    if (datos === null || typeof datos !== 'object') {
+      mostrarEstado(`No se pudo importar "${archivo.name}": no es un proyecto exportado desde esta calculadora.`, true);
+      return;
+    }
     // Compatibilidad hacia atrás (2026-09-02): un export previo a los
     // cajetines de proyecto era un array plano de tramos, sin envolver.
     if (Array.isArray(datos)) {
@@ -930,11 +1040,14 @@ function initMemoria() {
     } else {
       tramos = datos.tramos ?? [];
       proyecto = { ...proyectoPorDefecto(), ...datos.proyecto };
-      contadorArtefactoId = proyecto.artefactos.length;
+      proyecto.artefactos = repararIdsDuplicados(proyecto.artefactos, 'a');
+      contadorArtefactoId = maxSufijoId(proyecto.artefactos);
       aplicarProyectoAForm();
     }
-    contadorId = tramos.length;
+    tramos = repararIdsDuplicados(tramos, 't');
+    contadorId = maxSufijoId(tramos);
     recalcularMemoria();
+    mostrarEstado(`Proyecto "${archivo.name}" importado — ${tramos.length} ${tramos.length === 1 ? 'tramo' : 'tramos'}.`);
   });
 
   document.getElementById('memoria-imprimir').addEventListener('click', () => window.print());
@@ -945,6 +1058,7 @@ function initMemoria() {
 /* ---------------------------------------------------------------------- */
 
 initTabs();
+initValidacionNumerica();
 initTeoriaFlujo();
 initAlmacenamiento();
 initMemoria();

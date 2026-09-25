@@ -351,6 +351,57 @@ print` aplicado y lo reduce con `zoom` (no `transform: scale()`, que no
 reduce el alto de layout de la caja) si no entra en una A4 con márgenes
 de 14mm. Sin piso mínimo de escala — la instrucción es "siempre".
 
+## Rediseño UX/UI de las pestañas (`index.html`/`css/styles.css`/`ui.js`, 2026-09-24, a pedido del usuario)
+
+Mismo rediseño que `Hidrogeno` (ver su `CLAUDE.md` para el detalle y el
+porqué de cada punto: layout entradas | resultados, barra de pestañas
+fija, pestaña en el hash de la URL, `grupo()`, tokens de estado,
+validación `aria-invalid`, barra de acciones de Memoria). El bloque común
+de `css/styles.css` es copia del de `Hidrogeno`. No toca motores de
+cálculo; `node GasNatural-GLP/tests/run-all.js` sigue en verde. Lo propio
+de este módulo:
+
+- **Formato numérico es-CL en todo lo que se muestra** (tiles, tabla de
+  tramos, árbol, informe impreso): antes `toFixed()` con punto decimal, así
+  que "2.087 Nm³/h" se leía como dos mil en un sitio que en Hidrógeno ya
+  usaba coma decimal. `formatearFijo(valor, decimales)` conserva
+  **exactamente** los decimales que tenía cada resultado (solo cambian los
+  separadores); `formatearPresionFija()` hace lo mismo sobre
+  `formatearPresion()` de `unidades-presion.js`, que no se tocó (su test
+  depende de poder `Number()`-earla); `formatearLibre()` (hasta 4
+  decimales, sin relleno) para valores tipeados que se repiten en el
+  informe (longitud, potencia, criterios de diseño). Nunca se usan para el
+  `value` de un `<input>`: `numeroFlexible()` leería "1.000" como 1.
+- **Selector de combustible → control segmentado GLP | Gas Natural** en
+  la barra de pestañas (radios `name="combustible"`, `establecerCombustible()`
+  en `ui.js`). Antes un `<select>` dentro de una card a todo el ancho sobre
+  las pestañas: se perdía al bajar por la página y pedía 2 clics. Bajo
+  1020px pasa a su propia fila arriba de las pestañas. Se eliminó
+  `#nota-combustible`, que nunca se llenaba.
+- **Almacenamiento con Gas Natural**: el aviso suma un botón "Cambiar a
+  GLP" en vez de pedir que el usuario busque el selector.
+- **Almacenamiento GLP**: cada `.bloque-calculo` usa por dentro el mismo
+  `.calc-layout` de 2 columnas (título `h3.bloque-titulo`); Estanque separa
+  "Dimensiones" y "Composición GLP" en `.seccion`.
+- **Combustión**: los mismos 5 KPI, repartidos en 2 grupos — caudales
+  arriba, "Gases de combustión y emisiones" (CO₂, NOx, CO) debajo.
+- `.subtitulo` desapareció: los títulos de composición/condiciones pasan a
+  `.seccion-titulo` (mismo estilo que el resto de los bloques de entrada);
+  `marcadoComposicionGLP/GN()` aceptan `nivel` (`h3`/`h4`).
+- **Tabla de Memoria**: se mantiene más ancha que la pantalla con scroll
+  horizontal (decisión del 2026-09-03), ahora dentro de `.tabla-contenedor`;
+  Régimen/Material/Tramo/Continúa desde con ancho mínimo propio (se leían
+  "Baja (<10 k"/"Acero S").
+
+## Fix de ids de tramo/artefacto repetidos en la Memoria de Cálculo (`ui.js`, 2026-09-24, a pedido del usuario)
+
+Mismo bug y mismo fix que `Hidrogeno` (ver su `CLAUDE.md`):
+`contadorIdMemoria`/`contadorArtefactoId` partían de la cantidad de
+elementos, así que borrar un tramo intermedio + recargar + agregar
+repetía un id y editar una fila pisaba a la otra. Ahora parten de
+`maxSufijoId()`, y `repararIdsDuplicados()` corrige al cargar/importar los
+ids ya repetidos que hayan quedado guardados.
+
 ## Decisiones de reconciliación (no son bugs silenciados)
 
 **Red de Gas — Goal Seek manual reemplazado por álgebra**: en el Excel,
