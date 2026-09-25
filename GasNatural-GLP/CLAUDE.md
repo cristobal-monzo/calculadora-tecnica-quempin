@@ -458,6 +458,16 @@ funciones JS idénticos en los tres módulos. Propio de este módulo:
 - La barra sigue al combustible: al cambiar GLP ↔ GN se rearma (verificado:
   Red de Gas pasa de 18,9 Pa a 56,6 Pa en la barra).
 
+## Diagrama de la red como unifilar (`ui.js`/`css/styles.css`, 2026-09-25, a pedido del usuario)
+
+Mismo cambio que Hidrógeno (detalle en su `CLAUDE.md`): `dibujarDiagramaRed()`
+y su CSS son copia idéntica; `renderArbolMemoria()` arma los datos de este
+módulo (diámetro nominal o "DI x mm" manual, ΔP acumulada en la unidad de
+su columna, velocidad; el tooltip agrega régimen, material y presión
+final). Las marcas ▲ salen de `evaluarCriteriosRed()`, extraída de
+`renderInformeImpresion()` — así respetan la regla de la red mixta (en la
+pérdida acumulada solo cuentan los tramos de baja presión).
+
 ## Fix de ids de tramo/artefacto repetidos en la Memoria de Cálculo (`ui.js`, 2026-09-24, a pedido del usuario)
 
 Mismo bug y mismo fix que `Hidrogeno` (ver su `CLAUDE.md`):

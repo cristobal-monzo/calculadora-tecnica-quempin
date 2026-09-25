@@ -352,6 +352,22 @@ td { font-variant-numeric: tabular-nums; }
    ancha que la pantalla (min-width lo fija renderArbolMemoria() en ui.js). */
 .arbol-contenedor { overflow-x: auto; background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px; margin-bottom: 22px; }
 #memoria-arbol { display: block; }
+/* Diagrama unifilar (2026-09-25) — dibujarDiagramaRed() en ui.js mide los
+   textos con estas mismas fuentes (DIAGRAMA.fuente*): cambiar un tamaño o
+   peso acá es cambiarlo también allá. */
+#memoria-arbol text { font-family: 'Lato', system-ui, sans-serif; }
+.arbol-tuberia, .arbol-bajada { stroke: var(--text-muted); fill: none; }
+.arbol-tramo.excede .arbol-tuberia { stroke: var(--estado-critico); }
+.arbol-tramo:hover .arbol-tuberia { stroke: var(--brand-orange); }
+.arbol-nodo { fill: var(--brand-orange); stroke: var(--surface-card); stroke-width: 2; }
+.arbol-inicio { fill: var(--text-primary); }
+.arbol-regulador path { fill: var(--surface-card); stroke: var(--text-primary); stroke-width: 1.5; stroke-linejoin: round; }
+.arbol-nombre { font-size: 12.5px; font-weight: 700; fill: var(--text-primary); }
+.arbol-tramo:hover .arbol-nombre { fill: var(--brand-orange-ink); }
+.arbol-dato { font-size: 11px; fill: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.arbol-leyenda { font-size: 11px; fill: var(--text-secondary); }
+.arbol-excede { fill: var(--estado-critico); font-weight: 700; }
+.arbol-vacio { font-size: 12.5px; fill: var(--text-muted); }
 
 /* --- Memoria de Cálculo: cajetines del proyecto y lista de artefactos --- */
 .artefacto-fila { display: grid; grid-template-columns: 1fr 110px 32px; gap: 8px; align-items: center; margin-bottom: 6px; }

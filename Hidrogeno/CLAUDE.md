@@ -1055,6 +1055,42 @@ reglas de pantalla angosta sobre el informe.
   2 + 1), barra de acciones de la Memoria en grilla de 2 con Imprimir a lo
   ancho, cabecera más baja, 96px de aire bajo `main` para la barra.
 
+## Diagrama de la red como unifilar (`ui.js`/`css/styles.css`, 2026-09-25, a pedido del usuario)
+
+Pedido: "mejora visualmente el diagrama de la red". Antes era un punto por
+tramo con la fila asignada por orden de aparición dentro de cada nivel: un
+hijo podía quedar en otra fila que su padre (líneas diagonales que se
+cruzaban), el nombre largo se montaba sobre el nodo siguiente y no había
+ningún dato del tramo. Ahora `dibujarDiagramaRed()` lo dibuja como un
+unifilar:
+
+- Cada tramo es un trozo de cañería horizontal; el primer hijo sigue en
+  línea recta con su padre y los demás bajan en codo — sin cruces por
+  construcción. Cada tramo final ocupa una fila; cada nivel es tan ancho
+  como su texto más largo (medido con canvas, porque con la pestaña oculta
+  `getComputedTextLength()` da 0; nombres de más de 240px se recortan con
+  "…" y el nombre completo queda en el tooltip).
+- Nombre arriba; tubería · longitud · potencia y "ΔP acum. · velocidad"
+  abajo (ΔP en la unidad de la columna "Pérdida acumulada"). Grosor de la
+  línea según el diámetro nominal (pista visual, el diámetro va escrito).
+- Un valor fuera de un criterio de diseño va en rojo con ▲ y la cañería en
+  rojo: son **las mismas marcas que la tabla del informe** —
+  `evaluarCriteriosRed()` se extrajo de `renderInformeImpresion()` y la
+  usan los dos. Por eso el listener de "Datos del informe" ahora también
+  redibuja el diagrama.
+- "Reinicia acum." = símbolo de regulador (válvula + domo) al inicio del
+  tramo, en vez del anillo. Inicio de red = cuadrado. Leyenda solo de los
+  símbolos presentes. Hover resalta el tramo en naranja; tooltip con ΔP
+  del tramo, acumulada y velocidad.
+- Colores por tokens (`--text-muted` cañería, `--brand-orange` nodos,
+  `--estado-critico`), así que respeta el tema oscuro. Red vacía: texto
+  "Agrega un tramo…". Ciclos de "Continúa desde" no cuelgan el dibujo.
+
+`dibujarDiagramaRed()` y su bloque CSS son **idénticos** en Hidrógeno y
+GN/GLP (copiados, no importados); cada `renderArbol*()` solo traduce su
+resultado a `elementos`. Las fuentes de `DIAGRAMA.fuente*` deben coincidir
+con las de `.arbol-nombre`/`.arbol-dato` en el CSS. Sigue sin imprimirse.
+
 ## Fix de ids de tramo/artefacto repetidos en la Memoria de Cálculo (`ui.js`, 2026-09-24, a pedido del usuario)
 
 Al cargar (localStorage) o importar un proyecto, los contadores

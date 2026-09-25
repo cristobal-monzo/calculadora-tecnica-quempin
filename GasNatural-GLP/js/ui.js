@@ -1118,43 +1118,187 @@ function renderTablaMemoria(resultado) {
   });
 }
 
-function renderArbolMemoria(resultado) {
-  const porId = Object.fromEntries(resultado.map((t) => [t.id, t]));
-  const nivelDe = (t, visitados = new Set()) => {
-    if (!t.continuaDesdeId || visitados.has(t.id)) return 0;
-    visitados.add(t.id);
-    return 1 + nivelDe(porId[t.continuaDesdeId], visitados);
-  };
-  const anchoNivel = 140, altoFila = 40;
-  const nodos = resultado.map((t) => ({ t, nivel: nivelDe(t) }));
-  const porNivel = new Map();
-  nodos.forEach((n) => {
-    const fila = porNivel.get(n.nivel) ?? 0;
-    n.fila = fila;
-    porNivel.set(n.nivel, fila + 1);
-  });
+// --- Diagrama de la red (rediseño visual 2026-09-25, a pedido del usuario).
+// Antes: un punto por tramo, con la fila asignada por orden de aparición
+// dentro de cada nivel — un hijo podía quedar en otra fila que su padre y
+// las líneas diagonales se cruzaban —, el nombre montado sobre el nodo
+// siguiente y ningún dato del tramo. Ahora es un unifilar: cada tramo es un
+// trozo de cañería horizontal, el primer hijo sigue en línea recta con su
+// padre y los demás bajan en codo (sin cruces, por construcción); nombre
+// arriba, tubería/longitud/potencia y resultados abajo; el grosor de la
+// línea crece con el diámetro. Un resultado fuera de un límite de diseño va
+// en rojo con ▲ (las mismas marcas que la tabla del informe) y el tramo que
+// reinicia la pérdida acumulada lleva el símbolo de un regulador.
+// dibujarDiagramaRed() es idéntica en Hidrogeno y GasNatural-GLP (copiada,
+// no importada): cada renderArbol*() solo traduce su resultado a `elementos`
+// ({ id, padreId, nombre, reinicia, pulgadas, datos, resultados, titulo }).
+const DIAGRAMA = {
+  margenX: 16, margenSup: 30, altoFila: 72, anchoMinTramo: 150, anchoMaxNombre: 240, radioCodo: 8,
+  fuenteNombre: '700 12.5px Lato, system-ui, sans-serif',
+  fuenteDato: '400 11px Lato, system-ui, sans-serif',
+  fuenteDatoNegrita: '700 11px Lato, system-ui, sans-serif',
+};
+let lienzoMedida = null;
 
-  const svg = document.getElementById('memoria-arbol');
-  const lineas = nodos.filter((n) => n.t.continuaDesdeId).map((n) => {
-    const padre = nodos.find((p) => p.t.id === n.t.continuaDesdeId);
-    if (!padre) return '';
-    return `<line x1="${padre.nivel * anchoNivel + 60}" y1="${padre.fila * altoFila + 20}" x2="${n.nivel * anchoNivel + 60}" y2="${n.fila * altoFila + 20}" stroke="var(--gridline)" stroke-width="2"/>`;
+// Ancho real del texto (canvas, no getComputedTextLength: el <svg> suele
+// dibujarse con la pestaña oculta, y oculto mide 0).
+function anchoTexto(texto, fuente) {
+  lienzoMedida ??= document.createElement('canvas').getContext('2d');
+  lienzoMedida.font = fuente;
+  return lienzoMedida.measureText(texto).width;
+}
+
+function recortarTexto(texto, fuente, anchoMax) {
+  if (anchoTexto(texto, fuente) <= anchoMax) return texto;
+  let recortado = texto;
+  while (recortado.length > 1 && anchoTexto(`${recortado}…`, fuente) > anchoMax) recortado = recortado.slice(0, -1);
+  return `${recortado.trimEnd()}…`;
+}
+
+// Grosor de la cañería según el diámetro nominal: 1/4" ≈ 3,3 px, 1" = 5 px,
+// 4" ≈ 8,3 px. Solo una pista visual — el diámetro va escrito abajo.
+function grosorTuberia(pulgadas) {
+  return Number.isFinite(pulgadas) && pulgadas > 0 ? Math.min(9, Math.max(2.5, 2.5 + 2.5 * Math.log2(1 + pulgadas))) : 3;
+}
+
+function simboloRegulador(x, y) {
+  return `<g class="arbol-regulador"><path d="M${x - 7} ${y - 6} L${x + 7} ${y + 6} L${x + 7} ${y - 6} L${x - 7} ${y + 6} Z"/>` +
+    `<path d="M${x} ${y - 6} V${y - 11} M${x - 6} ${y - 11} A6 6 0 0 1 ${x + 6} ${y - 11} Z"/></g>`;
+}
+
+function dibujarDiagramaRed(svg, elementos) {
+  const D = DIAGRAMA;
+  if (!elementos.length) {
+    svg.setAttribute('height', '64');
+    svg.style.minWidth = '';
+    svg.innerHTML = `<text class="arbol-vacio" x="${D.margenX}" y="37">Agrega un tramo para ver el diagrama de la red.</text>`;
+    return;
+  }
+
+  const porId = new Map(elementos.map((e) => [e.id, e]));
+  const esRaiz = (e) => !e.padreId || e.padreId === e.id || !porId.has(e.padreId);
+  const hijosDe = new Map();
+  elementos.filter((e) => !esRaiz(e)).forEach((e) => hijosDe.set(e.padreId, [...(hijosDe.get(e.padreId) ?? []), e]));
+
+  // Filas: el primer hijo queda en la fila del padre (la cañería sigue
+  // recta) y cada tramo final ocupa una fila propia. Un ciclo de "Continúa
+  // desde" (viene de datos editables o importados) no cuelga el dibujo: lo
+  // que quede sin visitar arranca como una red aparte.
+  const nodos = [];
+  const visitados = new Set();
+  let filas = 0;
+  const visitar = (e, nivel, padre) => {
+    visitados.add(e.id);
+    const nodo = { e, nivel, fila: filas, padre };
+    nodos.push(nodo);
+    const pendientes = (hijosDe.get(e.id) ?? []).filter((h) => !visitados.has(h.id));
+    if (!pendientes.length) filas += 1;
+    pendientes.forEach((h) => { if (!visitados.has(h.id)) visitar(h, nivel + 1, nodo); });
+  };
+  elementos.filter(esRaiz).forEach((e) => visitar(e, 0, null));
+  elementos.forEach((e) => { if (!visitados.has(e.id)) visitar(e, 0, null); });
+
+  // Cada nivel es tan ancho como el texto más largo de sus tramos.
+  const niveles = Math.max(...nodos.map((n) => n.nivel)) + 1;
+  const anchoNivel = Array(niveles).fill(D.anchoMinTramo);
+  nodos.forEach((n) => {
+    n.nombre = recortarTexto(n.e.nombre.trim() || 'Sin nombre', D.fuenteNombre, D.anchoMaxNombre);
+    n.excede = n.e.resultados.some((r) => r.excede);
+    const textoResultados = n.e.resultados.map((r) => (r.excede ? `▲ ${r.texto}` : r.texto)).join(' · ');
+    const ancho = D.radioCodo + 22 + Math.max(
+      (n.e.reinicia ? 34 : 12) + anchoTexto(n.nombre, D.fuenteNombre),
+      12 + anchoTexto(n.e.datos, D.fuenteDato),
+      12 + anchoTexto(textoResultados, n.excede ? D.fuenteDatoNegrita : D.fuenteDato),
+    );
+    anchoNivel[n.nivel] = Math.max(anchoNivel[n.nivel], Math.ceil(ancho));
+  });
+  const xNivel = [D.margenX];
+  anchoNivel.forEach((ancho, i) => xNivel.push(xNivel[i] + ancho));
+  const yFila = (fila) => D.margenSup + fila * D.altoFila;
+
+  // En orden inverso: cada tramo se dibuja antes que su padre, así el nodo
+  // del padre queda encima del arranque de sus ramales.
+  const tramosSvg = nodos.slice().reverse().map((n) => {
+    const x0 = xNivel[n.nivel], x1 = xNivel[n.nivel + 1], y = yFila(n.fila);
+    const grosor = grosorTuberia(n.e.pulgadas);
+    let inicio = x0;
+    let bajada = '';
+    if (n.padre && n.padre.fila !== n.fila) {
+      inicio = x0 + D.radioCodo;
+      bajada = `<path class="arbol-bajada" d="M${x0} ${yFila(n.padre.fila)} V${y - D.radioCodo} Q${x0} ${y} ${inicio} ${y}" stroke-width="${grosor.toFixed(1)}"/>`;
+    }
+    const resultados = n.e.resultados
+      .map((r) => (r.excede ? `<tspan class="arbol-excede">▲ ${escapeHtml(r.texto)}</tspan>` : escapeHtml(r.texto)))
+      .join(' · ');
+    return `<g class="arbol-tramo${n.excede ? ' excede' : ''}">
+      <title>${escapeHtml(n.e.titulo)}</title>
+      ${bajada}
+      <line class="arbol-tuberia" x1="${inicio}" y1="${y}" x2="${x1}" y2="${y}" stroke-width="${grosor.toFixed(1)}"/>
+      ${n.padre ? '' : `<rect class="arbol-inicio" x="${x0 - 5}" y="${y - 5}" width="10" height="10" rx="1.5"/>`}
+      ${n.e.reinicia ? simboloRegulador(inicio + 14, y) : ''}
+      <text class="arbol-nombre" x="${inicio + (n.e.reinicia ? 34 : 12)}" y="${y - 10}">${escapeHtml(n.nombre)}</text>
+      <text class="arbol-dato" x="${inicio + 12}" y="${y + 19}">${escapeHtml(n.e.datos)}</text>
+      <text class="arbol-dato" x="${inicio + 12}" y="${y + 33}">${resultados}</text>
+      <circle class="arbol-nodo" cx="${x1}" cy="${y}" r="${Math.max(5, grosor / 2 + 2).toFixed(1)}"/>
+    </g>`;
   }).join('');
-  const circulos = nodos.map((n) => `
-    <g>
-      ${n.t.reseteaAcumulada ? `<circle cx="${n.nivel * anchoNivel + 60}" cy="${n.fila * altoFila + 20}" r="12" fill="none" stroke="var(--text-primary)" stroke-width="2"/>` : ''}
-      <circle cx="${n.nivel * anchoNivel + 60}" cy="${n.fila * altoFila + 20}" r="8" fill="var(--brand-orange)"/>
-      <title>${escapeHtml(n.t.nombre)} — ${formatearPresionFija(n.t.perdidaAcumuladaPa, 'Pa')} Pa acumulados, ${formatearFijo(n.t.velocidadMS, 2)} m/s${n.t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</title>
-      <text x="${n.nivel * anchoNivel + 74}" y="${n.fila * altoFila + 24}" font-size="12" fill="var(--text-primary)">${escapeHtml(n.t.nombre)}</text>
-    </g>`).join('');
-  svg.setAttribute('height', String(Math.max(...porNivel.values(), 1) * altoFila + 20));
-  // Ancho mínimo = el nodo más a la derecha + su nombre (~7px por carácter
-  // a 12px): en un teléfono el 100% del contenedor no alcanza desde el 2º
-  // nivel y los nodos quedaban cortados; con esto .arbol-contenedor
-  // (overflow-x: auto) se desplaza en horizontal (2026-09-25).
-  const anchoNecesario = Math.max(0, ...nodos.map((n) => n.nivel * anchoNivel + 74 + n.t.nombre.length * 7 + 16));
-  svg.style.minWidth = `${anchoNecesario}px`;
-  svg.innerHTML = lineas + circulos;
+
+  // Leyenda solo de los símbolos que aparecen (mismo criterio que la
+  // leyenda de la tabla del informe).
+  let alto = yFila(filas - 1) + 44;
+  let leyenda = '';
+  let anchoLeyenda = 0;
+  const items = [];
+  if (nodos.some((n) => n.e.reinicia)) items.push({ reg: true, texto: 'Reinicia la pérdida acumulada (p. ej., regulador)' });
+  if (nodos.some((n) => n.excede)) items.push({ reg: false, texto: 'Fuera del límite de diseño' });
+  if (items.length) {
+    const y = alto + 14;
+    let x = D.margenX;
+    leyenda = items.map((item) => {
+      const simbolo = item.reg
+        ? simboloRegulador(x + 7, y - 4)
+        : `<text class="arbol-leyenda arbol-excede" x="${x}" y="${y}">▲</text>`;
+      const anchoSimbolo = item.reg ? 20 : 14;
+      const svgItem = `${simbolo}<text class="arbol-leyenda" x="${x + anchoSimbolo}" y="${y}">${escapeHtml(item.texto)}</text>`;
+      x += anchoSimbolo + anchoTexto(item.texto, D.fuenteDato) + 24;
+      return svgItem;
+    }).join('');
+    anchoLeyenda = x;
+    alto = y + 14;
+  }
+
+  svg.setAttribute('height', String(alto));
+  // Ancho mínimo = el dibujo completo: en un teléfono .arbol-contenedor
+  // (overflow-x: auto) se desplaza en horizontal en vez de cortar niveles.
+  svg.style.minWidth = `${Math.ceil(Math.max(xNivel[niveles] + D.margenX, anchoLeyenda))}px`;
+  svg.innerHTML = tramosSvg + leyenda;
+}
+
+function renderArbolMemoria(resultado) {
+  const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
+  const unidadPresionFinal = document.getElementById('memoria-presion-final-unidad').value;
+  const { velocidadExcede, perdidaExcede } = evaluarCriteriosRed(resultado);
+  const presion = (pa, unidad) => `${formatearPresionInforme(pa, unidad)} ${unidad}`;
+  dibujarDiagramaRed(document.getElementById('memoria-arbol'), resultado.map((t) => {
+    const diametro = t.pulgadas === 'manual' ? `DI ${formatearInforme(t.tuberiaManual.diametroMm)} mm` : formatearPulgadas(t.pulgadas);
+    return {
+      id: t.id, padreId: t.continuaDesdeId, nombre: t.nombre, reinicia: t.reseteaAcumulada,
+      pulgadas: t.pulgadas === 'manual' ? t.tuberiaManual.diametroMm / 25.4 : t.pulgadas,
+      datos: `${diametro} · ${formatearInforme(t.longitudM)} m · ${formatearInforme(t.potenciaKw)} kW`,
+      resultados: [
+        { texto: `ΔP acum. ${presion(t.perdidaAcumuladaPa, unidadPerdidaAcumulada)}`, excede: perdidaExcede.has(t.id) },
+        { texto: `${formatearInforme(t.velocidadMS)} m/s`, excede: velocidadExcede.has(t.id) },
+      ],
+      titulo: [
+        `${t.nombre}${t.reseteaAcumulada ? ' (reinicia la pérdida acumulada)' : ''}`,
+        `${t.regimenPresion === '<10 kPa' ? 'Baja' : 'Media/alta'} presión · ${diametro}${t.pulgadas === 'manual' ? '' : ` ${t.material}`}`,
+        `ΔP del tramo: ${presion(t.perdidaPresionTotalPa, unidadPerdidaAcumulada)}`,
+        `ΔP acumulada: ${presion(t.perdidaAcumuladaPa, unidadPerdidaAcumulada)}`,
+        `Velocidad: ${formatearInforme(t.velocidadMS)} m/s`,
+        t.presionFinalPa !== null ? `Presión final: ${presion(t.presionFinalPa, unidadPresionFinal)}` : '',
+      ].filter(Boolean).join('\n'),
+    };
+  }));
 }
 
 // Cajetín de un criterio de diseño opcional del encabezado del informe
@@ -1236,63 +1380,21 @@ function textoConclusion(criterios) {
     'Los valores fuera de límite se marcan con ▲ en la sección 4.';
 }
 
-function actualizarTotalArtefactos() {
-  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
-  document.getElementById('memoria-artefactos-total-txt').textContent =
-    `Total: ${formatearFijo(totalKw, 2)} kW térmicos — Potencia instalada: ${formatearFijo(totalKw, 2)} kW térmicos (no se considera operación simultánea)`;
-}
-
-function renderArtefactos() {
-  document.getElementById('memoria-artefactos-cuerpo').innerHTML = proyecto.artefactos.map((a) => `
-    <div class="artefacto-fila" data-id="${a.id}">
-      <input type="text" class="af-nombre" value="${escapeAttr(a.nombre)}" placeholder="Nombre del artefacto" aria-label="Nombre del artefacto">
-      <input type="text" inputmode="decimal" class="af-potencia" value="${a.potenciaKw}" placeholder="kW" aria-label="Potencia del artefacto [kW]">
-      <button type="button" class="af-eliminar no-imprimir" aria-label="Eliminar artefacto${a.nombre ? ' ' + escapeAttr(a.nombre) : ''}">✕</button>
-    </div>
-  `).join('');
-  actualizarTotalArtefactos();
-}
-
-function renderInformeImpresion(resultado) {
-  document.getElementById('informe-doc-num').textContent = proyecto.numeroDoc;
-  document.getElementById('informe-doc-rev').textContent = proyecto.revision;
-
-  document.getElementById('informe-fecha').textContent = proyecto.fecha;
-  document.getElementById('informe-proyecto').textContent = proyecto.proyecto;
-  document.getElementById('informe-instalador').textContent = proyecto.instalador;
-  document.getElementById('informe-direccion').textContent = proyecto.direccion;
-  document.getElementById('informe-contacto').textContent = proyecto.contacto;
-  document.getElementById('informe-comuna').textContent = proyecto.comuna;
-
-  // Título y "Tipo de red" reflejan el combustible vigente (a diferencia de
-  // Hidrogeno, donde ambos son texto fijo "Hidrógeno gas" — acá el mismo
-  // informe sirve para GLP o Gas Natural según el selector global).
-  const nombreRed = combustible === 'GLP' ? 'Red de GLP' : 'Red de Gas Natural';
-  document.getElementById('informe-subtitulo').textContent = nombreRed.toUpperCase();
-  document.getElementById('informe-tipo-red').textContent = textoComposicionInforme();
-  document.getElementById('informe-footer-red').textContent = nombreRed;
-
-  const unidadPresionInicial = document.getElementById('memoria-presion-inicial-unidad').value;
-  const unidadPerdidaRequerida = document.getElementById('memoria-perdida-requerida-unidad').value;
+// El criterio de pérdida se ingresa en Pa pero se muestra en la unidad de
+// la columna "ΔP acumulada" — límite y resultado siempre comparables a
+// simple vista, aunque se cambie la unidad de esa columna.
+function formatosCriterio() {
   const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
-  const velocidad = (v) => `${formatearInforme(v)} m/s`;
-  // El criterio de pérdida se ingresa en Pa pero se muestra en la unidad de
-  // la columna "ΔP acumulada" — límite y resultado siempre comparables a
-  // simple vista, aunque se cambie la unidad de esa columna.
-  const perdidaAcum = (pa) => `${formatearPresionInforme(pa, unidadPerdidaAcumulada)} ${unidadPerdidaAcumulada}`;
+  return {
+    velocidad: (v) => `${formatearInforme(v)} m/s`,
+    perdidaAcum: (pa) => `${formatearPresionInforme(pa, unidadPerdidaAcumulada)} ${unidadPerdidaAcumulada}`,
+  };
+}
 
-  document.getElementById('informe-vel-max-flujo').textContent = formatearCriterio(proyecto.velocidadMaxFlujoDisenoMS, velocidad);
-  document.getElementById('informe-vel-erosion').textContent = formatearCriterio(proyecto.velocidadErosionDisenoMS, velocidad);
-  document.getElementById('informe-perdida-max').textContent = formatearCriterio(proyecto.perdidaMaxAcumuladaDisenoPa, perdidaAcum);
-
-  // Una sola fila de total: antes "Total" y "Potencia instalada" repetían
-  // el mismo número (sin simultaneidad son lo mismo, decisión 2026-09-03).
-  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
-  document.getElementById('informe-artefactos-cuerpo').innerHTML = proyecto.artefactos.length
-    ? proyecto.artefactos.map((a) => `<tr><td>${escapeHtml(a.nombre)}</td><td>${formatearInforme(Number(a.potenciaKw) || 0)}</td></tr>`).join('')
-    : '<tr><td colspan="2" class="informe-vacio">Sin artefactos registrados</td></tr>';
-  document.getElementById('informe-potencia-instalada').textContent = formatearInforme(totalKw);
-
+// Criterios de diseño contra la red resuelta: la sección 5 del informe y
+// las marcas ▲ de la tabla de tramos impresa y del diagrama de la red.
+function evaluarCriteriosRed(resultado) {
+  const { velocidad, perdidaAcum } = formatosCriterio();
   // Pérdida acumulada en una red mixta (2026-09-25): el límite típico de
   // pérdida acumulada (D.S. 66: 150 Pa GLP / 120 Pa GN) es de BAJA presión,
   // desde el regulador al artefacto. Comparado contra un tramo de media
@@ -1335,9 +1437,65 @@ function renderInformeImpresion(resultado) {
       formatear: (v) => `${formatearInforme(v * 100)} %`,
     }));
   }
+  return { criterios, velocidadExcede, perdidaExcede };
+}
+
+function actualizarTotalArtefactos() {
+  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
+  document.getElementById('memoria-artefactos-total-txt').textContent =
+    `Total: ${formatearFijo(totalKw, 2)} kW térmicos — Potencia instalada: ${formatearFijo(totalKw, 2)} kW térmicos (no se considera operación simultánea)`;
+}
+
+function renderArtefactos() {
+  document.getElementById('memoria-artefactos-cuerpo').innerHTML = proyecto.artefactos.map((a) => `
+    <div class="artefacto-fila" data-id="${a.id}">
+      <input type="text" class="af-nombre" value="${escapeAttr(a.nombre)}" placeholder="Nombre del artefacto" aria-label="Nombre del artefacto">
+      <input type="text" inputmode="decimal" class="af-potencia" value="${a.potenciaKw}" placeholder="kW" aria-label="Potencia del artefacto [kW]">
+      <button type="button" class="af-eliminar no-imprimir" aria-label="Eliminar artefacto${a.nombre ? ' ' + escapeAttr(a.nombre) : ''}">✕</button>
+    </div>
+  `).join('');
+  actualizarTotalArtefactos();
+}
+
+function renderInformeImpresion(resultado) {
+  document.getElementById('informe-doc-num').textContent = proyecto.numeroDoc;
+  document.getElementById('informe-doc-rev').textContent = proyecto.revision;
+
+  document.getElementById('informe-fecha').textContent = proyecto.fecha;
+  document.getElementById('informe-proyecto').textContent = proyecto.proyecto;
+  document.getElementById('informe-instalador').textContent = proyecto.instalador;
+  document.getElementById('informe-direccion').textContent = proyecto.direccion;
+  document.getElementById('informe-contacto').textContent = proyecto.contacto;
+  document.getElementById('informe-comuna').textContent = proyecto.comuna;
+
+  // Título y "Tipo de red" reflejan el combustible vigente (a diferencia de
+  // Hidrogeno, donde ambos son texto fijo "Hidrógeno gas" — acá el mismo
+  // informe sirve para GLP o Gas Natural según el selector global).
+  const nombreRed = combustible === 'GLP' ? 'Red de GLP' : 'Red de Gas Natural';
+  document.getElementById('informe-subtitulo').textContent = nombreRed.toUpperCase();
+  document.getElementById('informe-tipo-red').textContent = textoComposicionInforme();
+  document.getElementById('informe-footer-red').textContent = nombreRed;
+
+  const unidadPresionInicial = document.getElementById('memoria-presion-inicial-unidad').value;
+  const unidadPerdidaRequerida = document.getElementById('memoria-perdida-requerida-unidad').value;
+  const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
+  const { velocidad, perdidaAcum } = formatosCriterio();
+
+  document.getElementById('informe-vel-max-flujo').textContent = formatearCriterio(proyecto.velocidadMaxFlujoDisenoMS, velocidad);
+  document.getElementById('informe-vel-erosion').textContent = formatearCriterio(proyecto.velocidadErosionDisenoMS, velocidad);
+  document.getElementById('informe-perdida-max').textContent = formatearCriterio(proyecto.perdidaMaxAcumuladaDisenoPa, perdidaAcum);
+
+  // Una sola fila de total: antes "Total" y "Potencia instalada" repetían
+  // el mismo número (sin simultaneidad son lo mismo, decisión 2026-09-03).
+  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
+  document.getElementById('informe-artefactos-cuerpo').innerHTML = proyecto.artefactos.length
+    ? proyecto.artefactos.map((a) => `<tr><td>${escapeHtml(a.nombre)}</td><td>${formatearInforme(Number(a.potenciaKw) || 0)}</td></tr>`).join('')
+    : '<tr><td colspan="2" class="informe-vacio">Sin artefactos registrados</td></tr>';
+  document.getElementById('informe-potencia-instalada').textContent = formatearInforme(totalKw);
+
+  const { criterios, velocidadExcede, perdidaExcede } = evaluarCriteriosRed(resultado);
   const marcar = (texto, excede) => (excede ? `<span class="informe-excede">▲ ${texto}</span>` : texto);
 
-  document.getElementById('memoria-impresion-th-presion').innerHTML = thConUnidad('P. inicial man.', unidadPresionInicial);
   document.getElementById('memoria-impresion-th-parcial').innerHTML = thConUnidad('ΔP tramo', unidadPerdidaRequerida);
   document.getElementById('memoria-impresion-th-perdida').innerHTML = thConUnidad('ΔP acumulada', unidadPerdidaAcumulada);
   document.getElementById('memoria-tabla-impresion-cuerpo').innerHTML = resultado.map((t) => `
@@ -1625,9 +1783,11 @@ function initMemoria() {
   // Cajetines de datos del proyecto — un único listener de 'input'
   // delegado en el <form>; nunca se regeneran vía innerHTML (solo se leen
   // y se guardan), así que no tienen el problema de foco de la tabla de
-  // tramos.
+  // tramos. El diagrama se redibuja porque sus marcas ▲ dependen de los
+  // criterios de diseño.
   document.getElementById('form-memoria-proyecto').addEventListener('input', () => {
     proyecto = { ...proyecto, ...leerProyecto() };
+    renderArbolMemoria(ultimoResultadoMemoria);
     renderInformeImpresion(ultimoResultadoMemoria);
     guardar('memoria-proyecto', proyecto);
   });
@@ -1715,6 +1875,9 @@ function initMemoria() {
 
   alCambiarCombustible(() => { renderComposicionMemoria(); recalcularMemoria(); });
   recalcularMemoria();
+  // El diagrama mide sus textos con Lato: si la fuente aún no cargaba, se
+  // midió con la de reserva — se redibuja cuando llega.
+  document.fonts?.ready.then(() => renderArbolMemoria(ultimoResultadoMemoria));
 }
 
 /* ---------------------------------------------------------------------- */
