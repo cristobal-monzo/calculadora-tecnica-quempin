@@ -25,14 +25,17 @@ export function densidadReal({ presionAbsPa, temperaturaC, masaMolar, constanteR
   return (presionAbsPa * masaMolar) / (z * constanteR * celsiusAKelvin(temperaturaC));
 }
 
-export function presionMaximaDiseno({ limiteElasticoMPa, espesorMm, diametroMm, factorDiseno, factorUnion, factorHf = 1, factorT = 1 }) {
+export function presionMaximaDiseno({ limiteElasticoMPa, espesorMm, diametroExteriorMm, factorDiseno, factorUnion, factorHf = 1, factorT = 1 }) {
   // Cálculo!C10 = 10*((2*$K$3*$J$3)/$I$3)*$C$28*$C$29*1*1  (Barlow, ASME B31.12)
   // factorHf (Tabla IX-5A de ASME B31.12, derating por fragilización de
   // hidrógeno) y factorT (Tabla PL-3.7.1(b)(8), derating por temperatura)
   // AGREGADOS respecto al Excel fuente (2026-09-02, a pedido del usuario):
   // el Excel no aplicaba ninguno de los dos. Fórmula completa de la norma:
   // P = 2·S·t·F·E·Hf·T/D. Ver Hidrogeno/CLAUDE.md.
-  return 10 * ((2 * limiteElasticoMPa * espesorMm) / diametroMm) * factorDiseno * factorUnion * factorHf * factorT;
+  // D es el diámetro EXTERIOR (PL-3.7.1). El Excel dividía por su columna
+  // "DI", que en 3/4" y 1" era el interior (corregido 2026-09-25, ver
+  // TABLA_TUBERIA en gas-h2.js).
+  return 10 * ((2 * limiteElasticoMPa * espesorMm) / diametroExteriorMm) * factorDiseno * factorUnion * factorHf * factorT;
 }
 
 export function velocidadErosion({ zErosion, temperaturaC, presionMinBarG, gravedadEspecifica }) {

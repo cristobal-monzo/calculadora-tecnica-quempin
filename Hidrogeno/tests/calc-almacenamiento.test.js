@@ -27,11 +27,39 @@ cerca(r.masaAlmacenadaKg, 2.7944252008282993);        // H6
 cerca(r.zAlmacenamiento, 1.124752744441221);          // C7
 cerca(r.consumoKgH, 1.800600200066689);               // C11 (PCI propio de Sheet3, 119960)
 cerca(r.volumenNormalizadoNm3, 31.398035964362915);   // H9 (= masa/densidad normal, sigue a H6)
-cerca(r.autonomiaHoras, r.masaAlmacenadaKg / r.consumoKgH);
-cerca(r.caudalReferenciaM3H, 0.020311562223333333);   // H10
-cerca(r.velocidadReferenciaMS, 0.17815724773249608, 1e-3); // H11
-cerca(r.tiempoLlenadoHoras, r.volumenNormalizadoNm3 / 4); // H12
 
-assert.equal(formatearHoras(r.autonomiaHoras), '01:33:07');
+// Autonomía sobre la masa UTILIZABLE (AGREGADO 2026-09-25): por defecto se
+// vacía hasta 10 bar abs (presión residual, editable). Antes se usaba toda
+// la masa: 1,552 h (01:33:07).
+cerca(r.masaResidualKg, 0.15622331966517705);
+cerca(r.masaUtilizableKg, r.masaAlmacenadaKg - r.masaResidualKg);
+cerca(r.autonomiaHoras, r.masaUtilizableKg / r.consumoKgH);
+assert.equal(formatearHoras(r.autonomiaHoras), '01:27:55');
+// Con presión residual 0 vuelve al cálculo del Excel (toda la masa)
+const sinResidual = calcularAlmacenamiento({ potenciaKw: 60, temperaturaC: 20, presionBarAbs: 200, volumenM3: 0.19, presionResidualBarAbs: 0 });
+cerca(sinResidual.autonomiaHoras, r.masaAlmacenadaKg / r.consumoKgH);
+assert.equal(formatearHoras(sinResidual.autonomiaHoras), '01:33:07');
+// Presión residual por sobre la de almacenamiento: no hay masa utilizable
+assert.equal(calcularAlmacenamiento({ potenciaKw: 60, temperaturaC: 20, presionBarAbs: 5, volumenM3: 0.19 }).masaUtilizableKg, 0);
+
+// H10/H11 CORREGIDOS 2026-09-25: caudal REAL de llenado a la presión del
+// estanque = caudal de llenado (4 Nm³/h por defecto, antes fijo en la
+// fórmula como 360 g/h) × densidad normal / densidad real (con Z). El Excel
+// dividía por 2,16 en vez de 2,016 y omitía Z: 0.020311562223333333 m³/h.
+cerca(r.caudalReferenciaM3H, 4 * 0.089 / r.densidadRealKgM3);
+cerca(r.caudalReferenciaM3H, 0.024203961573011776);
+// Velocidad en la línea de 1/4" con su DI real (3,95 mm, no los 6,35 mm
+// del diámetro exterior). Excel: 0.17815724773249608 m/s.
+assert.equal(r.diametroCapilarMm, 3.95);
+cerca(r.velocidadReferenciaMS, (r.caudalReferenciaM3H / 3600) / (Math.PI * 0.00395 ** 2 / 4));
+const enLitros = calcularAlmacenamiento({ potenciaKw: 60, temperaturaC: 20, presionBarAbs: 200, volumenM3: 0.19, unidadCaudalReferencia: '[L/min]' });
+cerca(enLitros.caudalReferenciaM3H, r.caudalReferenciaM3H * 1000 / 60);
+cerca(enLitros.velocidadReferenciaMS, r.velocidadReferenciaMS);
+
+// H12 — tiempo de llenado desde la presión residual, al caudal de llenado
+cerca(r.tiempoLlenadoHoras, r.volumenUtilizableNm3 / 4);
+const llenadoRapido = calcularAlmacenamiento({ potenciaKw: 60, temperaturaC: 20, presionBarAbs: 200, volumenM3: 0.19, caudalLlenadoNm3H: 8 });
+cerca(llenadoRapido.tiempoLlenadoHoras, r.tiempoLlenadoHoras / 2);
+cerca(llenadoRapido.caudalReferenciaM3H, 2 * r.caudalReferenciaM3H);
 
 console.log('calc-almacenamiento.test.js: OK');

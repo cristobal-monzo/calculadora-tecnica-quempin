@@ -20,15 +20,42 @@ export const H2 = {
   gammaIdeal: 1.40,
 };
 
-// Tabla de tubería — Cálculo!H33:L38
-export const TABLA_TUBERIA = [
-  { pulgadas: 0.25,  diMm: 6.4,  espesorMm: 1.2, limiteElasticoMPa: 185, rugosidadMm: 0.002 },
-  { pulgadas: 0.375, diMm: 9.5,  espesorMm: 1.2, limiteElasticoMPa: 170, rugosidadMm: 0.002 },
-  { pulgadas: 0.5,   diMm: 12.7, espesorMm: 1.2, limiteElasticoMPa: 170, rugosidadMm: 0.002 },
-  { pulgadas: 0.75,  diMm: 16,   espesorMm: 1.2, limiteElasticoMPa: 170, rugosidadMm: 0.002 },
-  { pulgadas: 1,     diMm: 23,   espesorMm: 1.2, limiteElasticoMPa: 170, rugosidadMm: 0.002 },
-  { pulgadas: 1.25,  diMm: 42,   espesorMm: 2.7, limiteElasticoMPa: 130, rugosidadMm: 0.045 },
+// Tabla de tubería — Cálculo!H33:L38.
+//
+// CORREGIDA 2026-09-25 (auditoría de coherencia física): la columna del
+// Excel rotulada "DI [mm]" mezclaba diámetros EXTERIORES e INTERIORES:
+//   - 1/4", 3/8", 1/2": 6,4 / 9,5 / 12,7 = diámetro EXTERIOR del tubing
+//     (¼" = 6,35 mm, ⅜" = 9,525 mm, ½" = 12,7 mm);
+//   - 3/4", 1": 16 / 23 ≈ exterior − 2·espesor (19,05 − 2,4 = 16,65;
+//     25,4 − 2,4 = 23,0), o sea el interior;
+//   - 1-1/4": 42 = exterior de un tubo NPS 1-1/4" (42,2 mm, ASME B36.10),
+//     con pared de 2,7 mm (≈ Sch 10, 2,77 mm) y rugosidad de acero
+//     comercial (0,045 mm).
+// Usar el exterior como interior subestimaba la velocidad ~1,5x y la
+// pérdida de carga ~2,7x en ½"; usar el interior en Barlow (que va con el
+// EXTERIOR, ASME B31.12 PL-3.7.1) sobrestimaba la presión máxima de diseño
+// en ¾" y 1". Ahora cada fila guarda el diámetro exterior (DE) y el
+// espesor del Excel, y el interior se deriva: DI = DE − 2·espesor (mismo
+// criterio que OtrosGases/js/tuberias.js). Límite elástico y rugosidad sin
+// cambios. Ver Hidrogeno/CLAUDE.md.
+const FILAS_TUBERIA = [
+  { pulgadas: 0.25,  deMm: 6.35,  espesorMm: 1.2, limiteElasticoMPa: 185, rugosidadMm: 0.002 },
+  { pulgadas: 0.375, deMm: 9.525, espesorMm: 1.2, limiteElasticoMPa: 170, rugosidadMm: 0.002 },
+  { pulgadas: 0.5,   deMm: 12.7,  espesorMm: 1.2, limiteElasticoMPa: 170, rugosidadMm: 0.002 },
+  { pulgadas: 0.75,  deMm: 19.05, espesorMm: 1.2, limiteElasticoMPa: 170, rugosidadMm: 0.002 },
+  { pulgadas: 1,     deMm: 25.4,  espesorMm: 1.2, limiteElasticoMPa: 170, rugosidadMm: 0.002 },
+  { pulgadas: 1.25,  deMm: 42.2,  espesorMm: 2.7, limiteElasticoMPa: 130, rugosidadMm: 0.045 },
 ];
+
+export const TABLA_TUBERIA = FILAS_TUBERIA.map((f) => ({
+  ...f, diMm: Math.round((f.deMm - 2 * f.espesorMm) * 1000) / 1000,
+}));
+
+// Tubería manual: el usuario da DI, espesor, límite elástico y rugosidad;
+// el DE (para Barlow) se deduce.
+export function diametroExteriorMm(tuberia) {
+  return tuberia.deMm ?? tuberia.diMm + 2 * tuberia.espesorMm;
+}
 
 export function buscarTuberia(pulgadas) {
   const fila = TABLA_TUBERIA.find((f) => f.pulgadas === pulgadas);

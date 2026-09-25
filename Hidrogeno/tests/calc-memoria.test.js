@@ -48,11 +48,12 @@ assert.throws(
 );
 
 // Tubería manual por tramo (2026-09-02, a pedido del usuario) — un tramo
-// con tuberiaManual igual a la fila tabulada de 1/4" (diMm:6.4,
-// espesorMm:1.2, limiteElasticoMPa:185, rugosidadMm:0.002) debe dar
+// con tuberiaManual igual a la fila tabulada de 1/4" (diMm:3.95 — DI real
+// desde 2026-09-25, ver gas-h2.js —, espesorMm:1.2, limiteElasticoMPa:185,
+// rugosidadMm:0.002) debe dar
 // exactamente el mismo resultado que uno con tuberiaPulgadas:0.25.
 const tramoTabulado = { id: 'M1', nombre: 'M1', continuaDesdeId: null, presionMPa: 0.15, longitudM: 15.5, potenciaKw: 12, tuberiaPulgadas: 0.25, material: 'AISI 316L', temperaturaC: 20 };
-const tramoManual = { id: 'M2', nombre: 'M2', continuaDesdeId: null, presionMPa: 0.15, longitudM: 15.5, potenciaKw: 12, tuberiaPulgadas: null, tuberiaManual: { diMm: 6.4, espesorMm: 1.2, limiteElasticoMPa: 185, rugosidadMm: 0.002 }, material: 'AISI 316L', temperaturaC: 20 };
+const tramoManual = { id: 'M2', nombre: 'M2', continuaDesdeId: null, presionMPa: 0.15, longitudM: 15.5, potenciaKw: 12, tuberiaPulgadas: null, tuberiaManual: { diMm: 3.95, espesorMm: 1.2, limiteElasticoMPa: 185, rugosidadMm: 0.002 }, material: 'AISI 316L', temperaturaC: 20 };
 const resultadoManual = calcularRed([tramoTabulado, tramoManual]);
 const porIdManual = Object.fromEntries(resultadoManual.map((t) => [t.id, t]));
 cerca(porIdManual.M2.perdidaParcialMbar, porIdManual.M1.perdidaParcialMbar);

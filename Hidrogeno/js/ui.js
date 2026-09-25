@@ -363,7 +363,7 @@ function formatearPulgadas(valor) {
 
 function poblarSelectTuberia(select) {
   select.innerHTML = TABLA_TUBERIA.map(
-    (f) => `<option value="${f.pulgadas}">${formatearPulgadas(f.pulgadas)} — DI ${f.diMm} mm</option>`
+    (f) => `<option value="${f.pulgadas}">${formatearPulgadas(f.pulgadas)} — DE ${formatearNumero(f.deMm)} / DI ${formatearNumero(f.diMm)} mm</option>`
   ).join('') + '<option value="manual">Manual (ingresar mm)</option>';
 }
 
@@ -460,7 +460,14 @@ function tilesChequeoSonico(c) {
 // factores de verificación de la fórmula (Hf, T, Z, Reynolds, fricción) y
 // la densidad se agrupan aparte, al final, bajo su propio subtítulo.
 function renderResultadosFlujo(r) {
-  const cercaDeErosion = r.velocidadFlujoMS >= r.velocidadErosionMS * 0.8;
+  // API RP 14E en el MISMO estado del gas (2026-09-25): velocidad de flujo
+  // y velocidad erosional, ambas a la presión mínima de la línea — ver
+  // calc-flujo.js. Antes se comparaba la de flujo a la presión de operación
+  // con la erosional a la mínima.
+  const cercaDeErosion = r.velocidadFlujoErosionMS >= r.velocidadErosionMS * 0.8;
+  const notaPresionMinima = r.presionMinimaSobreOperacion
+    ? ['<div class="resultados-nota">La presión mínima ingresada supera la de operación: no puede ser la mínima de esta línea. La erosión se verificó a la presión de operación.</div>']
+    : [];
   const varianteAdecuada = r.tuberiaAdecuada ? 'ok' : 'alerta';
   document.getElementById('resultados-flujo').innerHTML = [
     grupo(null, [
@@ -471,9 +478,13 @@ function renderResultadosFlujo(r) {
       tileConUnidad(formatearNumero(r.flujoVolNormalizado), 'Flujo volum. Norm.', 'flujo-unidad-normalizado', OPCIONES_UNIDAD_NORMALIZADO, unidadNormalizadoFlujo),
       tileConUnidad(formatearNumero(r.flujoVolH2), 'Flujo volum. de H₂', 'flujo-unidad-h2', OPCIONES_UNIDAD_H2, unidadH2Flujo),
       tile(`${formatearNumero(r.flujoMasicoKgH)} kg/h`, 'Flujo másico de H₂'),
-      tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad erosión (I-3.4.5)'),
-      tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo', cercaDeErosion),
+      tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo (presión de operación)'),
       tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdidas de carga', 'perdida-carga', unidadesTilesPresionFlujo),
+    ]),
+    grupo(`Velocidad de erosión — API RP 14E, a la presión mínima (${formatearNumero(r.presionErosionBarG)} barG)`, [
+      tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad erosión (I-3.4.5)'),
+      tile(`${formatearNumero(r.velocidadFlujoErosionMS)} m/s`, 'Velocidad de flujo a la presión mínima', cercaDeErosion ? 'alerta' : ''),
+      ...notaPresionMinima,
     ]),
     tilesChequeoSonico(r.chequeoSonico),
     grupo('Factores de verificación', [
@@ -489,10 +500,10 @@ function renderResultadosFlujo(r) {
 
 function renderTablaTuberia() {
   const filas = TABLA_TUBERIA.map(
-    (f) => `<tr><td>${formatearPulgadas(f.pulgadas)}</td><td>${f.diMm}</td><td>${f.espesorMm}</td><td>${f.limiteElasticoMPa}</td><td>${f.rugosidadMm}</td></tr>`
+    (f) => `<tr><td>${formatearPulgadas(f.pulgadas)}</td><td>${formatearNumero(f.deMm)}</td><td>${formatearNumero(f.diMm)}</td><td>${f.espesorMm}</td><td>${f.limiteElasticoMPa}</td><td>${f.rugosidadMm}</td></tr>`
   ).join('');
   document.getElementById('tabla-tuberia-flujo').innerHTML =
-    `<thead><tr><th>Nominal</th><th>DI [mm]</th><th>Espesor [mm]</th><th>S mín. [MPa]</th><th>Rugosidad [mm]</th></tr></thead><tbody>${filas}</tbody>`;
+    `<thead><tr><th>Nominal</th><th>DE [mm]</th><th>DI [mm]</th><th>Espesor [mm]</th><th>S mín. [MPa]</th><th>Rugosidad [mm]</th></tr></thead><tbody>${filas}</tbody>`;
 }
 
 function initTeoriaFlujo() {
@@ -566,6 +577,8 @@ function leerAlmacenamientoForm() {
     temperaturaC: num('alm-temperatura'),
     presionBarAbs: leerPresion('alm-presion', 'alm-presion-unidad', 'bar'),
     volumenM3: num('alm-volumen'),
+    presionResidualBarAbs: leerPresion('alm-presion-residual', 'alm-presion-residual-unidad', 'bar'),
+    caudalLlenadoNm3H: num('alm-caudal-llenado'),
     unidadCaudalReferencia: unidadCaudalAlm,
   };
 }
@@ -574,17 +587,18 @@ function renderResultadosAlmacenamiento(r) {
   document.getElementById('resultados-almacenamiento').innerHTML = [
     grupo(null, [
       tile(`${formatearNumero(r.masaAlmacenadaKg)} kg`, 'Masa de H₂ almacenada (PV=ZnRT)', 'kpi'),
-      tile(formatearHoras(r.autonomiaHoras), 'Autonomía (hh:mm:ss)', 'kpi'),
+      tile(formatearHoras(r.autonomiaHoras), 'Autonomía hasta la presión residual (hh:mm:ss)', 'kpi'),
     ], 'kpis'),
     grupo('Detalle del cálculo', [
       tile(formatearZ(r.zAlmacenamiento), 'Factor de compresibilidad Z', 'secundario'),
       tile(`${formatearNumero(r.densidadRealKgM3)} kg/m³`, 'Densidad real en el estanque', 'secundario'),
+      tile(`${formatearNumero(r.masaUtilizableKg)} kg`, 'Masa utilizable (sobre la presión residual)', 'secundario'),
       tile(`${formatearNumero(r.volumenNormalizadoNm3)} Nm³`, 'Volumen normalizado', 'secundario'),
       tile(`${formatearNumero(r.consumoKgH)} kg/h`, 'Consumo del quemador', 'secundario'),
       tile(`${formatearNumero(r.consumoNm3H)} Nm³/h`, 'Consumo del quemador (normalizado)', 'secundario'),
-      tileConUnidad(formatearNumero(r.caudalReferenciaM3H), 'Caudal de referencia (línea capilar Ø¼")', 'alm-unidad-caudal', OPCIONES_UNIDAD_CAUDAL_ALM, unidadCaudalAlm, 'secundario'),
-      tile(`${formatearNumero(r.velocidadReferenciaMS)} m/s`, 'Velocidad de referencia (línea capilar Ø¼")', 'secundario'),
-      tile(formatearHoras(r.tiempoLlenadoHoras), 'Tiempo de llenado (hh:mm:ss)', 'secundario'),
+      tileConUnidad(formatearNumero(r.caudalReferenciaM3H), 'Caudal real de llenado (a la presión del estanque)', 'alm-unidad-caudal', OPCIONES_UNIDAD_CAUDAL_ALM, unidadCaudalAlm, 'secundario'),
+      tile(`${formatearNumero(r.velocidadReferenciaMS)} m/s`, `Velocidad de llenado en línea Ø¼" (DI ${formatearNumero(r.diametroCapilarMm)} mm)`, 'secundario'),
+      tile(r.tiempoLlenadoHoras === null ? '—' : formatearHoras(r.tiempoLlenadoHoras), 'Tiempo de llenado desde la presión residual (hh:mm:ss)', 'secundario'),
     ]),
   ].join('');
 }
@@ -601,6 +615,7 @@ function initAlmacenamiento() {
   }
 
   initSelectorUnidadCampo('alm-presion', 'alm-presion-unidad');
+  initSelectorUnidadCampo('alm-presion-residual', 'alm-presion-residual-unidad');
 
   function recalcular() {
     const resultado = calcularAlmacenamiento(leerAlmacenamientoForm());
@@ -723,7 +738,7 @@ function renderTablaMemoria(resultado) {
           <option value="manual"${t.tuberiaPulgadas === 'manual' ? ' selected' : ''}>Manual (mm)</option>
         </select>
         <div class="mem-tuberia-manual"${t.tuberiaPulgadas === 'manual' ? '' : ' style="display:none;"'}>
-          <input type="text" inputmode="decimal" class="mem-tuberia-manual-di" value="${t.tuberiaManual?.diMm ?? 12.7}" title="Diámetro interior [mm]">
+          <input type="text" inputmode="decimal" class="mem-tuberia-manual-di" value="${t.tuberiaManual?.diMm ?? 10.3}" title="Diámetro interior [mm]">
           <input type="text" inputmode="decimal" class="mem-tuberia-manual-espesor" value="${t.tuberiaManual?.espesorMm ?? 1.2}" title="Espesor de pared [mm]">
           <input type="text" inputmode="decimal" class="mem-tuberia-manual-limite" value="${t.tuberiaManual?.limiteElasticoMPa ?? 170}" title="Límite elástico [MPa]">
           <input type="text" inputmode="decimal" class="mem-tuberia-manual-rugosidad" value="${t.tuberiaManual?.rugosidadMm ?? 0.002}" title="Rugosidad [mm]">

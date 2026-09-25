@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { H2, TABLA_TUBERIA, buscarTuberia, factorZHidrogeno, factorZDesdeBarG, factorZDesdeBarAbs, factorHf, factorT } from '../js/gas-h2.js';
+import { H2, TABLA_TUBERIA, buscarTuberia, diametroExteriorMm, factorZHidrogeno, factorZDesdeBarG, factorZDesdeBarAbs, factorHf, factorT } from '../js/gas-h2.js';
 
 function cerca(actual, esperado, tolerancia = 1e-9) {
   assert.ok(
@@ -14,8 +14,22 @@ assert.equal(H2.pciKjKg, 120000);
 assert.equal(H2.densidadNormalKgM3, 0.089);
 assert.equal(TABLA_TUBERIA.length, 6);
 
+// Tabla CORREGIDA 2026-09-25 (ver gas-h2.js): el "DI" de 1/2" del Excel
+// (12,7 mm, Cálculo!I35) es el diámetro EXTERIOR del tubing; el interior es
+// DE − 2·espesor = 10,3 mm.
 const fila = buscarTuberia(0.5);
-assert.equal(fila.diMm, 12.7);
+assert.equal(fila.deMm, 12.7);
+assert.equal(fila.diMm, 10.3);
+TABLA_TUBERIA.forEach((f) => {
+  cerca(f.diMm, f.deMm - 2 * f.espesorMm, 1e-12);
+  assert.equal(diametroExteriorMm(f), f.deMm);
+});
+// DE de tubing en pulgadas exactas (1/4" a 1") y de NPS 1-1/4" (42,2 mm)
+[[0.25, 6.35], [0.375, 9.525], [0.5, 12.7], [0.75, 19.05], [1, 25.4], [1.25, 42.2]].forEach(([p, de]) => {
+  assert.equal(buscarTuberia(p).deMm, de);
+});
+// Tubería manual (sin deMm): el DE se deduce del DI y el espesor
+cerca(diametroExteriorMm({ diMm: 10.3, espesorMm: 1.2 }), 12.7);
 assert.equal(fila.espesorMm, 1.2);
 assert.equal(fila.limiteElasticoMPa, 170);
 assert.equal(fila.rugosidadMm, 0.002);

@@ -55,9 +55,9 @@
               </div>
             </div>
             <div class="campo">
-              <label for="flujo-presion-min">Presión manométrica mínima</label>
+              <label for="flujo-presion-min" title="Presión más baja de la línea (p. ej. al final del tramo o aguas abajo de un regulador). La velocidad de erosión se verifica ahí, donde la velocidad del gas es mayor.">Presión manométrica mínima de la línea</label>
               <div class="campo-con-unidad">
-                <input id="flujo-presion-min" type="text" inputmode="decimal" value="29.5" required>
+                <input id="flujo-presion-min" type="text" inputmode="decimal" value="0.8" required>
                 <select id="flujo-presion-min-unidad" class="select-unidad" aria-label="Unidad de presión manométrica mínima">
                   <option value="Pa">Pa</option>
                   <option value="kPa">kPa</option>
@@ -101,7 +101,7 @@
             <div class="fila-campos">
               <div class="campo">
                 <label for="flujo-tuberia-manual-di">Diámetro interior [mm]</label>
-                <input id="flujo-tuberia-manual-di" type="text" inputmode="decimal" value="12.7" required>
+                <input id="flujo-tuberia-manual-di" type="text" inputmode="decimal" value="10.3" required>
               </div>
               <div class="campo">
                 <label for="flujo-tuberia-manual-espesor">Espesor de pared [mm]</label>
@@ -184,6 +184,31 @@
             <div class="campo">
               <label for="alm-volumen">Volumen del estanque [m³]</label>
               <input id="alm-volumen" type="text" inputmode="decimal" value="0.19" required>
+            </div>
+          </div>
+        </div>
+        <!-- Agregados 2026-09-25: antes eran supuestos fijos dentro de las
+             fórmulas del Excel (vaciado hasta 0 bar, llenado a 4 Nm³/h). -->
+        <div class="seccion">
+          <h3 class="seccion-titulo">Vaciado y llenado</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="alm-presion-residual" title="Bajo esta presión el regulador ya no entrega: el H₂ que queda no cuenta para la autonomía.">Presión residual mínima [abs]</label>
+              <div class="campo-con-unidad">
+                <input id="alm-presion-residual" type="text" inputmode="decimal" value="10" required>
+                <select id="alm-presion-residual-unidad" class="select-unidad" aria-label="Unidad de presión residual mínima">
+                  <option value="Pa">Pa</option>
+                  <option value="kPa">kPa</option>
+                  <option value="mbar">mbar</option>
+                  <option value="bar" selected>bar</option>
+                  <option value="MPa">MPa</option>
+                  <option value="psi">psi</option>
+                </select>
+              </div>
+            </div>
+            <div class="campo">
+              <label for="alm-caudal-llenado">Caudal de llenado [Nm³/h]</label>
+              <input id="alm-caudal-llenado" type="text" inputmode="decimal" value="4" required>
             </div>
           </div>
         </div>

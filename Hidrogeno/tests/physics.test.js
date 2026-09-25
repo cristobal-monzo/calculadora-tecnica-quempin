@@ -14,21 +14,21 @@ function cerca(actual, esperado, tolerancia = 1e-9) {
 
 // Fixtures extraídos de Calculos H2.xlsx, hoja "Cálculo", 2026-09-01
 cerca(
-  presionMaximaDiseno({ limiteElasticoMPa: 170, espesorMm: 1.2, diametroMm: 12.7, factorDiseno: 0.4, factorUnion: 1 }),
+  presionMaximaDiseno({ limiteElasticoMPa: 170, espesorMm: 1.2, diametroExteriorMm: 12.7, factorDiseno: 0.4, factorUnion: 1 }),
   128.50393700787401
 ); // C10 — factorHf por defecto = 1 (sin efecto en la fórmula base)
 
 // factorHf (ASME B31.12 Tabla IX-5A) AGREGADO 2026-09-02 — recomputado a
 // mano: 10*((2*170*1.2)/12.7)*0.4*1*0.8
 cerca(
-  presionMaximaDiseno({ limiteElasticoMPa: 170, espesorMm: 1.2, diametroMm: 12.7, factorDiseno: 0.4, factorUnion: 1, factorHf: 0.8 }),
+  presionMaximaDiseno({ limiteElasticoMPa: 170, espesorMm: 1.2, diametroExteriorMm: 12.7, factorDiseno: 0.4, factorUnion: 1, factorHf: 0.8 }),
   102.80314960629921
 );
 
 // factorT (ASME B31.12 Tabla PL-3.7.1(b)(8)) AGREGADO 2026-09-02 —
 // recomputado a mano: 10*((2*170*1.2)/12.7)*0.4*1*1*0.9 = 128.50393700787401*0.9
 cerca(
-  presionMaximaDiseno({ limiteElasticoMPa: 170, espesorMm: 1.2, diametroMm: 12.7, factorDiseno: 0.4, factorUnion: 1, factorT: 0.9 }),
+  presionMaximaDiseno({ limiteElasticoMPa: 170, espesorMm: 1.2, diametroExteriorMm: 12.7, factorDiseno: 0.4, factorUnion: 1, factorT: 0.9 }),
   115.65354330708661
 );
 

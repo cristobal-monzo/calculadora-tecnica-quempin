@@ -57,7 +57,15 @@ qué serie de tubería es esta (ni ASME B36.10 Schedule 40 ni ASTM B88 tipo
 L coinciden con sus DI) — inventar filas nuevas sin esa confirmación
 habría sido fabricar espesor/límite elástico, que acá sí son datos de
 seguridad (fórmula de Barlow). Si Cristóbal tiene la tabla/catálogo de
-origen, se puede ampliar con confianza.
+origen, se puede ampliar con confianza. *(2026-09-25: se identificó por
+qué no calzaba — la columna "DI" mezclaba diámetros exteriores e
+interiores; ver "Auditoría de coherencia física" más abajo. La tabla
+ahora guarda DE y deriva DI.)*
+
+Con tubería manual se ingresa el **diámetro interior**; el exterior para
+Barlow se deduce como DI + 2·espesor (`diametroExteriorMm()` en
+`gas-h2.js`, desde el 2026-09-25). Default del DI manual: 10,3 mm (el DI
+real de la fila de 1/2").
 
 En cambio, tanto el selector de "Tubería y Flujo" como el de cada tramo de
 "Memoria de Cálculo" tienen una opción **"Manual (ingresar mm)"** que pide
@@ -195,6 +203,78 @@ Tests: `tests/factor-z-h2.test.js` (los 5 puntos NIST, continuidad de Z y
 de la masa almacenada en 199.9/200.0/200.1 bar, igualdad exacta del Z entre
 Tubería y Flujo y Almacenamiento para el mismo estado, y barrido monótono
 100-700 bar sin excepciones).
+
+## Auditoría de coherencia física (2026-09-25, a pedido del usuario)
+
+Revisión de los resultados contra cálculos independientes y contra las
+celdas del Excel fuente (`Calculos H2.xlsx`, leído de nuevo para cada
+caso). Mismo trabajo en `GasNatural-GLP` (ver su `CLAUDE.md`). Verificado
+con `node Hidrogeno/tests/run-all.js` y en navegador.
+
+**Tabla de tubería (`TABLA_TUBERIA`, `gas-h2.js`)**. La columna "DI [mm]"
+de `Cálculo!I33:I38` mezclaba diámetros exteriores e interiores: 1/4",
+3/8" y 1/2" = 6,4 / 9,5 / 12,7 mm son el **exterior** del tubing; 3/4" y
+1" = 16 / 23 mm ≈ exterior − 2·espesor, o sea el **interior**; 1-1/4" =
+42 mm es el exterior de un tubo NPS 1-1/4" (42,2 mm), con pared de 2,7 mm
+(≈ Sch 10). Consecuencias: en flujo, usar el exterior como interior
+subestimaba la velocidad ~1,5x y la pérdida de carga ~2,7x en 1/2"; en
+Barlow (que va con el **exterior**, PL-3.7.1), usar el interior en 3/4" y
+1" sobrestimaba la presión máxima de diseño. Ahora cada fila guarda DE y
+espesor (los del Excel) y deriva DI = DE − 2·espesor, igual que
+`OtrosGases/js/tuberias.js`; Barlow recibe `diametroExteriorMm`. Límite
+elástico y rugosidad sin cambios. El selector y la tabla de referencia
+muestran DE y DI. Caso por defecto (1/2", 60 kW, 20 m): presión máxima de
+diseño sin cambio (128,5 bar — 12,7 ya era el exterior), velocidad 26,5 →
+40,3 m/s, pérdida de carga 31,2 → 83,6 mbar. Ojo: 40 m/s supera los 20 m/s
+(NFPA 2) que la Memoria usa por defecto como criterio — es el resultado
+físico real de 60 kW de H₂ a 0,8 barG por 1/2".
+
+**Velocidad de erosión en el mismo estado del gas (`calc-flujo.js`)**. El
+Excel calculaba la velocidad erosional (API RP 14E, `Cálculo!C14`) a la
+presión mínima y la comparaba con la velocidad de flujo a la presión de
+operación; además, sus valores por defecto tenían mínima 29,5 barG sobre
+una operación de 0,8 barG. Como v ∝ 1/ρ y Ve ∝ 1/√ρ, la comparación vale
+solo en un mismo estado y es más exigente a menor presión: ahora ambas se
+evalúan a la **presión mínima de la línea** (`velocidadFlujoErosionMS`,
+`presionErosionBarG`), y si la "mínima" supera la de operación se usa la
+de operación y se avisa (`presionMinimaSobreOperacion`, nota en pantalla).
+Default de "Presión manométrica mínima de la línea" 29,5 → 0,8 barG (igual
+a la de operación). Los resultados muestran la velocidad a la presión de
+operación junto al caudal y un grupo aparte "Velocidad de erosión — API RP
+14E, a la presión mínima" con Ve y la velocidad a esa presión (naranja si
+supera el 80 % de Ve, mismo criterio de antes). El screening de flujo
+sónico no cambia.
+
+**Caudal real de H₂ en L/min**. `Cálculo!C12` multiplicaba el caudal real
+por 17,5817, que es m³/h → L/min (16,667) × 288,15/273,15 (Nm³ a 0 °C →
+litros estándar a 15 °C) — esa corrección solo corresponde al caudal
+normalizado. En L/min el caudal real salía 5,5 % alto; ahora × 1000/60.
+La velocidad ya no depende de la unidad mostrada.
+
+**Almacenamiento (`calc-almacenamiento.js`)**:
+- `Sheet3!G10` se llama "Caudal real @4Nm³/h": los 360 g/h fijos de
+  `H10` eran el caudal de **llenado** de 4 Nm³/h (4 × 0,089 ≈ 0,356 kg/h,
+  redondeado), dividido por 2,16 en vez de 2,016 (+7 %) y sin Z. Ahora el
+  caudal de llenado es un campo (`alm-caudal-llenado`, default 4 Nm³/h) y
+  el caudal real es masa/densidad real con Z: 0,0203 → 0,0242 m³/h.
+- `H11` (velocidad en la línea Ø¼") usaba 6,35 mm, el diámetro exterior;
+  ahora el DI de la fila de 1/4" (3,95 mm): 0,18 → 0,55 m/s.
+- Autonomía: el Excel usaba toda la masa, como si el estanque se vaciara
+  hasta 0 bar. Nuevo campo "Presión residual mínima [abs]"
+  (`alm-presion-residual`, default **10 bar abs**, valor conservador que
+  NO viene del Excel — ajustarlo a la presión mínima de entrada del
+  regulador real). Autonomía sobre la masa utilizable: 01:33:07 →
+  01:27:55. El tiempo de llenado va desde la presión residual al caudal de
+  llenado ingresado. Con presión residual 0 se recupera el cálculo del
+  Excel.
+
+**Revisado y dejado igual — Hf en tubing inoxidable**. Las filas de 1/4" a
+1" son, por su límite elástico (170-185 MPa) y rugosidad (0,002 mm),
+tubing inoxidable; la Tabla IX-5A (Hf) es de acero al carbono. Aplicarla
+es **conservador** (Hf ≤ 1 reduce la presión máxima; con estas presiones
+suele valer 1). Cambiarlo exige agregar el material a la tabla y los
+factores de la norma para inoxidable (Tablas IX-5B/IX-5C, no disponibles
+en el repo) — ver la sección siguiente, que ya lo dejaba como pendiente.
 
 ## Tabla Hf de ASME B31.12 (`TABLA_HF_ASME_B31_12` en `gas-h2.js`)
 
@@ -805,7 +885,7 @@ pantalla como 0,528.
   `perdidaCargaMbar`**, la pérdida de carga de la línea que el motor ya
   calcula. Elegido explícitamente por Cristóbal el 2026-09-08 entre tres
   mapeos posibles. La alternativa descartada era usar `presionMinBarG`
-  (29,5 barG por defecto) como aguas arriba, interpretando el par como
+  (29,5 barG por defecto en ese momento; 0,8 desde el 2026-09-25) como aguas arriba, interpretando el par como
   entrada/salida de un regulador — se descartó porque `presionMinBarG` es
   un parámetro de API RP 14E, no una presión aguas arriba.
   **Consecuencia conocida y aceptada:** como las pérdidas de carga están en
