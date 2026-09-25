@@ -629,7 +629,8 @@ del valor "butano" del Excel.
   absoluta (el mismo umbral de screening que el usuario fijó en Hidrógeno
   el 2026-09-08), no los 150/120 Pa de baja presión de D.S. 66, que
   declaraban inadecuada cualquier tubería de media. **No es un valor de
-  D.S. 66**: confirmar con Cristóbal si el proyecto exige otro.
+  D.S. 66** (su sección e no fija una pérdida admisible de media
+  presión); criterio confirmado por Cristóbal el 2026-09-25.
 - GLP: aviso de condensación. Presión de rocío de la mezcla por Raoult con
   presión de vapor de Lee-Kesler (propano 8,41 / butano 2,08 bar a 20 °C,
   NIST 8,36 / 2,08). 70/30 condensa sobre 4,40 bar abs a 20 °C y 2,27 a
@@ -692,7 +693,8 @@ PCS); una sola densidad relativa S; viscosidad 0,012/0,008 cP. Ajustes:
   puede despreciar si se compensa con el regulador, hasta 3,24 kPa).
 - **Cr con T = °C + 273**, no el "+278" del texto del decreto: lo define
   como temperatura absoluta en K, casi seguro un error de tipeo (con 278
-  la ΔP de media presión subiría ~1,8 %).
+  la ΔP de media presión subiría ~1,8 %). Confirmado por Cristóbal el
+  2026-09-25.
 - **Pendiente — Tabla VI y Tabla IX**. El decreto toma d y PCS "según
   Tabla VI" y K "según Tabla IX"; no están en el repo. d y PCS salen hoy
   de la composición (GN por defecto: 37,47 vs 37,54 fijos del Excel; GLP

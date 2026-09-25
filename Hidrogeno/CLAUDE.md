@@ -262,8 +262,8 @@ La velocidad ya no depende de la unidad mostrada.
 - Autonomía: el Excel usaba toda la masa, como si el estanque se vaciara
   hasta 0 bar. Nuevo campo "Presión residual mínima [abs]"
   (`alm-presion-residual`, default **10 bar abs**, valor conservador que
-  NO viene del Excel — ajustarlo a la presión mínima de entrada del
-  regulador real). Autonomía sobre la masa utilizable: 01:33:07 →
+  NO viene del Excel, confirmado por Cristóbal el 2026-09-25 — en cada
+  proyecto se ajusta a la presión mínima de entrada del regulador real). Autonomía sobre la masa utilizable: 01:33:07 →
   01:27:55. El tiempo de llenado va desde la presión residual al caudal de
   llenado ingresado. Con presión residual 0 se recupera el cálculo del
   Excel.

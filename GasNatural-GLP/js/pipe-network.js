@@ -70,8 +70,9 @@ export function perdidaAdmisiblePa(gas) {
 // corregido en el informe de la Memoria). En media presión se usa el mismo
 // criterio de screening que Hidrógeno y Otros Gases ya aplican a la caída
 // de presión (umbral provisto por el usuario el 2026-09-08): ΔP ≤ 10 % de
-// la presión inicial ABSOLUTA. No es un valor de D.S. 66 — confirmar con
-// Cristóbal si el proyecto exige otro.
+// la presión inicial ABSOLUTA. No es un valor de D.S. 66 (el decreto no
+// fija una pérdida admisible de media presión en su sección e); criterio
+// confirmado por Cristóbal el 2026-09-25.
 export const FRACCION_CAIDA_ADMISIBLE_MEDIA_PRESION = 0.10;
 
 export function perdidaAdmisibleMediaPresionPa(presionInicialPa) {

@@ -27,8 +27,9 @@ const MASA_MOLAR_G_MOL = 2.016;          // Sheet3!H6
 //     fórmulas (Sheet3!G10 "Caudal real @4Nm³/h", H12 = H9/4).
 //   - 10 bar abs: presión residual bajo la cual el estanque ya no alimenta
 //     el consumo (el regulador necesita presión de entrada por sobre la de
-//     salida). No viene del Excel — valor conservador por defecto, editable;
-//     ajustarlo a la presión mínima de entrada del regulador real.
+//     salida). No viene del Excel — valor conservador por defecto,
+//     confirmado por Cristóbal el 2026-09-25; editable, para ajustarlo a la
+//     presión mínima de entrada del regulador real de cada proyecto.
 export const CAUDAL_LLENADO_DEFECTO_NM3H = 4;
 export const PRESION_RESIDUAL_DEFECTO_BAR_ABS = 10;
 
