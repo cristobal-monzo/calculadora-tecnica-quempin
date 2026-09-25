@@ -1,38 +1,83 @@
 // Motor de cálculo de la pestaña "Red de Gas" — dimensionamiento de
-// tubería para GLP y GN. Fuente: Libro11111111.xlsx, hoja
-// "Bases de Cálculo" (celdas citadas por bloque).
+// tubería para GLP y GN según el D.S. 66 (sección e, fórmulas f.1–f.5 y
+// e.2). Fuente original: Libro11111111.xlsx, hoja "Bases de Cálculo"
+// (celdas citadas por bloque).
 //
-// Propiedades del gas DESDE LA COMPOSICIÓN (CORREGIDO 2026-09-25,
-// auditoría de coherencia física): el Excel usaba valores fijos por gas
-// (Bases de Cálculo!B18/B19 y la tabla I40:L47) — GLP con PC = 119,7 MJ/m³
-// y densidad relativa 2, que son de butano casi puro, aunque el resto del
-// módulo trabaja con la composición ingresada (70/30 propano/butano por
-// defecto); además usaba DOS densidades relativas distintas para el mismo
-// gas (2 en baja presión, 1,81 en el factor Cr). Ahora densidad relativa,
-// poder calorífico volumétrico y pseudocríticas salen de la composición
-// (gas-glp.js / gas-gn.js), con una sola densidad relativa por gas. El
-// poder calorífico sigue en la base que tenía el Excel: PCS por m³ a
-// 15 °C y 1 atm (con la composición de GN por defecto da 37,47 MJ/m³ contra
-// los 37,54 fijos del Excel). La viscosidad sigue fija por gas (entra
-// elevada a 0,152 en Cr: su efecto es marginal).
-import { propiedadesGLP, presionRocioGLPPa } from './gas-glp.js';
-import { propiedadesGN } from './gas-gn.js';
+// Propiedades del gas SEGÚN LA TABLA VI DEL D.S. 66 (2026-09-25): el
+// decreto toma d, PCS y viscosidad "según Tabla VI", fijos por tipo de gas
+// y región — no de la composición. Una primera versión de este mismo día
+// los derivaba de la composición; con la tabla del decreto a la vista
+// (provista por el usuario) se volvió a los valores normativos, que son
+// los que el Excel ya usaba para GLP (Licuado: d 2,0 / 119,7 MJ/m³) y para
+// el PCS del GN (37,54 MJ/m³). Una sola d por gas (el Excel usaba además
+// 1,81/0,62 en el factor Cr; el decreto usa la misma S). Ver
+// GasNatural-GLP/CLAUDE.md.
+import { presionRocioGLPPa, PROPANO, BUTANO } from './gas-glp.js';
+import { METANO, PM_AIRE } from './gas-gn.js';
 import {
   buscarTuberiaRedGas, perdidaAdmisiblePa, perdidaAdmisibleMediaPresionPa, factorZPengRobinson,
   factorSuperexpansion, factorCr, perdidaPresionBajaPresion, perdidaPresionMediaAltaPresion,
   P_ATMOSFERICA_PA,
 } from './pipe-network.js';
 
-// Composición por defecto del módulo (la misma que precargan los
-// formularios de Combustión, Quemador y Estanque). Se usa también cuando
-// un tramo o un proyecto guardado antes del 2026-09-25 no trae composición.
-export const COMPOSICION_POR_DEFECTO = {
-  GLP: { pctButano: 0.3, pctPropano: 0.7 },
-  GN: { pctMetano: 0.97, pctEtano: 0.011, pctPropano: 0.001, pctButano: 0.001, pctDioxidoC: 0.01, pctNitrogeno: 0.007 },
+// D.S. 66, Tabla VI — propiedades físicas de los gases, condiciones de
+// referencia 15 °C y 101,3 kPa (las mismas del m³S de f.3/f.5). Se omiten
+// las filas de gas de Ciudad: no es GLP ni GN, y la tabla no les asigna
+// viscosidad (necesaria para Cr en media presión).
+export const TABLA_VI_DS66 = {
+  GLP: [
+    { id: 'licuado', nombre: 'Licuado (Iª a XIIª Región)', densidadRelativa: 2.0, pcsMJm3: 119.7, viscosidadCp: 0.008 },
+    { id: 'licuado-catalitico', nombre: 'Licuado catalítico (Iª a XIIª Región)', densidadRelativa: 1.6, pcsMJm3: 95.04, viscosidadCp: 0.008 },
+  ],
+  GN: [
+    { id: 'natural-v-rm', nombre: 'Natural — Vª y Metropolitana', densidadRelativa: 0.87, pcsMJm3: 37.54, viscosidadCp: 0.012 },
+    { id: 'natural-viii', nombre: 'Natural — VIIIª Región', densidadRelativa: 0.89, pcsMJm3: 40.56, viscosidadCp: 0.012 },
+    { id: 'natural-xii', nombre: 'Natural — XIIª Región', densidadRelativa: 0.88, pcsMJm3: 39.73, viscosidadCp: 0.012 },
+  ],
 };
 
-// Bases de Cálculo!K45:K46 [cP]
-export const VISCOSIDAD_CP = { GLP: 0.008, GN: 0.012 };
+export const GAS_TABLA_VI_POR_DEFECTO = { GLP: 'licuado', GN: 'natural-v-rm' };
+
+export function buscarGasTablaVI(gas, id) {
+  const filas = TABLA_VI_DS66[gas];
+  return filas.find((f) => f.id === id) ?? filas.find((f) => f.id === GAS_TABLA_VI_POR_DEFECTO[gas]);
+}
+
+// Composición REAL del GLP por defecto (la misma que precargan Combustión,
+// Quemador y Estanque). En Red de Gas se usa SOLO para verificar
+// condensación: la Tabla VI es una convención de diseño para la pérdida de
+// carga (d 2,0 = butano casi puro) y no dice qué condensa en la cañería.
+export const COMPOSICION_POR_DEFECTO = {
+  GLP: { pctButano: 0.3, pctPropano: 0.7 },
+};
+
+// Constantes críticas para Y = 1/Z (Peng-Robinson, f.3). El decreto no
+// dice cómo obtener Z; se usan pseudocríticas de Kay coherentes con la d de
+// la Tabla VI: en GLP, la mezcla propano/butano que tiene esa d (Licuado
+// d 2,0 → ~99 % butano; catalítico d 1,6 → ~16 % butano); en GN, las del
+// metano (Bases de Cálculo!J41:L41, las que usaba el Excel). A presiones de
+// red Z vale 0,97–1,00 y entra elevado a 0,541.
+function criticasParaZ(gas, densidadRelativa) {
+  if (gas !== 'GLP') return { Tc: METANO.Tc, Pc: METANO.Pc, w: METANO.w };
+  const yButano = Math.min(1, Math.max(0, (densidadRelativa * PM_AIRE - PROPANO.PM) / (BUTANO.PM - PROPANO.PM)));
+  const kay = (campo) => yButano * BUTANO[campo] + (1 - yButano) * PROPANO[campo];
+  return { Tc: kay('Tc'), Pc: kay('Pc'), w: kay('w') };
+}
+
+export function propiedadesRedGas(gas, gasTablaVI) {
+  const fila = buscarGasTablaVI(gas, gasTablaVI);
+  const criticas = criticasParaZ(gas, fila.densidadRelativa);
+  return {
+    gasTablaVI: fila.id,
+    nombreTablaVI: fila.nombre,
+    pcsVolumetricoMJm3: fila.pcsMJm3,
+    densidadRelativa: fila.densidadRelativa,
+    viscosidadCp: fila.viscosidadCp,
+    temperaturaCriticaK: criticas.Tc,
+    presionCriticaBar: criticas.Pc,
+    factorAcentrico: criticas.w,
+  };
+}
 
 // D.S. 66, e.2 — variación de la presión con la altura:
 //   Δph = 12·(1 − d)·h   [Pa], d = densidad relativa (aire = 1), h [m]
@@ -56,26 +101,12 @@ export function velocidadDS66({ caudalM3H, temperaturaK, presionFinalAbsBar, dia
   return 1.25 * caudalM3H * temperaturaK / (presionFinalAbsBar * diametroMm ** 2);
 }
 
-export function propiedadesRedGas(gas, composicion) {
-  const comp = composicion ?? COMPOSICION_POR_DEFECTO[gas];
-  const p = gas === 'GLP' ? propiedadesGLP(comp) : propiedadesGN(comp);
-  return {
-    pcsVolumetricoMJm3: p.pcsVolumetricoMJm3,
-    densidadRelativa: p.densidadRelativa,
-    viscosidadCp: VISCOSIDAD_CP[gas],
-    temperaturaCriticaK: p.temperaturaCriticaK,
-    presionCriticaBar: p.presionCriticaBar,
-    factorAcentrico: p.factorAcentrico,
-  };
-}
-
 export function calcularRedGas(inputs) {
   const {
-    gas, composicion, regimenPresion, material, pulgadas, potenciaKw, longitudM, presionInicialPa, temperaturaC,
-    tuberiaManual, desnivelM = 0,
+    gas, gasTablaVI, composicion, regimenPresion, material, pulgadas, potenciaKw, longitudM, presionInicialPa,
+    temperaturaC, tuberiaManual, desnivelM = 0,
   } = inputs;
-  const comp = composicion ?? COMPOSICION_POR_DEFECTO[gas];
-  const propiedades = propiedadesRedGas(gas, comp);
+  const propiedades = propiedadesRedGas(gas, gasTablaVI);
   const temperaturaK = temperaturaC + 273.15;
 
   // Diámetro manual [mm] (2026-09-02, a pedido del usuario, "listado más
@@ -98,8 +129,8 @@ export function calcularRedGas(inputs) {
     k = tuberia.k;
   }
 
-  // Bases de Cálculo!B21 = B20*B19/3.6, invertido: caudal objetivo = Potencia*3.6/PC
-  // [m³/h a 15 °C y 1 atm, la base del poder calorífico volumétrico]
+  // D.S. 66 f.2/f.4 (P = Q·PCS/3,6), despejado: caudal = Potencia·3,6/PCS
+  // [m³S/h, a 15 °C y 101,3 kPa, la base del PCS de la Tabla VI]
   const caudalObjetivoM3H = (potenciaKw * 3.6) / propiedades.pcsVolumetricoMJm3;
 
   // Z a la presión inicial ABSOLUTA y la temperatura real (pipe-network.js)
@@ -164,6 +195,7 @@ export function calcularRedGas(inputs) {
   // GLP condensa en la cañería y el cálculo de gas deja de aplicar. Se
   // evalúa a la presión inicial (la más alta del tramo). El GN no condensa
   // a presiones de distribución.
+  const comp = composicion ?? COMPOSICION_POR_DEFECTO.GLP;
   const presionRocioAbsPa = gas === 'GLP' ? presionRocioGLPPa({ ...comp, temperaturaC }) : null;
   const riesgoCondensacion = presionRocioAbsPa !== null
     && presionInicialPa + P_ATMOSFERICA_PA >= presionRocioAbsPa;
@@ -174,6 +206,10 @@ export function calcularRedGas(inputs) {
     alturaObligatoriaDS66: Math.abs(desnivelM) > DESNIVEL_OBLIGATORIO_M,
     velocidadMS, volumenTuberiaM3, perdidaAdmisiblePa: perdidaAdmisiblePaValor, tuberiaAdecuada,
     z, densidadRelativa: propiedades.densidadRelativa, pcsVolumetricoMJm3: propiedades.pcsVolumetricoMJm3,
+    gasTablaVI: propiedades.gasTablaVI, nombreTablaVI: propiedades.nombreTablaVI,
+    // D.S. 66 Tabla IX cubre de 3/8" a 4": fuera de ese rango el K de la
+    // tabla de la app es extrapolado (solo importa en baja presión).
+    kFueraDeTablaIX: !mediaPresion && tuberia !== null && !tuberia.kTablaIX,
     presionRocioAbsPa, riesgoCondensacion,
   };
 }

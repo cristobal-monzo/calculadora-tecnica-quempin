@@ -601,7 +601,9 @@ Renouard clásico de baja presión (ΔP[mbar] = 23200·dr·L[m]·Q^1,82·D^-4,82
 al 0,02 %. La fila de 1/4" (10,4 mm en acero y cobre) pasó a Sch 40
 9,25 mm / cobre tipo L 8,00 mm.
 
-**Red de Gas — propiedades desde la composición**. Los valores fijos del
+**Red de Gas — propiedades desde la composición** *(REEMPLAZADO el mismo
+día por la Tabla VI del D.S. 66 — ver "Tablas VI y IX del D.S. 66" más
+abajo; se conserva como registro)*. Los valores fijos del
 Excel (GLP: PC 119,7 MJ/m³ y densidad relativa 2, que son de butano casi
 puro; dos densidades relativas distintas por gas) se reemplazaron por
 propiedades derivadas de la composición (`propiedadesGLP`/`propiedadesGN`):
@@ -695,13 +697,47 @@ PCS); una sola densidad relativa S; viscosidad 0,012/0,008 cP. Ajustes:
   como temperatura absoluta en K, casi seguro un error de tipeo (con 278
   la ΔP de media presión subiría ~1,8 %). Confirmado por Cristóbal el
   2026-09-25.
-- **Pendiente — Tabla VI y Tabla IX**. El decreto toma d y PCS "según
-  Tabla VI" y K "según Tabla IX"; no están en el repo. d y PCS salen hoy
-  de la composición (GN por defecto: 37,47 vs 37,54 fijos del Excel; GLP
-  70/30: 101,95 vs 119,7). Si la Tabla VI trae valores fijos por gas
-  (probablemente los del Excel), para cumplir el decreto la app debería
-  usarlos, al menos por defecto. Los K de 1/8" a 4" son los del Excel;
-  los de 5"–8" (2420) están supuestos.
+- **Tablas VI y IX**: resuelto, ver la sección siguiente.
+
+**Tablas VI y IX del D.S. 66 (provistas por el usuario el 2026-09-25)**.
+- **Tabla VI → Red de Gas y Memoria** (`TABLA_VI_DS66` en
+  `calc-red-gas.js`): d, PCS y viscosidad salen de la tabla, por tipo de
+  gas y región, y ya NO de la composición (el decreto dice "según Tabla
+  VI"). Filas: GLP Licuado (d 2,0 · 119,7 MJ/m³) y Licuado catalítico
+  (1,6 · 95,04); GN Vª y RM (0,87 · 37,54), VIIIª (0,89 · 40,56) y XIIª
+  (0,88 · 39,73); viscosidad 0,008 / 0,012 cP; referencia 15 °C y
+  101,3 kPa. Se omiten las de gas de Ciudad (no es GLP ni GN y la tabla no
+  les da viscosidad). Selector "Tipo de gas y región" en Red de Gas
+  (guardado por gas en `red-gas-composicion-GLP/GN`) y en la Memoria
+  (`proyecto.gasTablaVI[gas]`, exportado con el proyecto; uno anterior sin
+  el campo usa Licuado / Natural Vª y RM). El informe cita la fila usada en
+  "Tipo de red". Con GLP Licuado el caudal vuelve a los 0,90226 m³/h del
+  caso original del Excel (30 kW / 119,7).
+- **Composición real del GLP: solo para condensación**. La Tabla VI
+  "Licuado" (d 2,0) es butano casi puro — una convención de diseño para la
+  pérdida de carga, no el producto real. Verificar condensación con esa d
+  marcaría como condensante casi toda red de GLP en media presión, así que
+  Red de Gas y Memoria piden además la composición real (70/30 por
+  defecto; `proyecto.composicion.GLP`), rotulada "solo para verificar
+  condensación". En GN ya no se pide composición en Red de Gas.
+- **Z (Y = 1/Z de f.3)**: el decreto no dice cómo obtenerlo. Pseudocríticas
+  de Kay coherentes con la d de la tabla: en GLP, la mezcla propano/butano
+  con esa d (Licuado → ~99 % butano, catalítico → ~16 % butano); en GN, las
+  del metano (las que usaba el Excel).
+- **Ojo — d del GN**: la tabla trae 0,87 / 0,89 / 0,88 para gas natural,
+  bastante más que la de un GN real (0,57–0,65; el Excel usaba 0,59). Se
+  aplica tal cual porque es el valor normativo (el usuario confirmó la
+  tabla), y es conservador: en baja presión la ΔP de GN sube ~47 % frente
+  a d 0,59, y la ganancia por altura (e.2) baja a 1,56 Pa/m.
+- **Tabla IX → factor K** (`kTablaIX` en `pipe-network.js`): coincide con
+  la columna del Excel de 3/8" a 4". 1/8", 1/4" y 5"–8" quedan fuera de la
+  tabla; en baja presión la app lo advierte (K extrapolado). Con diámetro
+  manual el K lo ingresa el usuario.
+- Tests: `calc-red-gas.test.js` contrasta el motor contra f.2, f.4 y f.5
+  literales con los valores de la Tabla VI; `pipe-network.test.js` sigue
+  comparando la fórmula contra Renouard clásico y Darcy con un GN típico
+  (d 0,6) — con la d 0,87 de la tabla el D.S. 66 se separa ~8 % de
+  Renouard clásico, porque escala con S^0,848 y Renouard con d^1.
 
 **Revisado y dejado igual**: la tabla de consumo de estufas a 10 °C
 (medio/alto = 3,5 kWh/día, rompe el patrón 3× y 4× del nivel bajo) es

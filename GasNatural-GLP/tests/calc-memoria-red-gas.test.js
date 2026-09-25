@@ -47,12 +47,17 @@ const comoGLP = calcularRedMemoria([tramoBase], 'GLP');
 const comoGN = calcularRedMemoria([tramoBase], 'GN');
 assert.notEqual(comoGLP[0].caudalObjetivoM3H, comoGN[0].caudalObjetivoM3H);
 
-// La composición también es de toda la red (2026-09-25): tercer parámetro,
-// que llega a cada tramo. Sin ella se usa la composición por defecto.
-const comoButano = calcularRedMemoria([tramoBase], 'GLP', { pctButano: 1, pctPropano: 0 });
-assert.ok(comoButano[0].caudalObjetivoM3H < comoGLP[0].caudalObjetivoM3H);
-const comoDefecto = calcularRedMemoria([tramoBase], 'GLP', { pctButano: 0.3, pctPropano: 0.7 });
+// El gas de la Tabla VI del D.S. 66 y la composición real del GLP también
+// son de toda la red (2026-09-25): tercer parámetro, que llega a cada
+// tramo. Sin él: Licuado / Natural Vª y RM y composición 70/30.
+const comoCatalitico = calcularRedMemoria([tramoBase], 'GLP', { gasTablaVI: 'licuado-catalitico' });
+assert.equal(comoCatalitico[0].gasTablaVI, 'licuado-catalitico');
+assert.ok(comoCatalitico[0].caudalObjetivoM3H > comoGLP[0].caudalObjetivoM3H); // menos PCS
+const comoDefecto = calcularRedMemoria([tramoBase], 'GLP', { gasTablaVI: 'licuado', composicion: { pctButano: 0.3, pctPropano: 0.7 } });
 cerca(comoDefecto[0].caudalObjetivoM3H, comoGLP[0].caudalObjetivoM3H);
+const tramoMedia = { ...tramoBase, regimenPresion: '>10 kPa', presionInicialPa: 300000 };
+assert.equal(calcularRedMemoria([tramoMedia], 'GLP', { composicion: { pctButano: 0.9, pctPropano: 0.1 } })[0].riesgoCondensacion, true);
+assert.equal(calcularRedMemoria([tramoMedia], 'GLP', { composicion: { pctButano: 0, pctPropano: 1 } })[0].riesgoCondensacion, false);
 
 // La acumulada suma la pérdida TOTAL de cada tramo (fricción + variación
 // por altura, D.S. 66 e.2 — 2026-09-25): un montante de GLP que sube 12 m

@@ -1,5 +1,5 @@
 import { TABLA_TUBERIA_RED_GAS, P_ATMOSFERICA_PA } from './pipe-network.js';
-import { calcularRedGas, COMPOSICION_POR_DEFECTO } from './calc-red-gas.js';
+import { calcularRedGas, COMPOSICION_POR_DEFECTO, TABLA_VI_DS66, GAS_TABLA_VI_POR_DEFECTO, buscarGasTablaVI } from './calc-red-gas.js';
 import { calcularRedMemoria } from './calc-memoria-red-gas.js';
 import { cilindrosPorVaporizacion, cilindrosPorConsumoDiario, calcularEstanqueGLP } from './calc-almacenamiento-glp.js';
 import { calcularCombustionGLP, calcularCombustionGN } from './calc-combustion.js';
@@ -363,7 +363,8 @@ function leerRedGasForm() {
     presionInicialPa: leerPresion('rg-presion-inicial', 'rg-presion-inicial-unidad', 'Pa'),
     temperaturaC: num('rg-temperatura'),
     desnivelM: num('rg-desnivel'),
-    composicion: leerComposicion('rg'),
+    gasTablaVI: document.getElementById('rg-gas-tabla-vi').value,
+    composicion: combustible === 'GLP' ? leerComposicion('rg') : undefined,
   };
 }
 
@@ -389,7 +390,7 @@ function renderResultadosRedGas(r) {
   const variante = r.tuberiaAdecuada ? 'ok' : 'alerta';
   const mediaPresion = r.presionFinalPa !== null;
   const detalle = [
-    tile(`${formatearFijo(r.caudalObjetivoM3H, 3)} m³/h`, 'Caudal objetivo (15 °C, 1 atm)', 'secundario'),
+    tile(`${formatearFijo(r.caudalObjetivoM3H, 3)} m³S/h`, 'Caudal objetivo (15 °C, 101,3 kPa)', 'secundario'),
     tile(`${formatearFijo(r.caudalRealM3H, 3)} m³/h`, 'Caudal real al final del tramo', 'secundario'),
     tile(`${formatearFijo(r.velocidadMS, 2)} m/s`, 'Velocidad de flujo (D.S. 66 f.5, final del tramo)', 'secundario'),
     tile(`${formatearFijo(r.volumenTuberiaM3, 4)} m³`, 'Volumen de la tubería', 'secundario'),
@@ -415,10 +416,13 @@ function renderResultadosRedGas(r) {
     }
   }
   const propiedades = [
-    tile(`${formatearFijo(r.pcsVolumetricoMJm3, 2)} MJ/m³`, 'PCS a 15 °C, 1 atm (según composición)', 'secundario'),
-    tile(formatearFijo(r.densidadRelativa, 3), 'Densidad relativa al aire', 'secundario'),
+    tile(`${formatearFijo(r.pcsVolumetricoMJm3, 2)} MJ/m³`, `PCS — D.S. 66 Tabla VI (${escapeHtml(r.nombreTablaVI)})`, 'secundario'),
+    tile(formatearFijo(r.densidadRelativa, 2), 'Densidad relativa — D.S. 66 Tabla VI', 'secundario'),
     tile(formatearFijo(r.z, 4), 'Factor Z (Peng-Robinson)', 'secundario'),
   ];
+  if (r.kFueraDeTablaIX) {
+    detalle.push('<div class="resultados-nota">El D.S. 66 (Tabla IX) da el factor K solo de 3/8" a 4": para este diámetro el K es extrapolado. Confirmar antes de usarlo en un diseño.</div>');
+  }
   if (r.presionRocioAbsPa !== null) {
     kpis.push(tile(r.riesgoCondensacion ? 'Sí — el GLP condensa en la línea' : 'No', 'Riesgo de condensación', `kpi ${r.riesgoCondensacion ? 'critico' : 'ok'}`));
     propiedades.push(tilePresion(r.presionRocioAbsPa, 'Presión de rocío del GLP (absoluta)', 'presion-rocio', 'secundario'));
@@ -492,16 +496,15 @@ function initRedGas() {
     contenedor.querySelector('.valor-numero').textContent = formatearPresionFija(Number(contenedor.dataset.pa), evento.target.value);
   });
 
-  // Composición del gas (2026-09-25): mismos campos que Combustión y
-  // Quemador, re-renderizados al cambiar de combustible. Se guarda aparte y
-  // por gas (`red-gas-composicion-GLP/GN`): los ids rg-pct-propano/butano
-  // existen en las dos composiciones y guardarlos junto al resto del
-  // formulario mezclaría los valores de un gas con los del otro.
+  // Gas de la red (2026-09-25): selector de la Tabla VI del D.S. 66 y, en
+  // GLP, la composición real para la condensación — ver marcadoGasRed().
+  // Se re-renderiza al cambiar de combustible y se guarda aparte y por gas
+  // (`red-gas-composicion-GLP/GN`), para no mezclar los valores de un gas
+  // con los del otro.
   const contenedorComposicion = document.getElementById('red-gas-campos-composicion');
   function renderComposicion() {
-    contenedorComposicion.innerHTML = combustible === 'GLP'
-      ? marcadoComposicionGLP({ prefijo: 'rg' })
-      : marcadoComposicionGN({ prefijo: 'rg' });
+    contenedorComposicion.innerHTML = marcadoGasRed('rg');
+    document.getElementById('rg-gas-tabla-vi').value = GAS_TABLA_VI_POR_DEFECTO[combustible];
     const guardada = cargar(`red-gas-composicion-${combustible}`, null);
     if (guardada) {
       Object.entries(guardada).forEach(([id, valor]) => {
@@ -509,6 +512,8 @@ function initRedGas() {
         if (el) el.value = valor;
       });
     }
+    const selector = document.getElementById('rg-gas-tabla-vi');
+    if (!selector.value) selector.value = GAS_TABLA_VI_POR_DEFECTO[combustible];
   }
 
   function recalcular() {
@@ -687,8 +692,9 @@ function initAlmacenamiento() {
 // de un .bloque-calculo que ya tiene su h3 (Estanque GLP).
 function marcadoComposicionGLP(valores) {
   const nivel = valores.nivel ?? 'h3';
+  const nota = valores.nota ? ` <span class="seccion-titulo-nota">— ${valores.nota}</span>` : '';
   return `
-    <${nivel} class="seccion-titulo">Composición GLP</${nivel}>
+    <${nivel} class="seccion-titulo">${valores.titulo ?? 'Composición GLP'}${nota}</${nivel}>
     <div class="fila-campos">
       <div class="campo"><label for="${valores.prefijo}-pct-butano">% Butano (molar)</label><input id="${valores.prefijo}-pct-butano" type="text" inputmode="decimal" value="0.3"></div>
       <div class="campo"><label for="${valores.prefijo}-pct-propano">% Propano (molar)</label><input id="${valores.prefijo}-pct-propano" type="text" inputmode="decimal" value="0.7"></div>
@@ -709,6 +715,27 @@ function marcadoComposicionGN(valores) {
       <div class="campo"><label for="${valores.prefijo}-pct-nitrogeno">% Nitrógeno (molar)</label><input id="${valores.prefijo}-pct-nitrogeno" type="text" inputmode="decimal" value="0.007"></div>
     </div>
   `;
+}
+
+// Gas de la red para Red de Gas y Memoria (2026-09-25): el D.S. 66 toma
+// d, PCS y viscosidad de su Tabla VI (tipo de gas y región), no de la
+// composición. En GLP se pide además la composición REAL, solo para
+// verificar condensación (la Tabla VI "Licuado", d 2,0, es butano casi
+// puro: una convención de diseño, no el producto que llega a la cañería).
+function marcadoGasRed(prefijo) {
+  const opciones = TABLA_VI_DS66[combustible].map((f) => `<option value="${f.id}">${escapeHtml(f.nombre)} — d ${formatearLibre(f.densidadRelativa)} · PCS ${formatearLibre(f.pcsMJm3)} MJ/m³</option>`).join('');
+  const selector = `
+    <h3 class="seccion-titulo">Gas según D.S. 66 <span class="seccion-titulo-nota">— Tabla VI</span></h3>
+    <div class="fila-campos">
+      <div class="campo campo-ancho">
+        <label for="${prefijo}-gas-tabla-vi">Tipo de gas y región</label>
+        <select id="${prefijo}-gas-tabla-vi">${opciones}</select>
+      </div>
+    </div>`;
+  if (combustible !== 'GLP') return selector;
+  return selector + marcadoComposicionGLP({
+    prefijo, nivel: 'h4', titulo: 'Composición real del GLP', nota: 'solo para verificar condensación',
+  });
 }
 
 function leerComposicion(prefijo) {
@@ -940,43 +967,41 @@ function proyectoPorDefecto() {
     // límite de velocidad — el usuario lo completa si aplica a su proyecto.
     velocidadMaxFlujoDisenoMS: null, velocidadErosionDisenoMS: null, perdidaMaxAcumuladaDisenoPa: null,
     artefactos: [], observaciones: OBSERVACIONES_DEFECTO,
-    // Composición del gas de la red, una por combustible (2026-09-25) —
-    // ver composicionMemoria().
-    composicion: { GLP: { ...COMPOSICION_POR_DEFECTO.GLP }, GN: { ...COMPOSICION_POR_DEFECTO.GN } },
+    // Gas de la red según D.S. 66 Tabla VI y composición real del GLP (solo
+    // condensación), uno por combustible (2026-09-25) — ver opcionesGasMemoria().
+    gasTablaVI: { ...GAS_TABLA_VI_POR_DEFECTO },
+    composicion: { GLP: { ...COMPOSICION_POR_DEFECTO.GLP } },
   };
 }
 
-// Composición vigente de la red. Un proyecto guardado o exportado antes del
-// 2026-09-25 no la trae: se calcula con la composición por defecto del
-// módulo (la misma que precargan Combustión/Quemador/Estanque).
-function composicionMemoria() {
-  return proyecto.composicion?.[combustible] ?? COMPOSICION_POR_DEFECTO[combustible];
+// Gas vigente de la red. Un proyecto guardado o exportado antes del
+// 2026-09-25 no trae estos campos: se usa el gas por defecto de la Tabla VI
+// (Licuado / Natural Vª y RM) y la composición 70/30 del módulo.
+function opcionesGasMemoria() {
+  return {
+    gasTablaVI: buscarGasTablaVI(combustible, proyecto.gasTablaVI?.[combustible]).id,
+    composicion: combustible === 'GLP' ? (proyecto.composicion?.GLP ?? COMPOSICION_POR_DEFECTO.GLP) : undefined,
+  };
 }
 
 function renderComposicionMemoria() {
   const contenedor = document.getElementById('memoria-campos-composicion');
-  contenedor.innerHTML = combustible === 'GLP'
-    ? marcadoComposicionGLP({ prefijo: 'mc' })
-    : marcadoComposicionGN({ prefijo: 'mc' });
-  const comp = composicionMemoria();
-  const ids = {
-    pctButano: 'mc-pct-butano', pctPropano: 'mc-pct-propano', pctMetano: 'mc-pct-metano',
-    pctEtano: 'mc-pct-etano', pctDioxidoC: 'mc-pct-dioxido', pctNitrogeno: 'mc-pct-nitrogeno',
-  };
-  Object.entries(comp).forEach(([clave, valor]) => {
-    const el = document.getElementById(ids[clave]);
-    if (el) el.value = valor;
-  });
+  contenedor.innerHTML = marcadoGasRed('mc');
+  const { gasTablaVI, composicion } = opcionesGasMemoria();
+  document.getElementById('mc-gas-tabla-vi').value = gasTablaVI;
+  if (composicion) {
+    document.getElementById('mc-pct-butano').value = composicion.pctButano;
+    document.getElementById('mc-pct-propano').value = composicion.pctPropano;
+  }
 }
 
-// "GLP — 70 % propano, 30 % butano" / "Gas Natural — 97 % metano" para el
-// informe (el poder calorífico y la densidad dependen de la composición).
+// "GLP — Licuado (Iª a XIIª Región), D.S. 66 Tabla VI: d 2, PCS 119,7 MJ/m³"
+// para el informe: deja constancia de las propiedades usadas.
 function textoComposicionInforme() {
-  const pct = (v) => `${formatearLibre(v * 100)} %`;
-  const comp = composicionMemoria();
-  return combustible === 'GLP'
-    ? `GLP — ${pct(comp.pctPropano)} propano, ${pct(comp.pctButano)} butano`
-    : `Gas Natural — ${pct(comp.pctMetano)} metano`;
+  const fila = buscarGasTablaVI(combustible, opcionesGasMemoria().gasTablaVI);
+  const gas = combustible === 'GLP' ? 'GLP' : 'Gas Natural';
+  const variante = fila.nombre.replace(/^Natural — /, ''); // "Natural — Vª y RM" -> "Vª y RM"
+  return `${gas} — ${variante}, D.S. 66 Tabla VI: d ${formatearLibre(fila.densidadRelativa)}, PCS ${formatearLibre(fila.pcsMJm3)} MJ/m³`;
 }
 
 function artefactoPorDefecto() {
@@ -1374,7 +1399,7 @@ function recalcularMemoria() {
   const contenedorError = document.getElementById('memoria-error');
   let resultado;
   try {
-    resultado = calcularRedMemoria(tramosMemoria, combustible, composicionMemoria());
+    resultado = calcularRedMemoria(tramosMemoria, combustible, opcionesGasMemoria());
   } catch (error) {
     contenedorError.textContent = error.message;
     contenedorError.style.display = '';
@@ -1408,7 +1433,7 @@ function recalcularMemoriaLigero() {
   const contenedorError = document.getElementById('memoria-error');
   let resultado;
   try {
-    resultado = calcularRedMemoria(tramosMemoria, combustible, composicionMemoria());
+    resultado = calcularRedMemoria(tramosMemoria, combustible, opcionesGasMemoria());
   } catch (error) {
     contenedorError.textContent = error.message;
     contenedorError.style.display = '';
@@ -1547,7 +1572,8 @@ function initMemoria() {
   renderComposicionMemoria();
 
   document.getElementById('memoria-campos-composicion').addEventListener('input', () => {
-    proyecto.composicion = { ...(proyecto.composicion ?? {}), [combustible]: leerComposicion('mc') };
+    proyecto.gasTablaVI = { ...(proyecto.gasTablaVI ?? {}), [combustible]: document.getElementById('mc-gas-tabla-vi').value };
+    if (combustible === 'GLP') proyecto.composicion = { ...(proyecto.composicion ?? {}), GLP: leerComposicion('mc') };
     guardar('memoria-proyecto', proyecto);
     recalcularMemoria();
   });

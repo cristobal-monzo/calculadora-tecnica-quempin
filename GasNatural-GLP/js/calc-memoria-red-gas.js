@@ -8,8 +8,10 @@
 // duplicar fórmulas. Ver
 // docs/superpowers/specs/2026-09-02-memoria-calculo-glp-gn-design.md.
 //
-// La composición del gas también es de toda la red (2026-09-25): se pasa
-// junto con el gas y cada tramo la hereda — ver calc-red-gas.js.
+// El gas de la Tabla VI del D.S. 66 (d, PCS, viscosidad) y la composición
+// real del GLP (solo para verificar condensación) también son de toda la
+// red (2026-09-25): se pasan junto con el gas y cada tramo los hereda —
+// ver calc-red-gas.js.
 //
 // Deliberadamente NO encadena presión entre tramos: cada tramo recibe su
 // propia presionInicialPa como input manual (mismo criterio que
@@ -17,13 +19,13 @@
 
 import { calcularRedGas } from './calc-red-gas.js';
 
-function calcularTramoIndividual(tramo, gas, composicion) {
-  const resultado = calcularRedGas({ ...tramo, gas, composicion });
+function calcularTramoIndividual(tramo, gas, { gasTablaVI, composicion } = {}) {
+  const resultado = calcularRedGas({ ...tramo, gas, gasTablaVI, composicion });
   return { ...tramo, ...resultado };
 }
 
-export function calcularRedMemoria(tramos, gas, composicion) {
-  const calculados = tramos.map((t) => calcularTramoIndividual(t, gas, composicion));
+export function calcularRedMemoria(tramos, gas, opcionesGas = {}) {
+  const calculados = tramos.map((t) => calcularTramoIndividual(t, gas, opcionesGas));
   const porId = new Map(calculados.map((t) => [t.id, t]));
 
   for (const t of calculados) {

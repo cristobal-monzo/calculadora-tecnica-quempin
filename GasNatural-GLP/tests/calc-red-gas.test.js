@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { calcularRedGas, COMPOSICION_POR_DEFECTO } from '../js/calc-red-gas.js';
+import { calcularRedGas, TABLA_VI_DS66, buscarGasTablaVI, propiedadesRedGas } from '../js/calc-red-gas.js';
 import { P_ATMOSFERICA_PA } from '../js/pipe-network.js';
 
 function cerca(actual, esperado, tolerancia = 1e-6) {
@@ -9,82 +9,102 @@ function cerca(actual, esperado, tolerancia = 1e-6) {
   );
 }
 
-// Las fórmulas subyacentes (pipe-network.js) están verificadas contra el
-// Excel, Renouard clásico y Darcy-Weisbach en pipe-network.test.js. Estos
-// casos verifican la orquestación. RE-BASELINEADOS 2026-09-25 (auditoría de
-// coherencia física): propiedades del gas desde la composición, d5 = DI^5,
-// media presión con P absoluta, velocidad real y criterio de media
-// presión — ver GasNatural-GLP/CLAUDE.md.
+// Orquestación de Red de Gas contra el D.S. 66 (sección e) — RE-BASELINEADO
+// 2026-09-25: d, PCS y viscosidad de la Tabla VI (no de la composición),
+// d5 = DI^5, f.3 con P absoluta, velocidad f.5, altura e.2 y criterio de
+// media presión. Ver GasNatural-GLP/CLAUDE.md.
 
-// Caso 1: GLP 70/30 (composición por defecto), baja presión, 1/2" acero
+// --- Tabla VI del D.S. 66 ---
+cerca(buscarGasTablaVI('GLP', 'licuado').densidadRelativa, 2.0);
+cerca(buscarGasTablaVI('GLP', 'licuado').pcsMJm3, 119.7);
+cerca(buscarGasTablaVI('GLP', 'licuado-catalitico').densidadRelativa, 1.6);
+cerca(buscarGasTablaVI('GLP', 'licuado-catalitico').pcsMJm3, 95.04);
+cerca(buscarGasTablaVI('GN', 'natural-v-rm').densidadRelativa, 0.87);
+cerca(buscarGasTablaVI('GN', 'natural-v-rm').pcsMJm3, 37.54);
+cerca(buscarGasTablaVI('GN', 'natural-viii').pcsMJm3, 40.56);
+cerca(buscarGasTablaVI('GN', 'natural-xii').pcsMJm3, 39.73);
+TABLA_VI_DS66.GLP.forEach((f) => assert.equal(f.viscosidadCp, 0.008));
+TABLA_VI_DS66.GN.forEach((f) => assert.equal(f.viscosidadCp, 0.012));
+// Id desconocido o ausente (proyecto guardado antes) -> fila por defecto
+assert.equal(buscarGasTablaVI('GLP', undefined).id, 'licuado');
+assert.equal(buscarGasTablaVI('GN', 'no-existe').id, 'natural-v-rm');
+// Pseudocríticas para Z coherentes con la d de la tabla: Licuado (d 2,0)
+// ≈ butano (Tc 425,1 K); GN = metano (Bases de Cálculo!J41:L41)
+assert.ok(propiedadesRedGas('GLP', 'licuado').temperaturaCriticaK > 420);
+cerca(propiedadesRedGas('GN', 'natural-v-rm').temperaturaCriticaK, 190.6);
+
+// D.S. 66 literal, para contrastar (constantes del decreto tal cual)
+const ds66BajaPa = ({ potenciaKw, k, D, d, L, PCS }) => (potenciaKw / (2.68 * 10 ** -7.5 * k * PCS)) ** 2 * d * L / D ** 5; // f.2
+const ds66MediaPa = ({ potenciaKw, D, S, visc, tC, Y, L, PCS, p1g }) => {                                                 // f.4
+  const cr = 0.00639 * S * (tC + 273) * (visc / S) ** 0.152;
+  const p1 = (p1g + P_ATMOSFERICA_PA) / 1e5;
+  const dif = (potenciaKw / (0.0345 * D ** 2.623 * PCS)) ** (1 / 0.541) * cr * L / Y;
+  return (p1 - Math.sqrt(p1 * p1 - dif)) * 1e5;
+};
+const ds66Velocidad = ({ Q, tC, p2Pa, D }) => 1.25 * Q * (tC + 273.15) / ((p2Pa + P_ATMOSFERICA_PA) / 1e5 * D * D); // f.5
+
+// Caso 1: GLP Licuado (Tabla VI por defecto), baja presión, 1/2" acero
 const glp = calcularRedGas({
   gas: 'GLP', regimenPresion: '<10 kPa', material: 'Acero Sch40', pulgadas: 0.5,
   potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15,
 });
 assert.equal(glp.diametroMm, 15.8);
-cerca(glp.pcsVolumetricoMJm3, 101.95115139684853); // PCS a 15 °C/1 atm de GLP 70/30 (antes 119,7 fijo, ≈ butano puro)
-cerca(glp.densidadRelativa, 1.6677231250453135);    // PM/PM_aire (antes 2 fijo)
-cerca(glp.caudalObjetivoM3H, 30 * 3.6 / glp.pcsVolumetricoMJm3);
-cerca(glp.perdidaPresionRequeridaPa, 62.994425610457924);
-cerca(glp.volumenTuberiaM3, Math.PI * (0.0158 ** 2) / 4 * 10);
+assert.equal(glp.gasTablaVI, 'licuado');
+cerca(glp.caudalObjetivoM3H, 30 * 3.6 / 119.7); // = 0,90226 m³/h, el valor original del Excel
+cerca(glp.perdidaPresionRequeridaPa, 54.802974898547255);
+// contra f.2 del decreto (constante 2,68 ≈ 9,65/3,6: difieren 0,04 %)
+cerca(glp.perdidaPresionRequeridaPa, ds66BajaPa({ potenciaKw: 30, k: 1800, D: 15.8, d: 2.0, L: 10, PCS: 119.7 }), 1e-3);
 assert.equal(glp.perdidaAdmisiblePa, 150);
 assert.equal(glp.tuberiaAdecuada, true);
 assert.equal(glp.presionFinalPa, null);
-// Velocidad — D.S. 66 f.5 literal: V = 1,25·Q·T/(p2·D²), p2 absoluta
-// final [bar], T [K], D [mm]
-const pFinalAbs = 1000 - glp.perdidaPresionRequeridaPa + P_ATMOSFERICA_PA;
-cerca(glp.velocidadMS, 1.25 * glp.caudalObjetivoM3H * 288.15 / (pFinalAbs / 1e5 * 15.8 ** 2));
+assert.equal(glp.kFueraDeTablaIX, false);
+cerca(glp.volumenTuberiaM3, Math.PI * (0.0158 ** 2) / 4 * 10);
+// Velocidad — f.5 literal
+cerca(glp.velocidadMS, ds66Velocidad({ Q: glp.caudalObjetivoM3H, tC: 15, p2Pa: 1000 - glp.perdidaPresionRequeridaPa, D: 15.8 }));
 cerca(glp.caudalRealM3H, glp.velocidadMS * Math.PI * 0.0158 ** 2 / 4 * 3600);
-// El 1,25 del decreto es la velocidad real sin Z: coincide dentro de 1 %
-// con Q·(1,013/p2)·(T/288,15)/A
-cerca(glp.velocidadMS, glp.caudalObjetivoM3H * (101300 / pFinalAbs) / 3600 / (Math.PI * 0.0158 ** 2 / 4), 0.01);
 // Sin desnivel no hay variación por altura: total = fricción
 assert.equal(glp.variacionPresionAlturaPa, 0);
 cerca(glp.perdidaPresionTotalPa, glp.perdidaPresionRequeridaPa);
 
-// Sin composición = composición por defecto del módulo
-const glpExplicito = calcularRedGas({
-  gas: 'GLP', composicion: COMPOSICION_POR_DEFECTO.GLP, regimenPresion: '<10 kPa', material: 'Acero Sch40',
-  pulgadas: 0.5, potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15,
+// Licuado catalítico: menos PCS (más caudal) y menos denso
+const catalitico = calcularRedGas({
+  gas: 'GLP', gasTablaVI: 'licuado-catalitico', regimenPresion: '<10 kPa', material: 'Acero Sch40', pulgadas: 0.5,
+  potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15,
 });
-cerca(glpExplicito.perdidaPresionRequeridaPa, glp.perdidaPresionRequeridaPa);
+cerca(catalitico.caudalObjetivoM3H, 30 * 3.6 / 95.04);
+cerca(catalitico.perdidaPresionRequeridaPa, ds66BajaPa({ potenciaKw: 30, k: 1800, D: 15.8, d: 1.6, L: 10, PCS: 95.04 }), 1e-3);
 
-// La composición SÍ cambia el resultado: butano puro tiene más PC por m³
-// (menos caudal) pero es más denso.
-const butano = calcularRedGas({
-  gas: 'GLP', composicion: { pctButano: 1, pctPropano: 0 }, regimenPresion: '<10 kPa', material: 'Acero Sch40',
-  pulgadas: 0.5, potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15,
-});
-assert.ok(butano.pcsVolumetricoMJm3 > glp.pcsVolumetricoMJm3);
-cerca(butano.pcsVolumetricoMJm3, 120.8, 0.01); // ≈ los 119,7 MJ/m³ fijos del Excel
-assert.ok(butano.caudalObjetivoM3H < glp.caudalObjetivoM3H);
-
-// Caso 2: GN, media presión, 2" acero a 200 kPa man. — con la ecuación
-// corregida la caída es chica y la tubería es adecuada.
+// Caso 2: GN Vª y RM, media presión, 2" acero a 200 kPa man. — contra f.4
 const gn = calcularRedGas({
   gas: 'GN', regimenPresion: '>10 kPa', material: 'Acero Sch40', pulgadas: 2,
   potenciaKw: 200, longitudM: 30, presionInicialPa: 200000, temperaturaC: 15,
 });
 assert.equal(gn.diametroMm, 52.5);
-cerca(gn.caudalObjetivoM3H, 19.213179549504353); // 200*3.6/37,474
-cerca(gn.perdidaPresionRequeridaPa, 14.754916827053322);
-cerca(gn.presionFinalPa, 200000 - gn.perdidaPresionRequeridaPa);
-// Criterio de media presión: 10 % de la presión inicial absoluta, no los
-// 120 Pa de baja presión.
+cerca(gn.caudalObjetivoM3H, 200 * 3.6 / 37.54);
+cerca(gn.perdidaPresionRequeridaPa, ds66MediaPa({
+  potenciaKw: 200, D: 52.5, S: 0.87, visc: 0.012, tC: 15, Y: 1 / gn.z, L: 30, PCS: 37.54, p1g: 200000,
+}), 2e-3);
+cerca(gn.presionFinalPa, 200000 - gn.perdidaPresionTotalPa);
+// Criterio de media presión: 10 % de la presión inicial absoluta
 cerca(gn.perdidaAdmisiblePa, 0.1 * (200000 + P_ATMOSFERICA_PA));
 assert.equal(gn.tuberiaAdecuada, true);
-// Velocidad real a ~3 bar abs: ~1/3 de la que daría el caudal estándar
-assert.ok(gn.velocidadMS < 0.35 * (gn.caudalObjetivoM3H / 3600 / (Math.PI * 0.0525 ** 2 / 4)));
+cerca(gn.velocidadMS, ds66Velocidad({ Q: gn.caudalObjetivoM3H, tC: 15, p2Pa: gn.presionFinalPa, D: 52.5 }));
 assert.equal(gn.presionRocioAbsPa, null);
 assert.equal(gn.riesgoCondensacion, false);
 
-// Caso 3: GN media presión que SÍ excede el criterio (3/8", 200 kW, 30 m,
-// 50 kPa man.): 34,6 kPa de caída contra 15,1 kPa admisibles.
+// Región: VIIIª tiene más PCS -> menos caudal para la misma potencia
+const gnViii = calcularRedGas({
+  gas: 'GN', gasTablaVI: 'natural-viii', regimenPresion: '>10 kPa', material: 'Acero Sch40', pulgadas: 2,
+  potenciaKw: 200, longitudM: 30, presionInicialPa: 200000, temperaturaC: 15,
+});
+cerca(gnViii.caudalObjetivoM3H, 200 * 3.6 / 40.56);
+assert.ok(gnViii.perdidaPresionRequeridaPa < gn.perdidaPresionRequeridaPa);
+
+// Caso 3: GN media presión que excede el criterio (3/8", 200 kW, 30 m, 50 kPa man.)
 const gnChico = calcularRedGas({
   gas: 'GN', regimenPresion: '>10 kPa', material: 'Acero Sch40', pulgadas: 0.375,
   potenciaKw: 200, longitudM: 30, presionInicialPa: 50000, temperaturaC: 15,
 });
-cerca(gnChico.perdidaPresionRequeridaPa, 34610.11751995637);
 assert.equal(gnChico.tuberiaAdecuada, false);
 
 // Material Cobre usa el diámetro de cobre, no el de acero
@@ -94,60 +114,63 @@ const glpCobre = calcularRedGas({
 });
 assert.equal(glpCobre.diametroMm, 13.84);
 
-// Diámetro manual [mm] — con el mismo DI (y k) que una fila tabulada da
-// exactamente el mismo resultado en los dos regímenes (desde el
-// 2026-09-25 la tabla también usa d5 = DI^5).
+// Diámetro manual [mm] — con el mismo DI (y K) que una fila tabulada da
+// exactamente el mismo resultado en los dos regímenes.
 const gnManualAlta = calcularRedGas({
   gas: 'GN', regimenPresion: '>10 kPa', pulgadas: null, tuberiaManual: { diametroMm: 52.5 },
   potenciaKw: 200, longitudM: 30, presionInicialPa: 200000, temperaturaC: 15,
 });
-assert.equal(gnManualAlta.diametroMm, 52.5);
 cerca(gnManualAlta.perdidaPresionRequeridaPa, gn.perdidaPresionRequeridaPa);
-assert.equal(gnManualAlta.tuberia, null); // sin fila de tabla
-
+assert.equal(gnManualAlta.tuberia, null);
 const glpManualBaja = calcularRedGas({
-  gas: 'GLP', regimenPresion: '<10 kPa', pulgadas: null,
-  tuberiaManual: { diametroMm: 15.8, k: 1800 },
+  gas: 'GLP', regimenPresion: '<10 kPa', pulgadas: null, tuberiaManual: { diametroMm: 15.8, k: 1800 },
   potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15,
 });
 cerca(glpManualBaja.perdidaPresionRequeridaPa, glp.perdidaPresionRequeridaPa);
+assert.equal(glpManualBaja.kFueraDeTablaIX, false); // K manual: responsabilidad del usuario
 
-// Condensación del GLP (AGREGADO 2026-09-25): presión de rocío de 70/30
-// = 4,40 bar abs a 20 °C y 2,27 a 0 °C (Lee-Kesler + Raoult, ver
-// gas-glp.test.js).
-const condensacion = (presionInicialPa, temperaturaC) => calcularRedGas({
-  gas: 'GLP', regimenPresion: '>10 kPa', material: 'Acero Sch40', pulgadas: 1,
+// K fuera de la Tabla IX (1/4") se marca solo en baja presión
+const cuarto = (regimenPresion) => calcularRedGas({
+  gas: 'GLP', regimenPresion, material: 'Acero Sch40', pulgadas: 0.25,
+  potenciaKw: 5, longitudM: 5, presionInicialPa: regimenPresion === '<10 kPa' ? 2800 : 50000, temperaturaC: 15,
+});
+assert.equal(cuarto('<10 kPa').kFueraDeTablaIX, true);
+assert.equal(cuarto('>10 kPa').kFueraDeTablaIX, false);
+
+// Condensación del GLP: usa la composición REAL (no la d de la Tabla VI).
+// 70/30 por defecto: rocío 4,40 bar abs a 20 °C y 2,27 a 0 °C.
+const condensacion = (presionInicialPa, temperaturaC, composicion) => calcularRedGas({
+  gas: 'GLP', composicion, regimenPresion: '>10 kPa', material: 'Acero Sch40', pulgadas: 1,
   potenciaKw: 60, longitudM: 20, presionInicialPa, temperaturaC,
 });
-assert.equal(condensacion(500000, 20).riesgoCondensacion, true);  // 6,0 bar abs > 4,4
-assert.equal(condensacion(150000, 20).riesgoCondensacion, false); // 2,5 bar abs < 4,4
-assert.equal(condensacion(150000, 0).riesgoCondensacion, true);   // 2,5 bar abs > 2,27 en invierno
+assert.equal(condensacion(500000, 20).riesgoCondensacion, true);
+assert.equal(condensacion(150000, 20).riesgoCondensacion, false);
+assert.equal(condensacion(150000, 0).riesgoCondensacion, true);
 cerca(condensacion(150000, 20).presionRocioAbsPa, 439547.79019136424);
+// Más butano -> condensa antes; la d de dimensionamiento (Tabla VI) no cambia
+assert.equal(condensacion(150000, 20, { pctButano: 0.9, pctPropano: 0.1 }).riesgoCondensacion, true);
+cerca(condensacion(150000, 20, { pctButano: 0.9, pctPropano: 0.1 }).perdidaPresionRequeridaPa,
+  condensacion(150000, 20).perdidaPresionRequeridaPa);
 
-// Variación de presión con la altura — D.S. 66 e.2 (AGREGADA 2026-09-25):
-// Δph = 12·(1 − d)·h. El GLP (d > 1) PIERDE presión al subir; el GN
-// (d < 1) la GANA. Entra en la pérdida total, en la adecuación y en la
-// presión final.
+// Variación de presión con la altura — D.S. 66 e.2: Δph = 12·(1 − d)·h,
+// con la d de la Tabla VI. El GLP (d 2,0) PIERDE 12 Pa por metro de
+// subida; el GN (d 0,87) GANA 1,56 Pa/m.
 const conAltura = (gas, desnivelM, extra = {}) => calcularRedGas({
   gas, regimenPresion: '<10 kPa', material: 'Acero Sch40', pulgadas: 0.5,
   potenciaKw: 30, longitudM: 10, presionInicialPa: 2800, temperaturaC: 15, desnivelM, ...extra,
 });
 const glpSube = conAltura('GLP', 15);
-cerca(glpSube.variacionPresionAlturaPa, 12 * (1 - glpSube.densidadRelativa) * 15);
-assert.ok(glpSube.variacionPresionAlturaPa < 0);
-cerca(glpSube.perdidaPresionTotalPa, glpSube.perdidaPresionRequeridaPa - glpSube.variacionPresionAlturaPa);
+cerca(glpSube.variacionPresionAlturaPa, 12 * (1 - 2.0) * 15); // −180 Pa
+cerca(glpSube.perdidaPresionTotalPa, glpSube.perdidaPresionRequeridaPa + 180);
 cerca(glpSube.perdidaPresionRequeridaPa, glp.perdidaPresionRequeridaPa); // la fricción no cambia
-assert.equal(glpSube.alturaObligatoriaDS66, true);  // > 10 m: el decreto la exige
+assert.equal(glpSube.alturaObligatoriaDS66, true);
 assert.equal(conAltura('GLP', 8).alturaObligatoriaDS66, false);
-// 15 m de subida le suman ~120 Pa al GLP: con 63 Pa de fricción ya no cumple 150 Pa
 assert.equal(glp.tuberiaAdecuada, true);
-assert.equal(glpSube.tuberiaAdecuada, false);
+assert.equal(glpSube.tuberiaAdecuada, false); // 55 + 180 Pa > 150 Pa
 const gnSube = conAltura('GN', 15);
-assert.ok(gnSube.variacionPresionAlturaPa > 0);
+cerca(gnSube.variacionPresionAlturaPa, 12 * (1 - 0.87) * 15);
 assert.ok(gnSube.perdidaPresionTotalPa < gnSube.perdidaPresionRequeridaPa);
-// Bajar invierte el signo
 cerca(conAltura('GLP', -15).variacionPresionAlturaPa, -glpSube.variacionPresionAlturaPa);
-// Media presión: la presión final descuenta la pérdida total
 const mpSube = conAltura('GN', 30, { regimenPresion: '>10 kPa', presionInicialPa: 50000 });
 cerca(mpSube.presionFinalPa, 50000 - mpSube.perdidaPresionTotalPa);
 

@@ -48,8 +48,15 @@ const FILAS_TUBERIA = [
   { pulgadas: 8, diAceroMm: 202.74, diCobreMm: 192.61, k: 2420 },
 ];
 
+// Factor K de baja presión: D.S. 66, Tabla IX — 3/8" a 1" = 1800,
+// 1-1/4" a 1-1/2" = 1980, 2" a 2-1/2" = 2160, 3" = 2340, 4" = 2420
+// (coincide con la columna del Excel). La tabla no cubre 1/8", 1/4" ni
+// 5" a 8": ahí el K es extrapolado (kTablaIX: false) y la UI lo advierte.
+const PULGADAS_TABLA_IX = [0.375, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
+
 export const TABLA_TUBERIA_RED_GAS = FILAS_TUBERIA.map((f) => ({
   ...f, d5Acero: f.diAceroMm ** 5, d5Cobre: f.diCobreMm ** 5,
+  kTablaIX: PULGADAS_TABLA_IX.includes(f.pulgadas),
 }));
 
 export function buscarTuberiaRedGas(pulgadas) {

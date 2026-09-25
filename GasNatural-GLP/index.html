@@ -126,8 +126,9 @@
           </div>
         </div>
 
-        <!-- Composición del gas (2026-09-25): densidad relativa, poder
-             calorífico y Z salen de acá — ver calc-red-gas.js. -->
+        <!-- Gas de la red (2026-09-25): tipo de gas y región de la Tabla VI
+             del D.S. 66 (d, PCS, viscosidad) y, en GLP, su composición real
+             para verificar condensación — ver marcadoGasRed() en ui.js. -->
         <div class="seccion" id="red-gas-campos-composicion"></div>
       </form>
       <div class="calc-resultados">
@@ -307,8 +308,9 @@
       <div id="memoria-error" class="resultado-tile alerta no-imprimir" style="display:none;"></div>
       <div id="memoria-aviso-condensacion" class="resultado-tile critico no-imprimir" style="display:none;"></div>
 
-      <!-- Composición del gas de toda la red (2026-09-25): igual que el
-           combustible, es un dato de la red y no de cada tramo. -->
+      <!-- Gas de toda la red (2026-09-25): Tabla VI del D.S. 66 y, en GLP,
+           composición real para la condensación. Igual que el combustible,
+           es un dato de la red y no de cada tramo. -->
       <div class="seccion no-imprimir" id="memoria-campos-composicion"></div>
 
       <h3 class="seccion-titulo no-imprimir">Diagrama de la red</h3>
