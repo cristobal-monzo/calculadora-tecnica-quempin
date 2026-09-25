@@ -61,10 +61,22 @@
     .hub-footnote { font-size: 12px; color: var(--text-muted); margin: 20px 0 0; line-height: 1.6; }
     .hub-footnote a { color: var(--brand-orange-ink); font-weight: 700; }
 
+    /* Pantallas táctiles (2026-09-25): enlaces y botones con área táctil de
+       al menos ~40-44px (antes las píldoras de herramientas medían ~28px). */
+    @media (max-width: 600px), (pointer: coarse) {
+      .hub-herramientas { gap: 8px; }
+      .hub-herramientas a { padding: 10px 14px; font-size: 13px; }
+      .hub-card a.btn { min-height: 44px; display: inline-flex; align-items: center; }
+      .viz-theme-toggle { min-height: 40px; }
+    }
     @media (max-width: 600px) {
       .viz-titleblock p { display: none; }
+      .viz-header { padding: 14px 0; }
       .hub-hero h2 { font-size: 20px; }
       .hub-grid { grid-template-columns: 1fr; }
+      .hub-card { padding: 20px; }
+      /* Acción principal a lo ancho de la tarjeta, al alcance del pulgar. */
+      .hub-card a.btn { align-self: stretch; justify-content: center; }
     }
   </style>
 </head>

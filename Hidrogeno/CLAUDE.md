@@ -921,6 +921,60 @@ sigue en verde. Mismo cambio en `GasNatural-GLP` (ver su `CLAUDE.md`).
   ~3000px de alto con 1 por fila, ahora ~2350px), subtítulo de la cabecera
   oculto, desvanecido a la derecha de las pestañas como pista de scroll.
 
+## Uso desde el teléfono (`css/styles.css`/`ui.js`/`index.html`, 2026-09-25, a pedido del usuario)
+
+Pedido: "que los dashboards sean responsivos y se puedan usar desde el
+teléfono". Auditado con Playwright a 320/375/414px (y 800px tablet, 1366px
+escritorio para confirmar que escritorio no cambia). No toca motores ni el
+informe impreso (sigue en 1 hoja A4, medido desde ancho de teléfono y de
+escritorio). El bloque CSS "Uso desde el teléfono" y las funciones
+`centrarPestana()`/`initResumenMovil()` son **idénticos en los tres
+módulos** — mantenerlos iguales. Todas las reglas van con `@media screen
+and …` a propósito: una A4 impresa mide ~690px de ancho y activaría las
+reglas de pantalla angosta sobre el informe.
+
+- **Barra de resumen fija al pie** (`initResumenMovil()`, `.resumen-movil`,
+  <960px): con entradas y resultados apilados, los KPI quedaban ~800px bajo
+  el campo que se edita. La barra copia los tiles del grupo `kpis` de la
+  calculadora en uso (la del último campo tocado; si no, la primera de la
+  pestaña activa) y se muestra solo mientras esos resultados no están a la
+  vista (IntersectionObserver, descontando 120px del alto de la barra).
+  Tocarla hace scroll a `.calc-resultados` (`scroll-margin-top` descuenta
+  la barra de pestañas fija). Se rearma desde el DOM con un
+  MutationObserver: no conoce ningún motor, así que un KPI nuevo aparece
+  solo si va en `grupo(…, 'kpis')`. Máx. 3 KPI, 2 bajo 420px. Sin
+  `aria-live` propio (`.calc-resultados` ya lo tiene). Sin barra en
+  Memoria de Cálculo (no tiene `.calc-resultados`).
+- **16px en cajetines y 44px de área táctil** (`max-width: 600px` o
+  `pointer: coarse`): bajo 16px Safari de iPhone hace zoom a la página al
+  tocar un cajetín y no vuelve. Se descartó `maximum-scale=1` en el
+  viewport: en Android bloquea también el zoom con los dedos (WCAG 1.4.4).
+  Botones, ✕ de eliminar, control segmentado y selectores de unidad de los
+  tiles suben a ≥36-44px.
+- **Memoria de Cálculo en tarjetas** (≤720px): una tarjeta por tramo en
+  vez de la tabla de 14 columnas con scroll horizontal (en 360px se veían
+  3 columnas a la vez). CSS puro sobre la misma tabla: cada `<td>` lleva
+  `data-label` con el encabezado y su unidad (`renderTablaMemoria()`), que
+  `::before` muestra como etiqueta; del `<thead>` quedan solo los `<th>`
+  con selector de unidad, como barra "Unidades". Las celdas calculadas
+  llevan también `.col-calculada` (tinte). No cambia `leerFilaMemoria()`
+  ni el fix de foco: se verificó escribir "12,5" en una tarjeta sin perder
+  el foco ni la coma.
+- **Diagrama de la red** dentro de `.arbol-contenedor` (overflow-x: auto);
+  `renderArbol()` fija `min-width` del `<svg>` al nodo más a la derecha +
+  su nombre, así se desplaza en vez de quedar cortado desde el 2º nivel.
+- **Pestaña activa centrada** en la barra (`centrarPestana()` en
+  `activar()`): al llegar desde el hub a `#memoria` la pestaña quedaba
+  cortada fuera de pantalla.
+- **Arreglos de desborde horizontal**: `.campo-ancho` (span 2) creaba una
+  2ª columna implícita en grillas de 1 columna (Red de Gas de GN/GLP se
+  podía arrastrar de lado); tablas de referencia dentro de `<details>` con
+  scroll propio; celdas calculadas con `nowrap` que no dejaban partir
+  "Pérdida acumulada [mbar]" en la tarjeta.
+- Menores: Codos/Tee/Válvulas en 3 columnas también en el teléfono (antes
+  2 + 1), barra de acciones de la Memoria en grilla de 2 con Imprimir a lo
+  ancho, cabecera más baja, 96px de aire bajo `main` para la barra.
+
 ## Fix de ids de tramo/artefacto repetidos en la Memoria de Cálculo (`ui.js`, 2026-09-24, a pedido del usuario)
 
 Al cargar (localStorage) o importar un proyecto, los contadores

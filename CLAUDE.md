@@ -68,7 +68,17 @@ barra de pestañas fija (`.barra-pestanas`), cada calculadora en
 con `grupo()` en `ui.js` (un grupo `kpis` arriba + grupos con subtítulo),
 tokens de estado `--estado-ok/alerta/critico` con variante propia en tema
 oscuro, y `aria-invalid` en cajetines numéricos con texto no numérico. El
-detalle y el porqué de cada decisión está en el `CLAUDE.md` de cada módulo. La decisión de "un sitio por gas vs. un selector
+detalle y el porqué de cada decisión está en el `CLAUDE.md` de cada módulo.
+
+Uso desde el teléfono (2026-09-25): bloque CSS "Uso desde el teléfono" y
+funciones `centrarPestana()`/`initResumenMovil()` en `ui.js`, **idénticos
+en los tres módulos** (copiados, no importados, mismo criterio). Barra de
+resumen de KPI fija al pie bajo 960px (lee el grupo `kpis` de `grupo()` —
+un resultado nuevo que deba verse ahí va en ese grupo), cajetines a 16px
+(evita el zoom de Safari en iPhone), áreas táctiles de 44px, y la Memoria
+de Cálculo en tarjetas bajo 720px (`data-label` en cada `<td>`). Al tocar
+una pantalla, revisarla a 320 y 375px de ancho además de escritorio.
+Detalle en `Hidrogeno/CLAUDE.md`. La decisión de "un sitio por gas vs. un selector
 compartido entre gases" se toma módulo por módulo — Hidrógeno tiene su
 propio sitio; Gas Natural y GLP comparten uno con selector interno, porque
 son más similares entre sí en normativa aplicable (D.S. 66) que con

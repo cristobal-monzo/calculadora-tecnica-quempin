@@ -430,7 +430,32 @@ de este módulo:
 - **Tabla de Memoria**: se mantiene más ancha que la pantalla con scroll
   horizontal (decisión del 2026-09-03), ahora dentro de `.tabla-contenedor`;
   Régimen/Material/Tramo/Continúa desde con ancho mínimo propio (se leían
-  "Baja (<10 k"/"Acero S").
+  "Baja (<10 k"/"Acero S"). **En el teléfono (≤720px) pasa a tarjetas** —
+  ver la sección siguiente.
+
+## Uso desde el teléfono (`css/styles.css`/`ui.js`/`index.html`, 2026-09-25, a pedido del usuario)
+
+Mismo cambio que en Hidrógeno, con el detalle y el porqué en
+`Hidrogeno/CLAUDE.md` ("Uso desde el teléfono"): barra de resumen de KPI
+fija al pie bajo 960px (`initResumenMovil()`), cajetines a 16px y áreas
+táctiles de 44px, Memoria de Cálculo en tarjetas bajo 720px (`data-label`
+por celda en `renderTablaMemoria()`, `.col-calculada` en las 5 columnas
+calculadas), diagrama con scroll propio (`.arbol-contenedor`, `min-width`
+en `renderArbolMemoria()`), pestaña activa centrada. Bloque CSS y
+funciones JS idénticos en los tres módulos. Propio de este módulo:
+
+- **Arreglo de desborde en Red de Gas**: los dos `.campo-ancho` (régimen
+  de presión, diámetro manual) creaban una 2ª columna implícita en la
+  grilla de 1 columna del teléfono y la página entera se podía arrastrar
+  ~35px de lado. Bajo 600px pasan a `grid-column: 1 / -1`.
+- **Material con diámetro manual**: en la tarjeta de tramo la celda
+  "Material" queda sin control (el `<select>` se oculta) — se oculta la
+  celda entera con `:has()`.
+- **Almacenamiento**: con 3 calculadoras en la pestaña, la barra resume la
+  del último campo tocado. `.bloque-calculo` con menos relleno en el
+  teléfono.
+- La barra sigue al combustible: al cambiar GLP ↔ GN se rearma (verificado:
+  Red de Gas pasa de 18,9 Pa a 56,6 Pa en la barra).
 
 ## Fix de ids de tramo/artefacto repetidos en la Memoria de Cálculo (`ui.js`, 2026-09-24, a pedido del usuario)
 

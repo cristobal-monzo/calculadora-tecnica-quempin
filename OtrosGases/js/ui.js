@@ -81,6 +81,7 @@ function initTabs() {
     boton.classList.add('active');
     boton.setAttribute('aria-selected', 'true');
     document.querySelector(`[data-panel="${nombre}"]`).classList.add('active');
+    centrarPestana(boton);
   }
   botones.forEach((boton) => {
     boton.addEventListener('click', () => {
@@ -94,6 +95,122 @@ function initTabs() {
   });
   activar(decodeURIComponent(location.hash.slice(1)));
   window.addEventListener('hashchange', () => activar(decodeURIComponent(location.hash.slice(1))));
+}
+
+// En un teléfono las pestañas no caben y la barra se desplaza en horizontal
+// (2026-09-25): al activar una (también al llegar desde el hub con #memoria)
+// se centra en la barra, para que la pestaña activa nunca quede cortada
+// fuera de la pantalla. Sin efecto en escritorio, donde la barra no
+// desborda. Mueve solo el scroll horizontal de .tabs, nunca el de la página.
+function centrarPestana(boton) {
+  const barra = boton.parentElement;
+  const rBarra = barra.getBoundingClientRect();
+  const rBoton = boton.getBoundingClientRect();
+  barra.scrollLeft += rBoton.left - rBarra.left - (rBarra.width - rBoton.width) / 2;
+}
+
+// Resumen fijo de resultados en pantallas angostas (2026-09-25, uso desde
+// el teléfono): bajo 960px .calc-layout apila entradas y resultados, y en
+// un teléfono los KPI quedaban hasta ~800px bajo el campo que se edita —
+// había que bajar y volver a subir para ver el efecto de cada cambio. Esta
+// barra repite al pie de la pantalla los KPI (grupo `kpis`) de la
+// calculadora en uso mientras sus resultados no están a la vista; tocarla
+// baja hasta ellos. Es solo una copia de lectura, rearmada desde el DOM de
+// .calc-resultados cada vez que cambia (MutationObserver): no conoce ningún
+// motor de cálculo. .calc-resultados ya tiene aria-live, así que la barra
+// no se anuncia aparte. Mismo código en los tres módulos — mantener igual.
+function initResumenMovil() {
+  const angosta = window.matchMedia('(max-width: 959px)');
+  const barra = document.createElement('button');
+  barra.type = 'button';
+  barra.className = 'resumen-movil';
+  barra.hidden = true;
+  barra.setAttribute('aria-label', 'Ir a los resultados');
+  document.querySelector('.viz-root').append(barra);
+
+  let objetivo = null;
+  let ultimoLayout = null;
+  let aLaVista = true;
+  let hayContenido = false;
+  // El margen inferior negativo descuenta el alto de la propia barra: los
+  // resultados cuentan como "a la vista" solo si asoman por encima de ella.
+  const io = new IntersectionObserver(([entrada]) => {
+    aLaVista = entrada.isIntersecting;
+    actualizar();
+  }, { rootMargin: '0px 0px -120px 0px' });
+  const mo = new MutationObserver(() => pintar());
+
+  // Calculadora en uso: la del último campo tocado si sigue en la pestaña
+  // activa (Almacenamiento GLP tiene 3 en una misma pestaña), si no la
+  // primera de la pestaña activa. Memoria de Cálculo no tiene ninguna.
+  function candidato() {
+    const panel = document.querySelector('.tab-panel.active');
+    if (!panel) return null;
+    if (ultimoLayout && ultimoLayout.isConnected && panel.contains(ultimoLayout)) {
+      return ultimoLayout.querySelector('.calc-resultados');
+    }
+    return panel.querySelector('.calc-resultados');
+  }
+
+  function elegir() {
+    const nuevo = candidato();
+    if (nuevo === objetivo) return;
+    io.disconnect();
+    mo.disconnect();
+    objetivo = nuevo;
+    aLaVista = true;
+    if (objetivo) {
+      io.observe(objetivo);
+      mo.observe(objetivo, { childList: true, subtree: true, characterData: true });
+    }
+    pintar();
+  }
+
+  function textoValor(tile) {
+    const valor = tile.querySelector('.valor');
+    if (!valor) return '';
+    const unidad = valor.querySelector('select');
+    const numero = Array.from(valor.childNodes).filter((n) => n !== unidad).map((n) => n.textContent).join(' ').trim();
+    return unidad ? `${numero} ${unidad.selectedOptions[0]?.textContent ?? ''}` : numero;
+  }
+
+  function pintar() {
+    if (objetivo && !objetivo.isConnected) { elegir(); return; }
+    const tiles = objetivo ? Array.from(objetivo.querySelectorAll('.grupo-resultados.kpis > .resultado-tile')).slice(0, 3) : [];
+    hayContenido = tiles.length > 0;
+    barra.innerHTML = tiles.map((t) => {
+      const estado = ['ok', 'alerta', 'critico'].find((c) => t.classList.contains(c)) ?? '';
+      return `<span class="resumen-movil-item ${estado}">
+        <span class="resumen-movil-valor">${escapeHtml(textoValor(t))}</span>
+        <span class="resumen-movil-etiqueta">${escapeHtml(t.querySelector('.etiqueta')?.textContent ?? '')}</span>
+      </span>`;
+    }).join('') + '<span class="resumen-movil-ir" aria-hidden="true">↓</span>';
+    actualizar();
+  }
+
+  function actualizar() {
+    barra.hidden = !(angosta.matches && hayContenido && !aLaVista);
+  }
+
+  barra.addEventListener('click', () => {
+    if (!objetivo) return;
+    const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    objetivo.scrollIntoView({ behavior: suave ? 'smooth' : 'auto', block: 'start' });
+  });
+  document.addEventListener('focusin', (evento) => {
+    const layout = evento.target.closest?.('.calc-layout');
+    if (layout) ultimoLayout = layout;
+    elegir();
+  });
+  // Cambio de pestaña o de gas/combustible: puede cambiar (o reemplazar en
+  // el DOM) la calculadora en uso. Se difiere un cuadro para leer el panel
+  // ya activado por initTabs().
+  const reelegir = () => requestAnimationFrame(elegir);
+  document.addEventListener('click', reelegir);
+  document.addEventListener('change', reelegir);
+  window.addEventListener('hashchange', reelegir);
+  angosta.addEventListener('change', actualizar);
+  elegir();
 }
 
 // Borde rojo (aria-invalid) en un cajetín numérico con texto no numérico.
@@ -857,3 +974,4 @@ initFlujo();
 initAlmacenamiento();
 notificarCambioGas({ seleccion: true });
 initSelectorGas({ actualId: 'otros-gases', profundidad: 1 });
+initResumenMovil();

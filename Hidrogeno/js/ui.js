@@ -91,6 +91,7 @@ function initTabs() {
     boton.classList.add('active');
     boton.setAttribute('aria-selected', 'true');
     document.querySelector(`[data-panel="${nombre}"]`).classList.add('active');
+    centrarPestana(boton);
   }
   botones.forEach((boton) => {
     boton.addEventListener('click', () => {
@@ -107,6 +108,122 @@ function initTabs() {
   });
   activar(decodeURIComponent(location.hash.slice(1)));
   window.addEventListener('hashchange', () => activar(decodeURIComponent(location.hash.slice(1))));
+}
+
+// En un teléfono las pestañas no caben y la barra se desplaza en horizontal
+// (2026-09-25): al activar una (también al llegar desde el hub con #memoria)
+// se centra en la barra, para que la pestaña activa nunca quede cortada
+// fuera de la pantalla. Sin efecto en escritorio, donde la barra no
+// desborda. Mueve solo el scroll horizontal de .tabs, nunca el de la página.
+function centrarPestana(boton) {
+  const barra = boton.parentElement;
+  const rBarra = barra.getBoundingClientRect();
+  const rBoton = boton.getBoundingClientRect();
+  barra.scrollLeft += rBoton.left - rBarra.left - (rBarra.width - rBoton.width) / 2;
+}
+
+// Resumen fijo de resultados en pantallas angostas (2026-09-25, uso desde
+// el teléfono): bajo 960px .calc-layout apila entradas y resultados, y en
+// un teléfono los KPI quedaban hasta ~800px bajo el campo que se edita —
+// había que bajar y volver a subir para ver el efecto de cada cambio. Esta
+// barra repite al pie de la pantalla los KPI (grupo `kpis`) de la
+// calculadora en uso mientras sus resultados no están a la vista; tocarla
+// baja hasta ellos. Es solo una copia de lectura, rearmada desde el DOM de
+// .calc-resultados cada vez que cambia (MutationObserver): no conoce ningún
+// motor de cálculo. .calc-resultados ya tiene aria-live, así que la barra
+// no se anuncia aparte. Mismo código en los tres módulos — mantener igual.
+function initResumenMovil() {
+  const angosta = window.matchMedia('(max-width: 959px)');
+  const barra = document.createElement('button');
+  barra.type = 'button';
+  barra.className = 'resumen-movil';
+  barra.hidden = true;
+  barra.setAttribute('aria-label', 'Ir a los resultados');
+  document.querySelector('.viz-root').append(barra);
+
+  let objetivo = null;
+  let ultimoLayout = null;
+  let aLaVista = true;
+  let hayContenido = false;
+  // El margen inferior negativo descuenta el alto de la propia barra: los
+  // resultados cuentan como "a la vista" solo si asoman por encima de ella.
+  const io = new IntersectionObserver(([entrada]) => {
+    aLaVista = entrada.isIntersecting;
+    actualizar();
+  }, { rootMargin: '0px 0px -120px 0px' });
+  const mo = new MutationObserver(() => pintar());
+
+  // Calculadora en uso: la del último campo tocado si sigue en la pestaña
+  // activa (Almacenamiento GLP tiene 3 en una misma pestaña), si no la
+  // primera de la pestaña activa. Memoria de Cálculo no tiene ninguna.
+  function candidato() {
+    const panel = document.querySelector('.tab-panel.active');
+    if (!panel) return null;
+    if (ultimoLayout && ultimoLayout.isConnected && panel.contains(ultimoLayout)) {
+      return ultimoLayout.querySelector('.calc-resultados');
+    }
+    return panel.querySelector('.calc-resultados');
+  }
+
+  function elegir() {
+    const nuevo = candidato();
+    if (nuevo === objetivo) return;
+    io.disconnect();
+    mo.disconnect();
+    objetivo = nuevo;
+    aLaVista = true;
+    if (objetivo) {
+      io.observe(objetivo);
+      mo.observe(objetivo, { childList: true, subtree: true, characterData: true });
+    }
+    pintar();
+  }
+
+  function textoValor(tile) {
+    const valor = tile.querySelector('.valor');
+    if (!valor) return '';
+    const unidad = valor.querySelector('select');
+    const numero = Array.from(valor.childNodes).filter((n) => n !== unidad).map((n) => n.textContent).join(' ').trim();
+    return unidad ? `${numero} ${unidad.selectedOptions[0]?.textContent ?? ''}` : numero;
+  }
+
+  function pintar() {
+    if (objetivo && !objetivo.isConnected) { elegir(); return; }
+    const tiles = objetivo ? Array.from(objetivo.querySelectorAll('.grupo-resultados.kpis > .resultado-tile')).slice(0, 3) : [];
+    hayContenido = tiles.length > 0;
+    barra.innerHTML = tiles.map((t) => {
+      const estado = ['ok', 'alerta', 'critico'].find((c) => t.classList.contains(c)) ?? '';
+      return `<span class="resumen-movil-item ${estado}">
+        <span class="resumen-movil-valor">${escapeHtml(textoValor(t))}</span>
+        <span class="resumen-movil-etiqueta">${escapeHtml(t.querySelector('.etiqueta')?.textContent ?? '')}</span>
+      </span>`;
+    }).join('') + '<span class="resumen-movil-ir" aria-hidden="true">↓</span>';
+    actualizar();
+  }
+
+  function actualizar() {
+    barra.hidden = !(angosta.matches && hayContenido && !aLaVista);
+  }
+
+  barra.addEventListener('click', () => {
+    if (!objetivo) return;
+    const suave = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    objetivo.scrollIntoView({ behavior: suave ? 'smooth' : 'auto', block: 'start' });
+  });
+  document.addEventListener('focusin', (evento) => {
+    const layout = evento.target.closest?.('.calc-layout');
+    if (layout) ultimoLayout = layout;
+    elegir();
+  });
+  // Cambio de pestaña o de gas/combustible: puede cambiar (o reemplazar en
+  // el DOM) la calculadora en uso. Se difiere un cuadro para leer el panel
+  // ya activado por initTabs().
+  const reelegir = () => requestAnimationFrame(elegir);
+  document.addEventListener('click', reelegir);
+  document.addEventListener('change', reelegir);
+  window.addEventListener('hashchange', reelegir);
+  angosta.addEventListener('change', actualizar);
+  elegir();
 }
 
 // Marca en rojo (aria-invalid, estilo en css/styles.css) un cajetín
@@ -589,16 +706,19 @@ function renderTablaMemoria(resultado) {
   const unidadPerdidaParcial = document.getElementById('memoria-perdida-parcial-unidad').value;
   const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
 
+  // data-label = encabezado de la columna, con su unidad: en un teléfono la
+  // tabla se muestra como una tarjeta por tramo y cada celda lo usa como
+  // etiqueta propia (td::before en css/styles.css, 2026-09-25).
   document.getElementById('memoria-tabla-cuerpo').innerHTML = resultado.map((t) => `
     <tr data-id="${t.id}">
-      <td><input type="text" class="mem-nombre" value="${escapeAttr(t.nombre)}"></td>
-      <td><select class="mem-padre">${opcionesPadre(t.id)}</select></td>
-      <td style="text-align:center;"><input type="checkbox" class="mem-reset"${t.reseteaAcumulada ? ' checked' : ''} title="Reinicia la pérdida de carga acumulada desde este tramo (ej. después de un regulador de presión)"></td>
-      <td><input type="text" inputmode="decimal" class="mem-presion" value="${Number(desdePa(aPa(t.presionMPa, 'MPa'), unidadPresion).toPrecision(6))}"></td>
-      <td><input type="text" inputmode="decimal" class="mem-largo" value="${t.longitudM}"></td>
-      <td><input type="text" inputmode="decimal" class="mem-potencia" value="${t.potenciaKw}"></td>
-      <td>
-        <select class="mem-tuberia">
+      <td class="mem-celda-nombre" data-label="Tramo"><input type="text" class="mem-nombre" value="${escapeAttr(t.nombre)}" aria-label="Nombre del tramo"></td>
+      <td data-label="Continúa desde"><select class="mem-padre" aria-label="Continúa desde">${opcionesPadre(t.id)}</select></td>
+      <td class="mem-celda-check" data-label="Reinicia acum." style="text-align:center;"><input type="checkbox" class="mem-reset"${t.reseteaAcumulada ? ' checked' : ''} title="Reinicia la pérdida de carga acumulada desde este tramo (ej. después de un regulador de presión)" aria-label="Reinicia la pérdida de carga acumulada"></td>
+      <td data-label="Presión [${unidadPresion}]"><input type="text" inputmode="decimal" class="mem-presion" value="${Number(desdePa(aPa(t.presionMPa, 'MPa'), unidadPresion).toPrecision(6))}" aria-label="Presión [${unidadPresion}]"></td>
+      <td data-label="Longitud [m]"><input type="text" inputmode="decimal" class="mem-largo" value="${t.longitudM}" aria-label="Longitud [m]"></td>
+      <td data-label="Potencia [kW]"><input type="text" inputmode="decimal" class="mem-potencia" value="${t.potenciaKw}" aria-label="Potencia [kW]"></td>
+      <td data-label="Diámetro">
+        <select class="mem-tuberia" aria-label="Diámetro">
           ${TABLA_TUBERIA.map((f) => `<option value="${f.pulgadas}"${f.pulgadas === t.tuberiaPulgadas ? ' selected' : ''}>${formatearPulgadas(f.pulgadas)}</option>`).join('')}
           <option value="manual"${t.tuberiaPulgadas === 'manual' ? ' selected' : ''}>Manual (mm)</option>
         </select>
@@ -609,13 +729,13 @@ function renderTablaMemoria(resultado) {
           <input type="text" inputmode="decimal" class="mem-tuberia-manual-rugosidad" value="${t.tuberiaManual?.rugosidadMm ?? 0.002}" title="Rugosidad [mm]">
         </div>
       </td>
-      <td><input type="text" class="mem-material" value="${escapeAttr(t.material)}"></td>
-      <td><input type="text" inputmode="decimal" class="mem-temp" value="${t.temperaturaC}"></td>
-      <td class="mem-densidad">${formatearNumero(t.densidadKgM3)}</td>
-      <td class="mem-velocidad">${formatearNumero(t.velocidadFlujoMS)}</td>
-      <td class="mem-perdida-parcial">${formatearPresionBonita(aPa(t.perdidaParcialMbar, 'mbar'), unidadPerdidaParcial)}</td>
-      <td class="mem-perdida-acumulada">${formatearPresionBonita(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td>
-      <td><button type="button" class="mem-eliminar no-imprimir" aria-label="Eliminar ${escapeAttr(t.nombre)}">✕</button></td>
+      <td data-label="Material"><input type="text" class="mem-material" value="${escapeAttr(t.material)}" aria-label="Material"></td>
+      <td data-label="Temp. [°C]"><input type="text" inputmode="decimal" class="mem-temp" value="${t.temperaturaC}" aria-label="Temperatura [°C]"></td>
+      <td class="mem-densidad col-calculada" data-label="Densidad [kg/m³]">${formatearNumero(t.densidadKgM3)}</td>
+      <td class="mem-velocidad col-calculada" data-label="Velocidad [m/s]">${formatearNumero(t.velocidadFlujoMS)}</td>
+      <td class="mem-perdida-parcial col-calculada" data-label="Pérdida parcial [${unidadPerdidaParcial}]">${formatearPresionBonita(aPa(t.perdidaParcialMbar, 'mbar'), unidadPerdidaParcial)}</td>
+      <td class="mem-perdida-acumulada col-calculada" data-label="Pérdida acumulada [${unidadPerdidaAcumulada}]">${formatearPresionBonita(aPa(t.perdidaAcumuladaMbar, 'mbar'), unidadPerdidaAcumulada)}</td>
+      <td class="mem-celda-acciones"><button type="button" class="mem-eliminar no-imprimir" aria-label="Eliminar ${escapeAttr(t.nombre)}">✕</button></td>
     </tr>
   `).join('');
 
@@ -655,6 +775,12 @@ function renderArbol(resultado) {
       <text x="${n.nivel * anchoNivel + 74}" y="${n.fila * altoFila + 24}" font-size="12" fill="var(--text-primary)">${escapeHtml(n.t.nombre)}</text>
     </g>`).join('');
   svg.setAttribute('height', String(Math.max(...porNivel.values(), 1) * altoFila + 20));
+  // Ancho mínimo = el nodo más a la derecha + su nombre (~7px por carácter
+  // a 12px): en un teléfono el 100% del contenedor no alcanza desde el 2º
+  // nivel y los nodos quedaban cortados; con esto .arbol-contenedor
+  // (overflow-x: auto) se desplaza en horizontal (2026-09-25).
+  const anchoNecesario = Math.max(0, ...nodos.map((n) => n.nivel * anchoNivel + 74 + n.t.nombre.length * 7 + 16));
+  svg.style.minWidth = `${anchoNecesario}px`;
   svg.innerHTML = lineas + circulos;
 }
 
@@ -1159,3 +1285,4 @@ initTeoriaFlujo();
 initAlmacenamiento();
 initMemoria();
 initSelectorGas({ actualId: 'hidrogeno', profundidad: 1 });
+initResumenMovil();

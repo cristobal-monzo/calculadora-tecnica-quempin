@@ -183,6 +183,22 @@ kW se deshabilita y vuelve a kg/h; gas personalizado tipeado carácter a
 carácter con coma decimal sin perder foco, con errores listados mientras
 está incompleto.
 
+## Uso desde el teléfono (`css/styles.css`/`ui.js`, 2026-09-25, a pedido del usuario)
+
+Mismo bloque CSS "Uso desde el teléfono" y mismas funciones
+`centrarPestana()`/`initResumenMovil()` que Hidrógeno y GN/GLP (detalle y
+porqué en `Hidrogeno/CLAUDE.md`): barra de resumen de KPI fija al pie bajo
+960px, cajetines a 16px y áreas táctiles de 44px, tabla de tubería de
+referencia con scroll propio. Las reglas de tarjetas de la Memoria vienen
+en el bloque común aunque este módulo no la tenga (no aplican; se dejan
+para que el bloque sea idéntico). Propio de este módulo:
+
+- Las reglas de `.selector-gas-activo` y `.segmentado` de este archivo van
+  **después** del bloque común y le ganaban por orden: se repite ahí la
+  variante táctil (16px / relleno mayor).
+- `#gas-activo` con `max-width: 280px` + la etiqueta "Gas" se salía ~30px
+  de una pantalla de 320px: bajo 600px ocupa el resto de su fila.
+
 ## Fuera de alcance (v1)
 
 - **Memoria de Cálculo** (red ramificada + informe impreso) — existe en

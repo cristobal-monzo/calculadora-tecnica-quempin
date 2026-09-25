@@ -346,7 +346,10 @@ td { font-variant-numeric: tabular-nums; }
 }
 .mem-eliminar:hover, .af-eliminar:hover { color: var(--estado-critico); border-color: var(--gridline); }
 .mem-eliminar:focus-visible, .af-eliminar:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
-#memoria-arbol { background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px; margin-bottom: 22px; display: block; }
+/* El diagrama se desplaza en horizontal dentro de su caja si la red es más
+   ancha que la pantalla (min-width lo fija renderArbol() en ui.js). */
+.arbol-contenedor { overflow-x: auto; background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px; margin-bottom: 22px; }
+#memoria-arbol { display: block; }
 
 /* --- Memoria de Cálculo: cajetines del proyecto y lista de artefactos --- */
 .artefacto-fila { display: grid; grid-template-columns: 1fr 110px 32px; gap: 8px; align-items: center; margin-bottom: 6px; }
@@ -358,23 +361,162 @@ td { font-variant-numeric: tabular-nums; }
 #memoria-artefacto-agregar { margin-top: 4px; }
 .artefactos-total { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
 
-/* --- Pantallas angostas --- */
-@media (max-width: 600px) {
+/* ======================================================================
+   Uso desde el teléfono (auditoría móvil 2026-09-25, ver CLAUDE.md del
+   módulo). Bloque común a los tres módulos — mantener igual en
+   GasNatural-GLP/ y OtrosGases/. `screen and` a propósito: una hoja A4
+   impresa mide ~690px de ancho y activaría las reglas de pantalla angosta.
+   ====================================================================== */
+
+/* --- Resumen fijo de resultados al pie (initResumenMovil() en ui.js).
+   Solo bajo 960px, donde .calc-layout apila entradas y resultados y los
+   KPI quedan lejos del campo que se edita. Filete superior naranja como el
+   de la cabecera: se lee como cromo de la app, no como otra tarjeta. --- */
+.calc-resultados { scroll-margin-top: calc(var(--alto-barra-pestanas) + 12px); }
+.resumen-movil {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface-card); color: var(--text-primary);
+  border: none; border-top: 2px solid var(--brand-orange);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.10);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.resumen-movil[hidden] { display: none; }
+.resumen-movil:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -4px; }
+/* Estado también por forma (barra lateral), igual que .resultado-tile. */
+.resumen-movil-item {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 1px;
+  padding: 2px 8px; border-left: 3px solid var(--gridline);
+}
+.resumen-movil-item.ok { border-left-color: var(--estado-ok); }
+.resumen-movil-item.alerta { border-left-color: var(--brand-orange); }
+.resumen-movil-item.critico { border-left-color: var(--estado-critico); }
+.resumen-movil-valor {
+  font-size: 16px; font-weight: 900; line-height: 1.25; font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.resumen-movil-item.ok .resumen-movil-valor { color: var(--estado-ok); }
+.resumen-movil-item.alerta .resumen-movil-valor { color: var(--estado-alerta); }
+.resumen-movil-item.critico .resumen-movil-valor { color: var(--estado-critico); }
+.resumen-movil-etiqueta {
+  font-size: 11px; line-height: 1.3; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.resumen-movil-ir {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--brand-orange); color: #000000; font-size: 17px; font-weight: 900;
+}
+@media (min-width: 960px) { .resumen-movil { display: none !important; } }
+/* 3 KPI (Quemador) no caben legibles en un teléfono angosto: quedan 2. */
+@media (max-width: 420px) { .resumen-movil-item:nth-child(3) { display: none; } }
+/* Aire al final para que la barra no tape lo último de la página. */
+@media screen and (max-width: 959px) { main { padding-bottom: 96px; } }
+
+/* --- Pantallas táctiles: cajetines a 16px (bajo 16px Safari de iPhone
+   hace zoom a la página al tocar un cajetín, y no vuelve) y controles de
+   al menos 44px de alto (área táctil mínima de Apple / WCAG 2.5.5; antes
+   los botones medían ~31px y la ✕ de eliminar ~26px). --- */
+@media screen and (max-width: 600px), screen and (pointer: coarse) {
+  .campo input, .campo select, .seccion-avanzada textarea,
+  .artefacto-fila input, #memoria-tabla input, #memoria-tabla select,
+  .select-unidad-inline, .selector-gas-activo select { font-size: 16px; }
+  .campo input, .campo select, .artefacto-fila input { min-height: 44px; }
+  .btn { min-height: 44px; padding: 10px 16px; font-size: 13.5px; justify-content: center; text-align: center; }
+  .mem-eliminar, .af-eliminar { min-width: 44px; min-height: 44px; font-size: 16px; }
+  .select-unidad-inline { min-height: 36px; padding: 4px 4px 4px 8px; }
+  .segmentado span { padding: 8px 14px; }
+  .viz-theme-toggle, #selector-gas { min-height: 40px; }
+  summary { padding: 8px 0; }
+}
+
+/* --- Pantallas angostas (teléfono) --- */
+@media screen and (max-width: 600px) {
   .viz-titleblock p { display: none; }
+  .viz-header { padding: 14px 0; margin-bottom: 8px; }
   .barra-pestanas { margin-bottom: 18px; }
   /* Pestañas que no caben: desvanecido a la derecha como pista de que se
-     desplazan en horizontal. */
-  .tabs { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+     desplazan en horizontal. El padding deja que la última pestaña
+     salga del desvanecido al llegar al final. */
+  .tabs { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 28px; }
   /* 2 tiles por fila en vez de 1: la pestaña Tubería y Flujo medía ~3000px
      de alto en un teléfono con un tile por fila. */
   .grupo-resultados { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
   .resultado-tile.kpi .valor { font-size: 24px; }
-  .barra-acciones-grupo { margin-left: 0; }
+  /* .campo-ancho (span 2) creaba una 2ª columna implícita cuando la grilla
+     tiene una sola (bajo ~420px), y la página entera se desbordaba en
+     horizontal (Red de Gas de GN/GLP). */
+  .campo-ancho { grid-column: 1 / -1; }
+  /* Codos / Tee / Válvulas: 3 por fila también en el teléfono (antes 2 + 1). */
+  .fila-campos.compacta { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 10px; }
+  .subseccion { padding: 2px 12px 6px; }
+  .seccion-avanzada { padding: 12px; }
+  .artefacto-fila { grid-template-columns: minmax(0, 1fr) 84px 44px; }
+  /* Tablas de referencia (tubería) dentro de un <details>: se desplazan en
+     horizontal en vez de ensanchar la página en un teléfono de 320px. */
+  details > table { display: block; overflow-x: auto; }
+  /* Barra de acciones de la Memoria en grilla de 2 (antes 4 botones de
+     anchos distintos apilados): agregar tramo arriba, importar | exportar,
+     y la acción principal (imprimir) a lo ancho al final. */
+  .barra-acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .barra-acciones-grupo { display: contents; }
+  #memoria-agregar-tramo, #memoria-imprimir, .barra-acciones-estado { grid-column: 1 / -1; }
+}
+
+/* --- Memoria de Cálculo en el teléfono: una tarjeta por tramo. La tabla
+   tiene 14-16 columnas; con scroll horizontal en 360px solo se veían 3 a
+   la vez y no había cómo leer un tramo completo. Cada <td> trae su
+   encabezado (con unidad) en data-label, puesto por renderTablaMemoria() en
+   ui.js, y lo muestra arriba con ::before. Del <thead> quedan solo los
+   encabezados con selector de unidad, como barra de "Unidades". --- */
+@media screen and (max-width: 720px) {
+  .tabla-contenedor { overflow: visible; border: none; border-radius: 0; background: none; }
+  #memoria-tabla, #memoria-tabla thead, #memoria-tabla tbody { display: block; width: 100%; min-width: 0; }
+  #memoria-tabla thead tr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+    padding: 10px 12px; margin-bottom: 12px;
+    background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px;
+  }
+  #memoria-tabla thead tr::before {
+    content: 'Unidades'; flex-basis: 100%;
+    font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);
+  }
+  #memoria-tabla thead th { display: none; }
+  #memoria-tabla thead th:has(.select-unidad-columna) {
+    display: flex; align-items: center; gap: 6px; padding: 0; border: none; background: none;
+    font-size: 12.5px; color: var(--text-primary); white-space: nowrap;
+  }
+  #memoria-tabla th .select-unidad-columna { margin-left: 0; min-height: 36px; }
+  #memoria-tabla tbody tr {
+    position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+    padding: 14px; margin-bottom: 12px;
+    background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px;
+  }
+  #memoria-tabla tbody tr:last-child { margin-bottom: 0; }
+  #memoria-tabla tbody td {
+    display: flex; flex-direction: column; gap: 4px; min-width: 0;
+    padding: 0; border: none; white-space: normal;
+  }
+  #memoria-tabla tbody td[data-label]::before {
+    content: attr(data-label); font-size: 12px; font-weight: 700; color: var(--text-secondary);
+  }
+  #memoria-tabla tbody td[colspan] { grid-column: 1 / -1; }
+  #memoria-tabla tr[data-id] :is(input, select) { min-width: 0; min-height: 44px; }
+  /* Nombre del tramo a lo ancho, con lugar a la derecha para la ✕. */
+  #memoria-tabla .mem-celda-nombre { grid-column: 1 / -1; padding-right: 52px; }
+  #memoria-tabla .mem-celda-acciones { position: absolute; top: 8px; right: 8px; }
+  #memoria-tabla .mem-celda-check { align-items: flex-start; }
+  #memoria-tabla tr[data-id] input[type="checkbox"] { width: 24px; height: 24px; min-height: 0; margin: 10px 0 0; }
+  /* Celdas calculadas: mismo tinte que en la tabla, en su propia caja. */
+  #memoria-tabla tbody td.col-calculada { padding: 8px 10px; border-radius: 8px; font-size: 15px; white-space: normal; }
+  .mem-tuberia-manual { min-width: 0; gap: 6px; }
+  .mem-tuberia-manual input { font-size: 16px !important; padding: 6px 8px !important; }
 }
 
 /* --- Impresión (Memoria de Cálculo) --- */
 @media print {
-  .barra-pestanas, .no-imprimir, .viz-theme-toggle { display: none !important; }
+  .barra-pestanas, .no-imprimir, .viz-theme-toggle, .resumen-movil { display: none !important; }
   /* Sin columnas ni sticky en papel (solo aplica si alguien imprime una
      pestaña de cálculo en vez de la Memoria). */
   .calc-layout { display: block; }
