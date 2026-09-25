@@ -9,12 +9,15 @@
 import { propiedadesGLP, densidadCondiciones as densidadCondicionesGLP } from './gas-glp.js';
 import { propiedadesGN, densidadCondiciones as densidadCondicionesGN } from './gas-gn.js';
 import {
-  aireEstequiometrico, caudalAire, composicionGasesCombustion,
+  aireEstequiometrico, caudalAire, corregirCaudalTP, composicionGasesCombustion,
   propiedadesGasesCombustion, gasesEstequiometricosSecos, emisionesNoxAdmisibles,
   EMISION_CO_ADMISIBLE_PPM,
 } from './combustion.js';
 
-function calcularCombustionComun({ propiedades, potenciaKw, lambda, pciKjKg, concentracionO2Pct, volSecoTeorico, pciSimplificadoKwhM3, densidadRef }) {
+function calcularCombustionComun({
+  propiedades, potenciaKw, lambda, pciKjKg, concentracionO2Pct, volSecoTeorico, pciSimplificadoKwhM3,
+  densidadRef, temperaturaReferenciaC, presionReferenciaKPa,
+}) {
   const flujoMasicoKgS = potenciaKw / pciKjKg;
   const caudalCombustibleNm3H = (flujoMasicoKgS / propiedades.densidadNormal) * 3600; // Nm3/h, condición normal
   const caudalCombustibleRefM3H = (flujoMasicoKgS / densidadRef) * 3600; // m3/h, condición de referencia (T/P dadas)
@@ -28,8 +31,17 @@ function calcularCombustionComun({ propiedades, potenciaKw, lambda, pciKjKg, con
   // (2026-09-01, a pedido del usuario): en vez de elegir una de las dos
   // arbitrariamente, se calculan y muestran ambas para los dos gases —
   // ver GasNatural-GLP/CLAUDE.md.
+  //
+  // CORREGIDO 2026-09-25 (auditoría de coherencia física): el total "de
+  // referencia" sumaba el aire en Nm³/h (0 °C, 1 atm) con el combustible en
+  // m³/h a la T/P de referencia — dos bases distintas en una misma suma.
+  // Ahora el aire también se lleva a la condición de referencia con
+  // corregirCaudalTP() (combustion.js), igual que el combustible.
+  const caudalAireRefM3H = corregirCaudalTP({
+    caudalNm3H: caudalAireNm3H, temperaturaC: temperaturaReferenciaC, presionKPa: presionReferenciaKPa,
+  });
   const caudalTotalNormalNm3H = caudalAireNm3H + caudalCombustibleNm3H;
-  const caudalTotalReferenciaM3H = caudalAireNm3H + caudalCombustibleRefM3H;
+  const caudalTotalReferenciaM3H = caudalAireRefM3H + caudalCombustibleRefM3H;
 
   const composicion = composicionGasesCombustion({ ...propiedades, aireEsteq, lambda });
   const gases = propiedadesGasesCombustion(composicion);
@@ -40,7 +52,7 @@ function calcularCombustionComun({ propiedades, potenciaKw, lambda, pciKjKg, con
 
   return {
     ...propiedades, flujoMasicoKgS, caudalCombustibleNm3H, caudalCombustibleRefM3H,
-    aireEsteq, caudalAireNm3H, caudalTotalNormalNm3H, caudalTotalReferenciaM3H,
+    aireEsteq, caudalAireNm3H, caudalAireRefM3H, caudalTotalNormalNm3H, caudalTotalReferenciaM3H,
     composicion, gases, emisionNoxAdmisiblePpm,
     emisionCoAdmisiblePpm: EMISION_CO_ADMISIBLE_PPM, densidadRef,
   };
@@ -63,7 +75,7 @@ export function calcularCombustionGLP(inputs) {
   return calcularCombustionComun({
     propiedades, potenciaKw, lambda, pciKjKg, concentracionO2Pct,
     volSecoTeorico, pciSimplificadoKwhM3: propiedades.pciSimplificadoKwhM3,
-    densidadRef,
+    densidadRef, temperaturaReferenciaC, presionReferenciaKPa,
   });
 }
 
@@ -92,6 +104,6 @@ export function calcularCombustionGN(inputs) {
   // (propiedades.pciMasa) pero el usuario puede editarlo.
   return calcularCombustionComun({
     propiedades, potenciaKw, lambda, pciKjKg, concentracionO2Pct,
-    volSecoTeorico, pciSimplificadoKwhM3, densidadRef,
+    volSecoTeorico, pciSimplificadoKwhM3, densidadRef, temperaturaReferenciaC, presionReferenciaKPa,
   });
 }

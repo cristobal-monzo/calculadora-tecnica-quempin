@@ -1,9 +1,10 @@
-import { TABLA_TUBERIA_RED_GAS } from './pipe-network.js';
-import { calcularRedGas } from './calc-red-gas.js';
+import { TABLA_TUBERIA_RED_GAS, P_ATMOSFERICA_PA } from './pipe-network.js';
+import { calcularRedGas, COMPOSICION_POR_DEFECTO } from './calc-red-gas.js';
 import { calcularRedMemoria } from './calc-memoria-red-gas.js';
 import { cilindrosPorVaporizacion, cilindrosPorConsumoDiario, calcularEstanqueGLP } from './calc-almacenamiento-glp.js';
 import { calcularCombustionGLP, calcularCombustionGN } from './calc-combustion.js';
 import { propiedadesGN } from './gas-gn.js';
+import { propiedadesGLP } from './gas-glp.js';
 import { calcularQuemador } from './calc-quemador.js';
 import { guardar, cargar, exportarJSON, importarJSON } from './storage.js';
 import { initSelectorGas } from '../../assets/gas-switcher.js';
@@ -361,6 +362,8 @@ function leerRedGasForm() {
     longitudM: num('rg-longitud'),
     presionInicialPa: leerPresion('rg-presion-inicial', 'rg-presion-inicial-unidad', 'Pa'),
     temperaturaC: num('rg-temperatura'),
+    desnivelM: num('rg-desnivel'),
+    composicion: leerComposicion('rg'),
   };
 }
 
@@ -377,23 +380,56 @@ function tilePresion(valorPa, etiqueta, clave, variante) {
   </div>`;
 }
 
+// Resultados de Red de Gas. Desde el 2026-09-25 (auditoría de coherencia
+// física): el criterio de "Tubería adecuada" depende del régimen (150/120 Pa
+// de D.S. 66 en baja; 10 % de la presión inicial absoluta en media), la
+// velocidad es la real al final del tramo, las propiedades del gas salen
+// de la composición y en GLP se advierte si la línea condensa.
 function renderResultadosRedGas(r) {
   const variante = r.tuberiaAdecuada ? 'ok' : 'alerta';
+  const mediaPresion = r.presionFinalPa !== null;
   const detalle = [
-    tile(`${formatearFijo(r.caudalObjetivoM3H, 3)} m³/h`, 'Caudal objetivo', 'secundario'),
-    tile(`${formatearFijo(r.velocidadMS, 2)} m/s`, 'Velocidad de flujo', 'secundario'),
+    tile(`${formatearFijo(r.caudalObjetivoM3H, 3)} m³/h`, 'Caudal objetivo (15 °C, 1 atm)', 'secundario'),
+    tile(`${formatearFijo(r.caudalRealM3H, 3)} m³/h`, 'Caudal real al final del tramo', 'secundario'),
+    tile(`${formatearFijo(r.velocidadMS, 2)} m/s`, 'Velocidad de flujo (D.S. 66 f.5, final del tramo)', 'secundario'),
     tile(`${formatearFijo(r.volumenTuberiaM3, 4)} m³`, 'Volumen de la tubería', 'secundario'),
-    tilePresion(r.perdidaAdmisiblePa, 'Pérdida de presión admisible', 'perdida-admisible', 'secundario'),
+    tilePresion(r.perdidaAdmisiblePa, mediaPresion ? 'Pérdida admisible (10 % de P inicial abs.)' : 'Pérdida de presión admisible (D.S. 66)', 'perdida-admisible', 'secundario'),
   ];
-  if (r.presionFinalPa !== null) {
+  if (mediaPresion) {
     detalle.push(tilePresion(r.presionFinalPa, 'Presión final', 'presion-final', 'secundario'));
   }
+  const kpis = [
+    tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar diámetro mayor', 'Tubería adecuada', `kpi ${variante}`),
+    tilePresion(r.perdidaPresionTotalPa, r.desnivelM ? 'Pérdida de presión (fricción + altura)' : 'Pérdida de presión requerida', 'perdida-requerida', `kpi ${variante}`),
+  ];
+  // Variación de presión por altura — D.S. 66 e.2 (2026-09-25). Solo se
+  // muestra con desnivel: positiva = el gas gana presión al subir (GN),
+  // negativa = la pierde (GLP).
+  if (r.desnivelM) {
+    detalle.unshift(
+      tilePresion(r.perdidaPresionRequeridaPa, 'Pérdida por fricción (Renouard)', 'perdida-friccion', 'secundario'),
+      tilePresion(r.variacionPresionAlturaPa, 'Variación por altura, D.S. 66 e.2 (+ gana / − pierde)', 'variacion-altura', 'secundario'),
+    );
+    if (r.variacionPresionAlturaPa < 0) {
+      detalle.push('<div class="resultados-nota">El GLP pierde presión al subir. El D.S. 66 permite despreciar esta pérdida si se compensa aumentando la presión del regulador, hasta un máximo de 3,24 kPa.</div>');
+    }
+  }
+  const propiedades = [
+    tile(`${formatearFijo(r.pcsVolumetricoMJm3, 2)} MJ/m³`, 'PCS a 15 °C, 1 atm (según composición)', 'secundario'),
+    tile(formatearFijo(r.densidadRelativa, 3), 'Densidad relativa al aire', 'secundario'),
+    tile(formatearFijo(r.z, 4), 'Factor Z (Peng-Robinson)', 'secundario'),
+  ];
+  if (r.presionRocioAbsPa !== null) {
+    kpis.push(tile(r.riesgoCondensacion ? 'Sí — el GLP condensa en la línea' : 'No', 'Riesgo de condensación', `kpi ${r.riesgoCondensacion ? 'critico' : 'ok'}`));
+    propiedades.push(tilePresion(r.presionRocioAbsPa, 'Presión de rocío del GLP (absoluta)', 'presion-rocio', 'secundario'));
+    if (r.riesgoCondensacion) {
+      propiedades.push('<div class="resultados-nota">A esta temperatura la presión absoluta de la línea alcanza la de rocío de la mezcla: parte del GLP llega líquido y el cálculo de gas deja de aplicar. Bajar la presión de la línea, aumentar el propano de la mezcla o evaluar la temperatura mínima real del recorrido.</div>');
+    }
+  }
   document.getElementById('resultados-red-gas').innerHTML = [
-    grupo(null, [
-      tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar diámetro mayor', 'Tubería adecuada', `kpi ${variante}`),
-      tilePresion(r.perdidaPresionRequeridaPa, 'Pérdida de presión requerida', 'perdida-requerida', `kpi ${variante}`),
-    ], 'kpis'),
+    grupo(null, kpis, 'kpis'),
     grupo('Detalle del cálculo', detalle),
+    grupo('Propiedades del gas', propiedades),
   ].join('');
 }
 
@@ -405,6 +441,10 @@ function initRedGas() {
   const guardados = cargar('red-gas', null);
   if (guardados) {
     Object.entries(guardados).forEach(([id, valor]) => {
+      // Un estado guardado antes del 2026-09-25 no trae composición; si
+      // trajera ids de composición (no debería), los ignora: esos se
+      // restauran por gas en renderComposicion().
+      if (id.startsWith('rg-pct-')) return;
       const el = document.getElementById(id);
       if (el) el.value = valor;
     });
@@ -452,6 +492,25 @@ function initRedGas() {
     contenedor.querySelector('.valor-numero').textContent = formatearPresionFija(Number(contenedor.dataset.pa), evento.target.value);
   });
 
+  // Composición del gas (2026-09-25): mismos campos que Combustión y
+  // Quemador, re-renderizados al cambiar de combustible. Se guarda aparte y
+  // por gas (`red-gas-composicion-GLP/GN`): los ids rg-pct-propano/butano
+  // existen en las dos composiciones y guardarlos junto al resto del
+  // formulario mezclaría los valores de un gas con los del otro.
+  const contenedorComposicion = document.getElementById('red-gas-campos-composicion');
+  function renderComposicion() {
+    contenedorComposicion.innerHTML = combustible === 'GLP'
+      ? marcadoComposicionGLP({ prefijo: 'rg' })
+      : marcadoComposicionGN({ prefijo: 'rg' });
+    const guardada = cargar(`red-gas-composicion-${combustible}`, null);
+    if (guardada) {
+      Object.entries(guardada).forEach(([id, valor]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = valor;
+      });
+    }
+  }
+
   function recalcular() {
     try {
       const resultado = calcularRedGas(leerRedGasForm());
@@ -459,13 +518,18 @@ function initRedGas() {
     } catch (error) {
       document.getElementById('resultados-red-gas').innerHTML = tile(error.message, 'Error', 'alerta');
     }
+    const campos = Array.from(form.querySelectorAll('input, select'));
     guardar('red-gas', Object.fromEntries(
-      Array.from(form.querySelectorAll('input, select')).map((el) => [el.id, el.value])
+      campos.filter((el) => !contenedorComposicion.contains(el)).map((el) => [el.id, el.value])
+    ));
+    guardar(`red-gas-composicion-${combustible}`, Object.fromEntries(
+      campos.filter((el) => contenedorComposicion.contains(el)).map((el) => [el.id, el.value])
     ));
   }
 
+  renderComposicion();
   form.addEventListener('input', recalcular);
-  alCambiarCombustible(recalcular);
+  alCambiarCombustible(() => { renderComposicion(); recalcular(); });
   recalcular();
 }
 
@@ -703,11 +767,14 @@ function initCombustion() {
         const el = document.getElementById(id);
         if (el) el.value = valor;
       });
-    } else if (combustible === 'GN') {
-      // Sin estado guardado para GN: precompletar el PCI con el valor
-      // derivado de la composición por defecto, en vez de dejar el 48029
-      // de GLP puesto en el HTML.
-      const pciPorDefecto = propiedadesGN(leerComposicion('cb')).pciMasa;
+    } else {
+      // Sin estado guardado: precompletar el PCI con el valor derivado de
+      // la composición por defecto. Antes solo se hacía para GN; GLP
+      // quedaba con el 48029 del Excel (Combustión Gas!J4), que no es ni el
+      // PCI (45.990) ni el PCS (49.904) de su propia composición 70/30
+      // (corregido 2026-09-25).
+      const composicion = leerComposicion('cb');
+      const pciPorDefecto = combustible === 'GLP' ? propiedadesGLP(composicion).pciMasa : propiedadesGN(composicion).pciMasa;
       document.getElementById('cb-pci').value = pciPorDefecto.toFixed(2);
     }
 
@@ -748,13 +815,27 @@ function initCombustion() {
 /* Pestaña 4 — Quemador Atmosférico                                       */
 /* ---------------------------------------------------------------------- */
 
+// Coherencia inyector ↔ quemador (2026-09-25): el inyector se calcula por
+// su geometría y presión, sin mirar la potencia del quemador. Si entrega
+// más de ±10 % distinto de la potencia ingresada, el tile se marca y se
+// explica — antes los valores por defecto de GLP (4,8 kW para 25 kW)
+// pasaban sin aviso.
+const TOLERANCIA_POTENCIA_INYECTOR = 0.10;
+
 function renderResultadosQuemador(r) {
+  const inyectorDescalzado = r.desviacionPotenciaInyector !== null
+    && Math.abs(r.desviacionPotenciaInyector) > TOLERANCIA_POTENCIA_INYECTOR;
+  const kpis = [
+    tile(`${formatearFijo(r.potenciaInyectorKw, 3)} kW`, 'Potencia que entrega el inyector', `kpi${inyectorDescalzado ? ' alerta' : ''}`),
+    tile(`${formatearFijo(r.largoLlamaMm, 2)} mm`, 'Largo de llama estimado (premezcla por perforación)', 'kpi'),
+    tile(`${formatearFijo(r.tasaQuemadoWMm2, 2)} W/mm²`, 'Tasa de quemado', 'kpi'),
+  ];
+  if (inyectorDescalzado) {
+    const signo = r.desviacionPotenciaInyector > 0 ? '+' : '−';
+    kpis.push(`<div class="resultados-nota">El inyector entrega ${signo}${formatearFijo(Math.abs(r.desviacionPotenciaInyector) * 100, 0)} % respecto de la potencia del quemador: revisar el diámetro del inyector, la presión de gas o la cantidad de inyectores. El resto del cálculo usa la potencia del quemador.</div>`);
+  }
   document.getElementById('resultados-quemador').innerHTML = [
-    grupo(null, [
-      tile(`${formatearFijo(r.potenciaInyectorKw, 3)} kW`, 'Potencia que entrega el inyector', 'kpi'),
-      tile(`${formatearFijo(r.largoLlamaMm, 2)} mm`, 'Largo de llama estimado', 'kpi'),
-      tile(`${formatearFijo(r.tasaQuemadoWMm2, 2)} W/mm²`, 'Tasa de quemado', 'kpi'),
-    ], 'kpis'),
+    grupo(null, kpis, 'kpis'),
     grupo('Factores de verificación', [
       tile(`${formatearFijo(r.areaInyectorIn2, 6)} in²`, 'Área del inyector', 'secundario'),
       tile(`${formatearFijo(r.caudalInyectorM3H, 4)} m³/h`, 'Caudal por el inyector', 'secundario'),
@@ -859,7 +940,43 @@ function proyectoPorDefecto() {
     // límite de velocidad — el usuario lo completa si aplica a su proyecto.
     velocidadMaxFlujoDisenoMS: null, velocidadErosionDisenoMS: null, perdidaMaxAcumuladaDisenoPa: null,
     artefactos: [], observaciones: OBSERVACIONES_DEFECTO,
+    // Composición del gas de la red, una por combustible (2026-09-25) —
+    // ver composicionMemoria().
+    composicion: { GLP: { ...COMPOSICION_POR_DEFECTO.GLP }, GN: { ...COMPOSICION_POR_DEFECTO.GN } },
   };
+}
+
+// Composición vigente de la red. Un proyecto guardado o exportado antes del
+// 2026-09-25 no la trae: se calcula con la composición por defecto del
+// módulo (la misma que precargan Combustión/Quemador/Estanque).
+function composicionMemoria() {
+  return proyecto.composicion?.[combustible] ?? COMPOSICION_POR_DEFECTO[combustible];
+}
+
+function renderComposicionMemoria() {
+  const contenedor = document.getElementById('memoria-campos-composicion');
+  contenedor.innerHTML = combustible === 'GLP'
+    ? marcadoComposicionGLP({ prefijo: 'mc' })
+    : marcadoComposicionGN({ prefijo: 'mc' });
+  const comp = composicionMemoria();
+  const ids = {
+    pctButano: 'mc-pct-butano', pctPropano: 'mc-pct-propano', pctMetano: 'mc-pct-metano',
+    pctEtano: 'mc-pct-etano', pctDioxidoC: 'mc-pct-dioxido', pctNitrogeno: 'mc-pct-nitrogeno',
+  };
+  Object.entries(comp).forEach(([clave, valor]) => {
+    const el = document.getElementById(ids[clave]);
+    if (el) el.value = valor;
+  });
+}
+
+// "GLP — 70 % propano, 30 % butano" / "Gas Natural — 97 % metano" para el
+// informe (el poder calorífico y la densidad dependen de la composición).
+function textoComposicionInforme() {
+  const pct = (v) => `${formatearLibre(v * 100)} %`;
+  const comp = composicionMemoria();
+  return combustible === 'GLP'
+    ? `GLP — ${pct(comp.pctPropano)} propano, ${pct(comp.pctButano)} butano`
+    : `Gas Natural — ${pct(comp.pctMetano)} metano`;
 }
 
 function artefactoPorDefecto() {
@@ -899,7 +1016,7 @@ function tramoMemoriaPorDefecto() {
   return {
     id: `t${contadorIdMemoria}`, nombre: `Tramo ${contadorIdMemoria}`, continuaDesdeId: null,
     reseteaAcumulada: false, regimenPresion: '<10 kPa', material: 'Acero Sch40', pulgadas: 0.75,
-    potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15,
+    potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15, desnivelM: 0,
   };
 }
 
@@ -960,9 +1077,10 @@ function renderTablaMemoria(resultado) {
       <td data-label="Longitud [m]"><input type="text" inputmode="decimal" class="mem-largo" value="${t.longitudM}" aria-label="Longitud [m]"></td>
       <td data-label="Presión inicial [${unidadPresionInicial}]"><input type="text" inputmode="decimal" class="mem-presion" value="${Number(desdePa(t.presionInicialPa, unidadPresionInicial).toPrecision(6))}" aria-label="Presión inicial [${unidadPresionInicial}]"></td>
       <td data-label="Temp. [°C]"><input type="text" inputmode="decimal" class="mem-temp" value="${t.temperaturaC}" aria-label="Temperatura [°C]"></td>
+      <td data-label="Desnivel [m]"><input type="text" inputmode="decimal" class="mem-desnivel" value="${t.desnivelM ?? 0}" aria-label="Desnivel del tramo [m]" title="Cota final menos cota inicial (positivo si sube) — D.S. 66 e.2"></td>
       <td class="mem-caudal col-calculada" data-label="Caudal objetivo [m³/h]">${formatearFijo(t.caudalObjetivoM3H, 3)}</td>
       <td class="mem-velocidad col-calculada" data-label="Velocidad [m/s]">${formatearFijo(t.velocidadMS, 2)}</td>
-      <td class="mem-perdida-requerida col-calculada" data-label="Pérdida requerida [${unidadPerdidaRequerida}]">${formatearPresionFija(t.perdidaPresionRequeridaPa, unidadPerdidaRequerida)}</td>
+      <td class="mem-perdida-requerida col-calculada" data-label="Pérdida del tramo [${unidadPerdidaRequerida}]">${formatearPresionFija(t.perdidaPresionTotalPa, unidadPerdidaRequerida)}</td>
       <td class="mem-perdida-acumulada col-calculada" data-label="Pérdida acumulada [${unidadPerdidaAcumulada}]">${formatearPresionFija(t.perdidaAcumuladaPa, unidadPerdidaAcumulada)}</td>
       <td class="mem-presion-final col-calculada" data-label="Presión final [${unidadPresionFinal}]">${t.presionFinalPa !== null ? formatearPresionFija(t.presionFinalPa, unidadPresionFinal) : '—'}</td>
       <td class="mem-celda-acciones"><button type="button" class="mem-eliminar no-imprimir" aria-label="Eliminar ${escapeAttr(t.nombre)}">✕</button></td>
@@ -1126,7 +1244,7 @@ function renderInformeImpresion(resultado) {
   // informe sirve para GLP o Gas Natural según el selector global).
   const nombreRed = combustible === 'GLP' ? 'Red de GLP' : 'Red de Gas Natural';
   document.getElementById('informe-subtitulo').textContent = nombreRed.toUpperCase();
-  document.getElementById('informe-tipo-red').textContent = combustible === 'GLP' ? 'GLP' : 'Gas Natural';
+  document.getElementById('informe-tipo-red').textContent = textoComposicionInforme();
   document.getElementById('informe-footer-red').textContent = nombreRed;
 
   const unidadPresionInicial = document.getElementById('memoria-presion-inicial-unidad').value;
@@ -1179,6 +1297,19 @@ function renderInformeImpresion(resultado) {
   criterios.push(criterioPerdida);
   const velocidadExcede = new Set(criterios.filter((c) => c !== criterioPerdida).flatMap((c) => c.exceden.map((t) => t.id)));
   const perdidaExcede = new Set(criterioPerdida.exceden.map((t) => t.id));
+  // Condensación del GLP (2026-09-25): no es un límite de diseño que se
+  // elija, así que se evalúa siempre en GLP — presión absoluta inicial de
+  // cada tramo como % de la presión de rocío de la mezcla a su temperatura.
+  // Se agrega después de armar las marcas ▲ de la tabla, que son solo de
+  // velocidad y pérdida (sus columnas).
+  if (combustible === 'GLP') {
+    criterios.push(evaluarCriterio({
+      nombre: 'Sin condensación del GLP (P. absoluta / P. de rocío)', limite: 1,
+      tramos: resultado.filter((t) => t.presionRocioAbsPa !== null),
+      valorDe: (t) => (t.presionInicialPa + P_ATMOSFERICA_PA) / t.presionRocioAbsPa,
+      formatear: (v) => `${formatearInforme(v * 100)} %`,
+    }));
+  }
   const marcar = (texto, excede) => (excede ? `<span class="informe-excede">▲ ${texto}</span>` : texto);
 
   document.getElementById('memoria-impresion-th-presion').innerHTML = thConUnidad('P. inicial man.', unidadPresionInicial);
@@ -1193,7 +1324,7 @@ function renderInformeImpresion(resultado) {
       <td>${formatearInforme(t.potenciaKw)}</td>
       <td>${etiquetaDiametroMemoria(t)}</td>
       <td>${t.pulgadas === 'manual' ? '—' : t.material}</td>
-      <td>${formatearPresionInforme(t.perdidaPresionRequeridaPa, unidadPerdidaRequerida)}</td>
+      <td>${formatearPresionInforme(t.perdidaPresionTotalPa, unidadPerdidaRequerida)}${t.desnivelM ? '<sup class="informe-marca">h</sup>' : ''}</td>
       <td>${marcar(formatearPresionInforme(t.perdidaAcumuladaPa, unidadPerdidaAcumulada), perdidaExcede.has(t.id))}</td>
       <td>${marcar(formatearInforme(t.velocidadMS), velocidadExcede.has(t.id))}</td>
     </tr>
@@ -1203,6 +1334,9 @@ function renderInformeImpresion(resultado) {
   // "(reinicia acumulada)" dentro de la celda partía "Continúa desde" en 3
   // líneas y alargaba cada fila.
   const leyenda = [];
+  if (resultado.some((t) => t.desnivelM)) {
+    leyenda.push('<sup class="informe-marca">h</sup> Incluye la variación de presión por altura, Δph = 12·(1 − d)·h (D.S. 66 e.2).');
+  }
   if (resultado.some((t) => t.reseteaAcumulada)) {
     leyenda.push('<sup class="informe-marca">R</sup> La pérdida acumulada se reinicia en este tramo (p. ej., aguas abajo de un regulador de presión).');
   }
@@ -1224,11 +1358,23 @@ function renderInformeImpresion(resultado) {
   document.getElementById('informe-firma-run').textContent = proyecto.runInstalador;
 }
 
+// Aviso en pantalla si algún tramo de GLP condensa (2026-09-25) — en el
+// informe impreso queda como criterio de la sección 5.
+function renderAvisoCondensacion(resultado) {
+  const aviso = document.getElementById('memoria-aviso-condensacion');
+  const condensan = resultado.filter((t) => t.riesgoCondensacion);
+  aviso.style.display = condensan.length ? '' : 'none';
+  aviso.textContent = condensan.length
+    ? `El GLP condensa en ${condensan.length === 1 ? 'el tramo' : 'los tramos'} ${condensan.map((t) => `"${t.nombre}"`).join(', ')}: `
+      + 'la presión absoluta alcanza la de rocío de la mezcla a esa temperatura, y el cálculo de gas deja de aplicar.'
+    : '';
+}
+
 function recalcularMemoria() {
   const contenedorError = document.getElementById('memoria-error');
   let resultado;
   try {
-    resultado = calcularRedMemoria(tramosMemoria, combustible);
+    resultado = calcularRedMemoria(tramosMemoria, combustible, composicionMemoria());
   } catch (error) {
     contenedorError.textContent = error.message;
     contenedorError.style.display = '';
@@ -1236,6 +1382,7 @@ function recalcularMemoria() {
   }
   contenedorError.style.display = 'none';
   ultimoResultadoMemoria = resultado;
+  renderAvisoCondensacion(resultado);
   renderTablaMemoria(resultado);
   renderArbolMemoria(resultado);
   renderArtefactos();
@@ -1261,7 +1408,7 @@ function recalcularMemoriaLigero() {
   const contenedorError = document.getElementById('memoria-error');
   let resultado;
   try {
-    resultado = calcularRedMemoria(tramosMemoria, combustible);
+    resultado = calcularRedMemoria(tramosMemoria, combustible, composicionMemoria());
   } catch (error) {
     contenedorError.textContent = error.message;
     contenedorError.style.display = '';
@@ -1269,6 +1416,7 @@ function recalcularMemoriaLigero() {
   }
   contenedorError.style.display = 'none';
   ultimoResultadoMemoria = resultado;
+  renderAvisoCondensacion(resultado);
   actualizarCeldasCalculadas(resultado);
   tramosMemoria.forEach((t) => {
     document.querySelectorAll(`#memoria-tabla-cuerpo .mem-padre option[value="${t.id}"]`).forEach((opcion) => {
@@ -1289,7 +1437,7 @@ function actualizarCeldasCalculadas(resultado) {
     if (!fila) return;
     fila.querySelector('.mem-caudal').textContent = formatearFijo(t.caudalObjetivoM3H, 3);
     fila.querySelector('.mem-velocidad').textContent = formatearFijo(t.velocidadMS, 2);
-    fila.querySelector('.mem-perdida-requerida').textContent = formatearPresionFija(t.perdidaPresionRequeridaPa, unidadPerdidaRequerida);
+    fila.querySelector('.mem-perdida-requerida').textContent = formatearPresionFija(t.perdidaPresionTotalPa, unidadPerdidaRequerida);
     fila.querySelector('.mem-perdida-acumulada').textContent = formatearPresionFija(t.perdidaAcumuladaPa, unidadPerdidaAcumulada);
     fila.querySelector('.mem-presion-final').textContent = t.presionFinalPa !== null ? formatearPresionFija(t.presionFinalPa, unidadPresionFinal) : '—';
   });
@@ -1359,6 +1507,7 @@ function leerFilaMemoria(fila) {
     longitudM: numeroFlexible(val('mem-largo')),
     presionInicialPa: aPa(numeroFlexible(val('mem-presion')), unidadPresionInicial),
     temperaturaC: numeroFlexible(val('mem-temp')),
+    desnivelM: numeroFlexible(val('mem-desnivel')),
   };
 }
 
@@ -1395,6 +1544,13 @@ function initMemoria() {
   proyecto.artefactos = repararIdsDuplicados(proyecto.artefactos, 'a');
   contadorArtefactoId = maxSufijoId(proyecto.artefactos);
   aplicarProyectoAForm();
+  renderComposicionMemoria();
+
+  document.getElementById('memoria-campos-composicion').addEventListener('input', () => {
+    proyecto.composicion = { ...(proyecto.composicion ?? {}), [combustible]: leerComposicion('mc') };
+    guardar('memoria-proyecto', proyecto);
+    recalcularMemoria();
+  });
 
   ['memoria-presion-inicial-unidad', 'memoria-perdida-requerida-unidad', 'memoria-perdida-acumulada-unidad', 'memoria-presion-final-unidad'].forEach((id) => {
     const clave = `memoria-red-gas-${id}`;
@@ -1521,6 +1677,7 @@ function initMemoria() {
       proyecto.artefactos = repararIdsDuplicados(proyecto.artefactos, 'a');
       contadorArtefactoId = maxSufijoId(proyecto.artefactos);
       aplicarProyectoAForm();
+      renderComposicionMemoria();
     }
     tramosMemoria = repararIdsDuplicados(tramosMemoria, 't');
     contadorIdMemoria = maxSufijoId(tramosMemoria);
@@ -1530,7 +1687,7 @@ function initMemoria() {
 
   document.getElementById('memoria-imprimir').addEventListener('click', () => window.print());
 
-  alCambiarCombustible(recalcularMemoria);
+  alCambiarCombustible(() => { renderComposicionMemoria(); recalcularMemoria(); });
   recalcularMemoria();
 }
 

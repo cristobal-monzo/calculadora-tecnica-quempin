@@ -8,19 +8,22 @@
 // duplicar fórmulas. Ver
 // docs/superpowers/specs/2026-09-02-memoria-calculo-glp-gn-design.md.
 //
+// La composición del gas también es de toda la red (2026-09-25): se pasa
+// junto con el gas y cada tramo la hereda — ver calc-red-gas.js.
+//
 // Deliberadamente NO encadena presión entre tramos: cada tramo recibe su
 // propia presionInicialPa como input manual (mismo criterio que
 // Hidrogeno, ver el spec) — perdidaAcumuladaPa solo suma para reportar.
 
 import { calcularRedGas } from './calc-red-gas.js';
 
-function calcularTramoIndividual(tramo, gas) {
-  const resultado = calcularRedGas({ ...tramo, gas });
+function calcularTramoIndividual(tramo, gas, composicion) {
+  const resultado = calcularRedGas({ ...tramo, gas, composicion });
   return { ...tramo, ...resultado };
 }
 
-export function calcularRedMemoria(tramos, gas) {
-  const calculados = tramos.map((t) => calcularTramoIndividual(t, gas));
+export function calcularRedMemoria(tramos, gas, composicion) {
+  const calculados = tramos.map((t) => calcularTramoIndividual(t, gas, composicion));
   const porId = new Map(calculados.map((t) => [t.id, t]));
 
   for (const t of calculados) {
@@ -45,7 +48,9 @@ export function calcularRedMemoria(tramos, gas) {
     // reinicia la referencia.
     const heredaBase = tramo.continuaDesdeId && !tramo.reseteaAcumulada;
     const base = heredaBase ? perdidaAcumulada(tramo.continuaDesdeId) : 0;
-    const total = tramo.perdidaPresionRequeridaPa + base;
+    // Pérdida TOTAL del tramo (fricción + variación por altura, D.S. 66
+    // e.2 — ver calc-red-gas.js), 2026-09-25.
+    const total = tramo.perdidaPresionTotalPa + base;
     enProgreso.delete(id);
     acumuladaCache.set(id, total);
     return total;

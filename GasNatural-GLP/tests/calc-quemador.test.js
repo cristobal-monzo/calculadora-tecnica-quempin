@@ -54,6 +54,16 @@ cerca(glpDiseno.potenciaInyectorKw, 4.790505126330362, TOL_REDONDEO_FUENTE);    
 // H38 = (Dt/Dh)^2/N — la fórmula que este motor usa para ambos gases (ver
 // comentario en calc-quemador.js sobre el probable error en la columna GN)
 cerca(glpDiseno.relacionAreaGargantaPerforaciones, 0.4666666666666667); // H38
+// Coherencia inyector <-> quemador (AGREGADO 2026-09-25): con estos valores
+// (los del Excel) el inyector entrega 4,79 kW para un quemador de 25 kW.
+cerca(glpDiseno.desviacionPotenciaInyector, (glpDiseno.potenciaInyectorKw - 25) / 25);
+assert.ok(glpDiseno.desviacionPotenciaInyector < -0.8);
+// Largo de llama con el caudal de PREMEZCLA por perforación (CORREGIDO
+// 2026-09-25, ver calc-quemador.js). Con solo el caudal de gas daba 1,39 mm.
+cerca(glpDiseno.caudalPremezclaPorPerforacionM3S, glpDiseno.caudalPerforacionPremezcla1Nm3S * 288.15 / 273.15);
+cerca(glpDiseno.largoLlamaMm, 17.637218279146943, TOL_REDONDEO_FUENTE);
+// Consistencia: premezcla = gas / fracción molar de gas (gas ideal)
+cerca(glpDiseno.caudalPremezclaPorPerforacionM3S, glpDiseno.caudalGasPorPerforacionM3S / glpDiseno.fraccionMolarGas, 0.02);
 
 // Fixtures: "Quem. Atm.", columnas GN (D) y GLP (H), 2026-09-01 — mismos
 // inputs de potencia/PCI/relación de aire/temperaturas que "Diseño..." para
@@ -68,13 +78,14 @@ const gnLlama = calcularQuemador({
 });
 // molesAirePremezcla1/racEstequiometricaMasica/flujoAirePremezcla1/
 // largoLlama dependen de aireEsteq, que a su vez depende de xCarbono/
-// xHidrogeno — con la corrección de gas-gn.js (2026-09-01) se alejan del
-// D23/D26/D27/D40 cacheados del Excel más de lo que explica el redondeo
-// de PM/densidad (ver TOL_REDONDEO_FUENTE arriba), así que acá van los
-// valores recalculados con la fórmula corregida, no los del Excel.
-cerca(gnLlama.molesAirePremezcla1, 0.24312970766631023, TOL_REDONDEO_FUENTE);
-cerca(gnLlama.racEstequiometricaMasica, 15.636373874731445, TOL_REDONDEO_FUENTE);
-cerca(gnLlama.flujoAirePremezcla1KgS, 0.0006671187442999365, TOL_REDONDEO_FUENTE);
+// xHidrogeno — con la corrección de gas-gn.js (base molar, 2026-09-25) se
+// alejan del D23/D26/D27/D40 cacheados del Excel más de lo que explica el
+// redondeo de PM/densidad (ver TOL_REDONDEO_FUENTE arriba), así que acá van
+// los valores recalculados con la fórmula corregida, no los del Excel.
+// Antes del 2026-09-25: 0.24312970766631023 / 15.636373874731445 / 0.0006671187442999365.
+cerca(gnLlama.molesAirePremezcla1, 0.2564075164630805, TOL_REDONDEO_FUENTE);
+cerca(gnLlama.racEstequiometricaMasica, 16.490308116566045, TOL_REDONDEO_FUENTE);
+cerca(gnLlama.flujoAirePremezcla1KgS, 0.0007035514584119992, TOL_REDONDEO_FUENTE);
 // D39/D40 CORREGIDOS respecto al Excel fuente (2026-09-02, a pedido del
 // usuario): la hoja fuente tenía T y P invertidas en el caudal por
 // perforación (calculaba masa×densidad en vez de masa÷densidad), lo que
@@ -82,6 +93,9 @@ cerca(gnLlama.flujoAirePremezcla1KgS, 0.0006671187442999365, TOL_REDONDEO_FUENTE
 // Antes de la corrección: caudalGasPorPerforacionM3S=9.806733440184042e-7,
 // largoLlamaMm=1.8543804220726559 (valores cacheados del Excel, con el error).
 cerca(gnLlama.caudalGasPorPerforacionM3S, 0.000001982288998888557);
-cerca(gnLlama.largoLlamaMm, 3.7483611977934608, TOL_REDONDEO_FUENTE);
+// largoLlamaMm CORREGIDO de nuevo el 2026-09-25: la correlación de Roper
+// usa el caudal de la PREMEZCLA que sale por la perforación, no solo el del
+// gas (S ya estaba por mol de premezcla). Antes 3.7483611977934608 mm.
+cerca(gnLlama.largoLlamaMm, 19.868453892210972, TOL_REDONDEO_FUENTE);
 
 console.log('calc-quemador.test.js: OK');

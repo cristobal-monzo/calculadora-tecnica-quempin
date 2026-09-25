@@ -3,42 +3,54 @@
 // Z real (Peng-Robinson). Fuente: Libro11111111.xlsx, hoja
 // "Bases de Cálculo" (celdas citadas por función). Analizado 2026-09-01.
 
-// Tabla de tubería — Bases de Cálculo!I3:N13. Los valores de "Diámetro^5"
-// son los que aparecen literalmente en el Excel (no siempre son DI^5 con
-// precisión exacta — parecen valores nominales de una tabla de referencia
-// de ingeniería, no recalculados a partir del DI de esta misma fila; se
-// preservan tal cual, no se recalculan).
-export const TABLA_TUBERIA_RED_GAS = [
-  // 1/8" a 4": Bases de Cálculo!I3:N13, literal del Excel — d5 NO es DI^5
-  // recalculado (parece salir de otra tabla de referencia de ingeniería
-  // que el Excel no expone), se preserva tal cual.
-  { pulgadas: 0.125, diAceroMm: 6.84,  diCobreMm: 4.57,  d5Acero: 14972.023792742399, d5Cobre: 1993.3382494057007, k: 1800 },
-  { pulgadas: 0.25,  diAceroMm: 10.4,  diCobreMm: 10.4,  d5Acero: 121665.29024000003, d5Cobre: 121665.29024000003, k: 1800 },
-  { pulgadas: 0.375, diAceroMm: 12.53, diCobreMm: 10.92, d5Acero: 190000,             d5Cobre: 155279.1667295232,  k: 1800 },
-  { pulgadas: 0.5,   diAceroMm: 15.8,  diCobreMm: 13.84, d5Acero: 630000,             d5Cobre: 507785.6816103424,  k: 1800 },
-  { pulgadas: 0.75,  diAceroMm: 20.93, diCobreMm: 19.94, d5Acero: 2860000,            d5Cobre: 3152287.1372952233, k: 1800 },
-  { pulgadas: 1,     diAceroMm: 26.64, diCobreMm: 26.04, d5Acero: 10100000,           d5Cobre: 11973052.848972902, k: 1800 },
-  { pulgadas: 1.25,  diAceroMm: 35.05, diCobreMm: 32.12, d5Acero: 42000000,           d5Cobre: 34188313.91992247,  k: 1980 },
-  { pulgadas: 1.5,   diAceroMm: 40.89, diCobreMm: 38.24, d5Acero: 94600000,           d5Cobre: 81769137.72173066,  k: 1980 },
-  { pulgadas: 2,     diAceroMm: 52.5,  diCobreMm: 50.42, d5Acero: 338000000,          d5Cobre: 325847359.9923092,  k: 2160 },
-  { pulgadas: 2.5,   diAceroMm: 62.71, diCobreMm: 62.62, d5Acero: 872000000,          d5Cobre: 962864813.6585747,  k: 2160 },
-  { pulgadas: 3,     diAceroMm: 77.92, diCobreMm: 75.25, d5Acero: 2874000000,         d5Cobre: 2412862208.4970703, k: 2340 },
-  { pulgadas: 4,     diAceroMm: 102.26, diCobreMm: 99.2, d5Acero: 11180000000,        d5Cobre: 9606349004.472322,  k: 2420 },
+// Presión atmosférica para pasar de manométrica a absoluta — la misma
+// 101,325 kPa que ya usan densidadCondiciones() (gas-gn.js/gas-glp.js) y
+// corregirCaudalTP() (combustion.js).
+export const P_ATMOSFERICA_PA = 101325;
+
+// Tabla de tubería — Bases de Cálculo!I3:N13 (DI de acero Sch 40 y de
+// cobre tipo L) + filas agregadas.
+//
+// CORREGIDO respecto al Excel fuente (2026-09-25, auditoría de coherencia
+// física): la columna "Diámetro^5" del Excel NO era DI^5 en las filas de
+// acero de 3/8" a 2-1/2" (equivalía a un diámetro entre 5 y 10 % menor que
+// el DI de la misma fila), así que baja presión (que usa d5) y media
+// presión (que usa el DI) calculaban la misma tubería con dos diámetros
+// distintos. Con d5 = DI^5 la fórmula de baja presión reproduce a Renouard
+// clásico (ΔP = 23200·dr·L·Q^1,82·D^-4,82) y a Darcy-Weisbach dentro de
+// ~1 % — ver GasNatural-GLP/CLAUDE.md. Ahora d5 se deriva siempre del DI
+// (no se guarda aparte). La fila de 1/4" (DI 10,4 mm en acero y en cobre)
+// no correspondía a ninguna de las dos normas: se reemplazó por Sch 40
+// (0,364" = 9,25 mm, ASME B36.10) y cobre tipo L (0,315" = 8,00 mm,
+// ASTM B88).
+const FILAS_TUBERIA = [
+  { pulgadas: 0.125, diAceroMm: 6.84,  diCobreMm: 4.57,  k: 1800 },
+  { pulgadas: 0.25,  diAceroMm: 9.25,  diCobreMm: 8.0,   k: 1800 },
+  { pulgadas: 0.375, diAceroMm: 12.53, diCobreMm: 10.92, k: 1800 },
+  { pulgadas: 0.5,   diAceroMm: 15.8,  diCobreMm: 13.84, k: 1800 },
+  { pulgadas: 0.75,  diAceroMm: 20.93, diCobreMm: 19.94, k: 1800 },
+  { pulgadas: 1,     diAceroMm: 26.64, diCobreMm: 26.04, k: 1800 },
+  { pulgadas: 1.25,  diAceroMm: 35.05, diCobreMm: 32.12, k: 1980 },
+  { pulgadas: 1.5,   diAceroMm: 40.89, diCobreMm: 38.24, k: 1980 },
+  { pulgadas: 2,     diAceroMm: 52.5,  diCobreMm: 50.42, k: 2160 },
+  { pulgadas: 2.5,   diAceroMm: 62.71, diCobreMm: 62.62, k: 2160 },
+  { pulgadas: 3,     diAceroMm: 77.92, diCobreMm: 75.25, k: 2340 },
+  { pulgadas: 4,     diAceroMm: 102.26, diCobreMm: 99.2, k: 2420 },
   // 5" a 8": AGREGADAS (2026-09-02, a pedido del usuario, "listado más
   // amplio de tuberías") — el Excel fuente no cubre estos tamaños. DI de
   // acero desde ASME B36.10 Schedule 40 (OD/espesor publicados); DI de
-  // cobre desde ASTM B88 tipo L. Verificado que ambas normas coinciden con
-  // las filas 3/8"–4" ya existentes (dentro de ~0.5%), así que el DI es
-  // confiable. d5 = DI^5 calculado directo (NO viene de la tabla de
-  // referencia que sí explica las filas de arriba — ver nota al inicio de
-  // este archivo), y k se mantiene igual al de 4" (2420, el único valor
-  // conocido más cercano) por no tener base para extrapolarlo — antes de
-  // usar estos tamaños en baja presión (<10 kPa) para un diseño real,
-  // confirmar k con Cristóbal.
-  { pulgadas: 5, diAceroMm: 128.2,  diCobreMm: 122.05, d5Acero: 34629013996.544304, d5Cobre: 27082510410.80881, k: 2420 },
-  { pulgadas: 6, diAceroMm: 154.08, diCobreMm: 145.82, d5Acero: 86842306352.7535,   d5Cobre: 65930363395.281,   k: 2420 },
-  { pulgadas: 8, diAceroMm: 202.74, diCobreMm: 192.61, d5Acero: 342528892848.09534, d5Cobre: 265090495073.32846, k: 2420 },
+  // cobre desde ASTM B88 tipo L. k se mantiene igual al de 4" (2420, el
+  // único valor conocido más cercano) por no tener base para extrapolarlo —
+  // antes de usar estos tamaños en baja presión (<10 kPa) para un diseño
+  // real, confirmar k con Cristóbal.
+  { pulgadas: 5, diAceroMm: 128.2,  diCobreMm: 122.05, k: 2420 },
+  { pulgadas: 6, diAceroMm: 154.08, diCobreMm: 145.82, k: 2420 },
+  { pulgadas: 8, diAceroMm: 202.74, diCobreMm: 192.61, k: 2420 },
 ];
+
+export const TABLA_TUBERIA_RED_GAS = FILAS_TUBERIA.map((f) => ({
+  ...f, d5Acero: f.diAceroMm ** 5, d5Cobre: f.diCobreMm ** 5,
+}));
 
 export function buscarTuberiaRedGas(pulgadas) {
   const fila = TABLA_TUBERIA_RED_GAS.find((f) => f.pulgadas === pulgadas);
@@ -46,21 +58,43 @@ export function buscarTuberiaRedGas(pulgadas) {
   return fila;
 }
 
-// Pérdida de presión admisible — Bases de Cálculo!B17 = IF(B5="GLP",150,120)
+// Pérdida de presión admisible — Bases de Cálculo!B17 = IF(B5="GLP",150,120).
+// Es el límite de BAJA presión de D.S. 66 (del regulador al artefacto).
 export function perdidaAdmisiblePa(gas) {
   return gas === 'GLP' ? 150 : 120;
 }
 
-// Factor de compresibilidad Z (Peng-Robinson), evaluado siempre a 293.15 K
-// (20°C) igual que en el Excel fuente — Bases de Cálculo!N40:R41.
-export function factorZPengRobinson({ presionBarG, temperaturaCriticaK, presionCriticaBar, factorAcentrico }) {
+// Media/alta presión (AGREGADO 2026-09-25): el límite de 150/120 Pa de
+// arriba es de baja presión, y comparado contra un tramo de media presión
+// declaraba "No adecuada" cualquier tubería (mismo problema que ya se había
+// corregido en el informe de la Memoria). En media presión se usa el mismo
+// criterio de screening que Hidrógeno y Otros Gases ya aplican a la caída
+// de presión (umbral provisto por el usuario el 2026-09-08): ΔP ≤ 10 % de
+// la presión inicial ABSOLUTA. No es un valor de D.S. 66 — confirmar con
+// Cristóbal si el proyecto exige otro.
+export const FRACCION_CAIDA_ADMISIBLE_MEDIA_PRESION = 0.10;
+
+export function perdidaAdmisibleMediaPresionPa(presionInicialPa) {
+  return FRACCION_CAIDA_ADMISIBLE_MEDIA_PRESION * (presionInicialPa + P_ATMOSFERICA_PA);
+}
+
+// Factor de compresibilidad Z (Peng-Robinson truncado a Z = 1 + B − A,
+// válido a las presiones de una red de distribución) — Bases de
+// Cálculo!N40:R41.
+//
+// CORREGIDO respecto al Excel fuente (2026-09-25): el Excel evaluaba la
+// ecuación con la presión MANOMÉTRICA (M40 = B8/100000) y a 293,15 K fijos
+// sin importar la temperatura ingresada. Una ecuación de estado necesita
+// presión absoluta; ahora recibe presión absoluta y la temperatura real.
+// Con los mismos argumentos numéricos reproduce R40/R41 del Excel (la
+// fórmula no cambió, solo cómo se la alimenta).
+export function factorZPengRobinson({ presionAbsBar, temperaturaK, temperaturaCriticaK, presionCriticaBar, factorAcentrico }) {
   const R = 0.08314;
   const a = 0.45724 * ((R ** 2 * temperaturaCriticaK ** 2) / presionCriticaBar)
-    * (1 + (0.37464 + 1.54226 * factorAcentrico - 0.26992 * factorAcentrico ** 2) * (1 - Math.sqrt(293.15 / temperaturaCriticaK))) ** 2;
+    * (1 + (0.37464 + 1.54226 * factorAcentrico - 0.26992 * factorAcentrico ** 2) * (1 - Math.sqrt(temperaturaK / temperaturaCriticaK))) ** 2;
   const b = 0.0778 * (R * temperaturaCriticaK / presionCriticaBar);
-  const presionBar = presionBarG; // Bases de Cálculo!M40 = $B$8/100000, con B8 ya en Pa manométrico
-  const A = (a * presionBar) / (R ** 2 * 293.15 ** 2);
-  const B = (b * presionBar) / (R * 293.15);
+  const A = (a * presionAbsBar) / (R ** 2 * temperaturaK ** 2);
+  const B = (b * presionAbsBar) / (R * temperaturaK);
   return 1 + B - A;
 }
 
@@ -85,25 +119,40 @@ export function perdidaPresionBajaPresion({ k, diametro5, caudalM3H, densidadRel
   return ((caudalM3H / (9.65 * 10 ** -7.5 * k)) ** 2) * (densidadRelativa * longitudM) / diametro5;
 }
 
-// --- Renouard: caudal >10 kPa, dado ΔP ---
-export function caudalMediaAltaPresion({ diametroMm, presionInicialPa, perdidaPresionPa, factorSuperexp, factorCr: cr, longitudM }) {
-  // Bases de Cálculo!B20 (rama >10kPa) =
-  //   0.12426*D^2.623*((P1/1e5)^2-((P1-ΔP)/1e5)^2)*(Fs/(Cr*L))^0.541
-  const presionFinalPa = presionInicialPa - perdidaPresionPa;
-  const terminoPresion = (presionInicialPa / 100000) ** 2 - (presionFinalPa / 100000) ** 2;
-  const terminoGas = (factorSuperexp / (cr * longitudM)) ** 0.541;
-  return 0.12426 * (diametroMm ** 2.623) * terminoPresion * terminoGas;
+// --- Caudal >10 kPa, dado ΔP ---
+//   Q = 0,12426 · D^2,623 · [(P1² − P2²) · Fs / (Cr · L)]^0,541
+//   P en bar ABSOLUTOS, D en mm, L en m, Q en m³/h.
+//
+// CORREGIDO respecto al Excel fuente (2026-09-25, auditoría de coherencia
+// física). Bases de Cálculo!B20 (rama >10kPa) tenía dos errores:
+//   1. El exponente 0,541 se aplicaba solo a Fs/(Cr·L), no a todo el
+//      corchete — 2,623 = 4,848 × 0,541 muestra que el exponente es común
+//      a (P1² − P2²) y al resto, como en toda ecuación de flujo de gas de
+//      esta familia (Q ∝ ΔP^0,541, no ∝ ΔP).
+//   2. P1 y P2 entraban MANOMÉTRICAS en P1² − P2², que exige absolutas.
+// Juntos sobrestimaban la pérdida de presión entre 7 y 23 veces. Con las
+// dos correcciones, GN 3/4" 150 kW 30 m a 50 kPa man. da 1.601 Pa, contra
+// 1.602 Pa de Renouard clásico (P1²−P2² = 48600·dr·L·Q^1,82·D^-4,82) y
+// 1.625 Pa de Darcy-Weisbach isotérmico — ver tests/pipe-network.test.js.
+function terminoMediaPresion({ diametroMm, factorSuperexp, factorCr: cr, longitudM }) {
+  return { constante: 0.12426 * (diametroMm ** 2.623), terminoGas: factorSuperexp / (cr * longitudM) };
 }
 
-// --- Renouard: ΔP requerida >10kPa dado el caudal objetivo (inversión algebraica) ---
+export function caudalMediaAltaPresion({ diametroMm, presionInicialPa, perdidaPresionPa, factorSuperexp, factorCr: cr, longitudM }) {
+  const { constante, terminoGas } = terminoMediaPresion({ diametroMm, factorSuperexp, factorCr: cr, longitudM });
+  const p1Bar = (presionInicialPa + P_ATMOSFERICA_PA) / 100000;
+  const p2Bar = (presionInicialPa - perdidaPresionPa + P_ATMOSFERICA_PA) / 100000;
+  return constante * ((p1Bar ** 2 - p2Bar ** 2) * terminoGas) ** 0.541;
+}
+
+// --- ΔP requerida >10kPa dado el caudal objetivo (inversión algebraica) ---
 export function perdidaPresionMediaAltaPresion({ diametroMm, presionInicialPa, caudalM3H, factorSuperexp, factorCr: cr, longitudM }) {
-  const terminoGas = (factorSuperexp / (cr * longitudM)) ** 0.541;
-  const constante = 0.12426 * (diametroMm ** 2.623) * terminoGas;
-  const p1Bar = presionInicialPa / 100000;
-  const p2BarCuadrado = p1Bar ** 2 - caudalM3H / constante;
+  const { constante, terminoGas } = terminoMediaPresion({ diametroMm, factorSuperexp, factorCr: cr, longitudM });
+  const p1Bar = (presionInicialPa + P_ATMOSFERICA_PA) / 100000;
+  const diferenciaCuadrados = (caudalM3H / constante) ** (1 / 0.541) / terminoGas;
+  const p2BarCuadrado = p1Bar ** 2 - diferenciaCuadrados;
   if (p2BarCuadrado < 0) {
     throw new Error('El caudal objetivo excede lo que este diámetro puede entregar a la presión inicial dada.');
   }
-  const p2Bar = Math.sqrt(p2BarCuadrado);
-  return presionInicialPa - p2Bar * 100000;
+  return (p1Bar - Math.sqrt(p2BarCuadrado)) * 100000;
 }

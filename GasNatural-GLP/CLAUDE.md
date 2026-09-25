@@ -84,9 +84,10 @@ todas literales de `Bases de Cálculo!I3:N13`. Se agregaron 4 filas más
 B36.10 Schedule 40, DI de cobre desde ASTM B88 tipo L — normas publicadas
 que, verificado, coinciden con las 11 filas del Excel dentro de ~0.5%
 (confirma que esas 11 filas ya seguían esas mismas normas). Para las filas
-nuevas, `d5 = DI^5` calculado directo — a diferencia de las filas del
-Excel, donde `d5` viene de otra tabla de referencia que el Excel no expone
-y por eso NO es exactamente DI^5 (ver comentario en el archivo). El factor
+nuevas, `d5 = DI^5` calculado directo. **Desde el 2026-09-25 `d5 = DI^5`
+en todas las filas** (antes las filas de acero de 3/8" a 2-1/2" traían el
+`d5` literal del Excel, que no era DI^5) y la fila de 1/4" se corrigió —
+ver "Auditoría de coherencia física" más abajo. El factor
 `k` de las 3 filas nuevas se dejó igual al de 4" (2420, el mayor conocido)
 por no tener base para extrapolarlo — antes de diseñar en baja presión con
 esos tamaños, confirmar `k` con Cristóbal.
@@ -504,7 +505,8 @@ pidiera revisarlas — antes de esto quedaban solo documentadas, sin tocar
 el comportamiento:
 
 - **GN: carbono/hidrógeno ya no mezcla fracción molar con fracción de
-  masa.** `Combustión Gas!F36` (X carbono de GN) ponderaba el término de
+  masa.** *(Reemplazada el 2026-09-25: la base correcta es la MOLAR, no la
+  de masa — ver "Auditoría de coherencia física" más abajo.)* `Combustión Gas!F36` (X carbono de GN) ponderaba el término de
   carbono con fracciones de MASA pero el de hidrógeno con PORCENTAJES
   MOLARES de entrada — no correspondía a ninguna magnitud física
   coherente. `js/gas-gn.js` ahora pondera los dos términos con fracción de
@@ -572,13 +574,148 @@ verificadas con la regresión completa (`node GasNatural-GLP/tests/run-all.js`):
   propano): `qKw` pasó de 66.84853724682291 a 58.29596160247766,
   `qMcalH` de 57.493127738678986 a 50.13747951859133 (~13% más bajo).
 
+## Auditoría de coherencia física (2026-09-25, a pedido del usuario)
+
+Revisión de los resultados contra cálculos independientes (Darcy-Weisbach
+isotérmico, Renouard clásico, cálculo directo de O₂ estequiométrico,
+entalpías de combustión NIST, Lee-Kesler contra NIST WebBook). Se
+revisaron también las celdas del Excel fuente para confirmar cada caso.
+Verificado con `node GasNatural-GLP/tests/run-all.js` y en navegador.
+
+**Red de Gas — media/alta presión (`pipe-network.js`)**. La fórmula de
+`Bases de Cálculo!B20` tenía dos errores: el exponente 0,541 afectaba solo
+a `Fs/(Cr·L)` y no a `(P1² − P2²)` (2,623 = 4,848 × 0,541 muestra que es
+común a todo el corchete), y P1/P2 entraban manométricas en `P1² − P2²`.
+Juntos sobrestimaban la caída entre 7 y 23 veces (GN 3/4", 150 kW, 30 m,
+50 kPa man.: 26.368 Pa contra 1.602 de Renouard clásico y 1.625 de Darcy).
+Ahora `Q = 0,12426·D^2,623·[(P1²−P2²)·Fs/(Cr·L)]^0,541` con P absolutas —
+el test compara contra Renouard clásico (±5 %) y Darcy (±10 %). El test
+anterior de "autoconsistencia algebraica" no podía detectarlo: invertir
+una fórmula equivocada devuelve el mismo ΔP igual.
+
+**Red de Gas — `d5` y fila de 1/4"**. `d5` del Excel no era DI^5 en acero
+de 3/8" a 2-1/2" (equivalía a un diámetro 5-10 % menor), así que baja
+presión (usa `d5`) y media (usa DI) calculaban la misma tubería con dos
+diámetros. Con `d5 = DI^5` la fórmula de Pole del Excel reproduce a
+Renouard clásico de baja presión (ΔP[mbar] = 23200·dr·L[m]·Q^1,82·D^-4,82)
+al 0,02 %. La fila de 1/4" (10,4 mm en acero y cobre) pasó a Sch 40
+9,25 mm / cobre tipo L 8,00 mm.
+
+**Red de Gas — propiedades desde la composición**. Los valores fijos del
+Excel (GLP: PC 119,7 MJ/m³ y densidad relativa 2, que son de butano casi
+puro; dos densidades relativas distintas por gas) se reemplazaron por
+propiedades derivadas de la composición (`propiedadesGLP`/`propiedadesGN`):
+PCS por m³ a 15 °C y 1 atm (la base con la que el Excel fijó sus valores:
+GN por defecto da 37,47 contra 37,54; butano puro 120,8 contra 119,7),
+densidad relativa = PM/28,9647 y pseudocríticas de Kay para
+Peng-Robinson (con 50/50 reproducen `J40:L40`). La viscosidad sigue fija
+por gas. Red de Gas tiene ahora su bloque de composición (guardado por gas
+en `red-gas-composicion-GLP/GN`) y la Memoria guarda la composición de la
+red en `proyecto.composicion[gas]` (se exporta con el proyecto; un
+proyecto anterior sin composición usa la del módulo por defecto,
+`COMPOSICION_POR_DEFECTO` en `calc-red-gas.js`). El informe muestra la
+composición en "Tipo de red". Con GLP 70/30 el caudal sube ~17 % respecto
+del valor "butano" del Excel.
+
+**Red de Gas — Z, velocidad y criterio de media presión**.
+- Peng-Robinson se evalúa con presión ABSOLUTA y la temperatura ingresada
+  (el Excel usaba la manométrica y 293,15 K fijos).
+- La velocidad es la REAL al final del tramo (caudal estándar llevado a
+  P y T del gas, D.S. 66 f.5 — ver más abajo; en una primera versión de
+  este mismo día incluía también Z); antes se dividía el caudal a 1 atm por el área, y en
+  media presión eso la sobrestimaba ~2,5 veces a 150 kPa man. La Memoria
+  compara esta velocidad contra sus criterios.
+- En media presión "Tubería adecuada" usa ΔP ≤ 10 % de la presión inicial
+  absoluta (el mismo umbral de screening que el usuario fijó en Hidrógeno
+  el 2026-09-08), no los 150/120 Pa de baja presión de D.S. 66, que
+  declaraban inadecuada cualquier tubería de media. **No es un valor de
+  D.S. 66**: confirmar con Cristóbal si el proyecto exige otro.
+- GLP: aviso de condensación. Presión de rocío de la mezcla por Raoult con
+  presión de vapor de Lee-Kesler (propano 8,41 / butano 2,08 bar a 20 °C,
+  NIST 8,36 / 2,08). 70/30 condensa sobre 4,40 bar abs a 20 °C y 2,27 a
+  0 °C. Tile crítico en Red de Gas; en la Memoria, aviso en pantalla y un
+  criterio "Sin condensación del GLP" en la sección 5 del informe (no marca
+  ▲ en la tabla: esas marcas son de velocidad y pérdida).
+
+**Combustión — PCI del metano**. `Combustión Gas!B13` (PCI metano) = 55050
+y `B14` (PCS) = 55053: el PCI quedó igual al PCS. PCI real 50.010 kJ/kg
+(802,3 kJ/mol), PCS 55.510. PCI del GN por defecto: 52.737 → 48.021 kJ/kg
+(−9 % de flujo de combustible y de aire con el valor anterior). Coincide
+con el `48029` que el Excel tenía en `J4`. Los pares PCI/PCS de los cuatro
+hidrocarburos se validan en el test por el calor de condensación del agua.
+
+**Combustión — fracciones elementales en base molar** (GN y GLP). La
+corrección del 2026-09-01 pasó C/H/O/N a fracción de masa; la masa de
+cada elemento por mol de mezcla se pondera con fracción MOLAR. Aire
+estequiométrico del GN por defecto 12,10 → 12,76 Nm³/kg (idéntico al
+cálculo directo por O₂ requerido); en GLP el efecto es ~0,1 %.
+
+**Combustión — caudal total de referencia**: sumaba aire en Nm³/h con
+combustible en m³/h a la T/P de referencia; ahora el aire también se
+convierte (`corregirCaudalTP`, que existía y no se usaba). El PCI por
+defecto de GLP pasó de 48029 (ni el PCI ni el PCS de su composición) al
+derivado de la composición, igual que ya se hacía con GN.
+
+**Quemador — largo de llama**. La correlación de Roper (Turns ec. 9.59,
+`1330·Q·(T∞/T_F)/ln(1+1/S)`) usa el caudal del fluido que sale por la
+perforación — la premezcla gas + aire primario — y S ya estaba definido
+por mol de premezcla. Con solo el caudal de gas el largo salía ~13 veces
+menor (GLP por defecto: 1,4 mm en una perforación de 2 mm). Ahora 17,6 mm
+(GLP) y 19,9 mm (caso GN del Excel). Además, `desviacionPotenciaInyector`:
+si el inyector (calculado por geometría y presión) entrega más de ±10 %
+distinto de la potencia del quemador, el tile se marca y se explica — con
+los valores por defecto (los del Excel) entrega 4,8 kW para 25 kW; con un
+inyector de 2,75 mm el aviso desaparece.
+
+**Contraste con las fórmulas del D.S. 66 (sección e, provistas por el
+usuario el 2026-09-25)**. f.1–f.5 implementadas literalmente en un script
+aparte dan la misma ΔP que el motor (<0,2 %, por el redondeo de las
+constantes del decreto: 2,68 vs 9,65/3,6, 1,013 bar vs 101.325 Pa). El
+decreto confirma las correcciones de arriba: f.3 lleva el exponente 0,541
+sobre todo el corchete con p1/p2 ABSOLUTAS; en f.1 D es el diámetro
+interior (d5 = DI^5); el caudal es m³S a 15 °C y 1,013 bar (base del
+PCS); una sola densidad relativa S; viscosidad 0,012/0,008 cP. Ajustes:
+- **Velocidad = f.5 literal**, `V = 1,25·Q·T/(p2·D²)` (`velocidadDS66()`
+  en `calc-red-gas.js`): real, a la presión absoluta final, sin Z (antes la
+  app incluía Z — en GLP de media presión daba ~6 % menos que el decreto).
+- **Variación de presión con la altura, e.2** (`variacionPresionAlturaPa()`):
+  Δph = 12·(1 − d)·h. Campo "Desnivel del tramo [m]" en Red de Gas y
+  columna "Desnivel [m]" en la Memoria (cota final − inicial, positivo si
+  sube). El GLP pierde presión al subir (70/30: −80 Pa cada 10 m), el GN
+  gana (+51 Pa cada 10 m). Entra en `perdidaPresionTotalPa` = fricción −
+  Δph, que es lo que se compara con la admisible, lo que se acumula en la
+  Memoria (columna renombrada "Pérdida del tramo", marca "h" en el
+  informe) y lo que descuenta la presión final. `perdidaPresionRequeridaPa`
+  sigue siendo solo la fricción. Se aplica con cualquier desnivel
+  ingresado; `alturaObligatoriaDS66` indica si supera los 10 m desde los
+  que el decreto la exige. Para GLP se muestra la nota del decreto (se
+  puede despreciar si se compensa con el regulador, hasta 3,24 kPa).
+- **Cr con T = °C + 273**, no el "+278" del texto del decreto: lo define
+  como temperatura absoluta en K, casi seguro un error de tipeo (con 278
+  la ΔP de media presión subiría ~1,8 %).
+- **Pendiente — Tabla VI y Tabla IX**. El decreto toma d y PCS "según
+  Tabla VI" y K "según Tabla IX"; no están en el repo. d y PCS salen hoy
+  de la composición (GN por defecto: 37,47 vs 37,54 fijos del Excel; GLP
+  70/30: 101,95 vs 119,7). Si la Tabla VI trae valores fijos por gas
+  (probablemente los del Excel), para cumplir el decreto la app debería
+  usarlos, al menos por defecto. Los K de 1/8" a 4" son los del Excel;
+  los de 5"–8" (2420) están supuestos.
+
+**Revisado y dejado igual**: la tabla de consumo de estufas a 10 °C
+(medio/alto = 3,5 kWh/día, rompe el patrón 3× y 4× del nivel bajo) es
+literal del Excel (`Bases de Cálculo!K28:K29`) y no hay fuente para un
+valor "correcto" — confirmar con Cristóbal.
+
 ## Discrepancias del Excel fuente que se dejaron como estaban
 
 No todo lo que se ve distinto entre GLP y GN es un error — estas dos
 quedaron así a propósito, porque no hay manera de saber cuál (si alguna)
 está "mal" sin más contexto del Excel original:
 
-- **Dos "densidades relativas" distintas para el mismo gas**:
+- *(Resuelta el 2026-09-25: Red de Gas ahora deriva UNA densidad relativa
+  de la composición — ver "Auditoría de coherencia física". Se conserva el
+  texto original como registro.)* **Dos "densidades relativas" distintas
+  para el mismo gas**:
   `Bases de Cálculo!B18` usa GLP=2 / GN=0.59 en la fórmula de caudal de
   baja presión, mientras que la tabla `Combustión Gas!I44:K47` usa
   GLP=1.81 / GN=0.62 para el factor Cr de la rama de alta presión. Son dos
@@ -616,7 +753,10 @@ node GasNatural-GLP/tests/run-all.js
 La rama de Red de Gas para GLP/GN no tiene caso cacheado en el Excel
 (`Bases de Cálculo!B5` es un selector, el archivo quedó guardado en modo
 H2) — sus tests verifican autoconsistencia algebraica (invertir el caudal
-calculado debe devolver el `ΔP` de entrada) más el caso H2 sí cacheado
-(misma fórmula, gas-agnóstica). El resto de los motores (cilindros,
+calculado debe devolver el `ΔP` de entrada), el caso H2 sí cacheado de
+baja presión (misma fórmula, gas-agnóstica) y, desde el 2026-09-25, dos
+referencias independientes: Renouard clásico (baja y media presión) y
+Darcy-Weisbach isotérmico (media presión). La autoconsistencia sola no
+detecta una fórmula mal escrita (ver "Auditoría de coherencia física"). El resto de los motores (cilindros,
 estanque, combustión GLP/GN, quemador GLP/GN) sí tienen valores cacheados
 reales del Excel como fixtures, independientes del selector de gas.

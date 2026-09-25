@@ -47,6 +47,25 @@ const comoGLP = calcularRedMemoria([tramoBase], 'GLP');
 const comoGN = calcularRedMemoria([tramoBase], 'GN');
 assert.notEqual(comoGLP[0].caudalObjetivoM3H, comoGN[0].caudalObjetivoM3H);
 
+// La composición también es de toda la red (2026-09-25): tercer parámetro,
+// que llega a cada tramo. Sin ella se usa la composición por defecto.
+const comoButano = calcularRedMemoria([tramoBase], 'GLP', { pctButano: 1, pctPropano: 0 });
+assert.ok(comoButano[0].caudalObjetivoM3H < comoGLP[0].caudalObjetivoM3H);
+const comoDefecto = calcularRedMemoria([tramoBase], 'GLP', { pctButano: 0.3, pctPropano: 0.7 });
+cerca(comoDefecto[0].caudalObjetivoM3H, comoGLP[0].caudalObjetivoM3H);
+
+// La acumulada suma la pérdida TOTAL de cada tramo (fricción + variación
+// por altura, D.S. 66 e.2 — 2026-09-25): un montante de GLP que sube 12 m
+// suma su pérdida por altura a todo lo que sigue aguas abajo.
+const conMontante = calcularRedMemoria([
+  { ...tramoBase, id: 'M', nombre: 'Montante', desnivelM: 12 },
+  { ...tramoBase, id: 'N', nombre: 'Piso', continuaDesdeId: 'M' },
+], 'GLP');
+const [montante, piso] = conMontante;
+assert.ok(montante.variacionPresionAlturaPa < 0);
+cerca(montante.perdidaAcumuladaPa, montante.perdidaPresionRequeridaPa - montante.variacionPresionAlturaPa);
+cerca(piso.perdidaAcumuladaPa, piso.perdidaPresionTotalPa + montante.perdidaAcumuladaPa);
+
 // Diámetro manual por tramo — mismo criterio que Red de Gas de un solo tramo
 const tramoManual = [{ id: 'M', nombre: 'M', continuaDesdeId: null, regimenPresion: '<10 kPa', pulgadas: 'manual', tuberiaManual: { diametroMm: 15.8, k: 1800 }, potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15 }];
 const resultadoManual = calcularRedMemoria(tramoManual, 'GLP');

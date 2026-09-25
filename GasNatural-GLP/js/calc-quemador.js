@@ -78,8 +78,26 @@ export function calcularQuemador(inputs) {
   // caudalPremezcla1Nm3S (unas líneas más arriba en este archivo) ya usan
   // bien. Subestimaba el largo de llama en ~2x — ver GasNatural-GLP/CLAUDE.md.
   const caudalGasPorPerforacionM3S = (flujoCombustibleKgS * gasProps.r * (temperaturaGasC + 273.15) / 101.325) / cantidadPerforaciones;
-  const largoLlamaMm = 1330 * caudalGasPorPerforacionM3S * (temperaturaAmbienteC + 273.15) / (temperaturaGasC + 273.15)
+  // Largo de llama — correlación de Roper para boquilla circular (Turns,
+  // "An Introduction to Combustion", ec. 9.59: L = 1330·Q·(T∞/T_F)/ln(1+1/S)).
+  // CORREGIDO 2026-09-25 (auditoría de coherencia física): Q es el caudal
+  // del fluido que SALE por la boquilla — en un quemador atmosférico, la
+  // premezcla gas + aire primario, no solo el gas. S (racMolarEstequiometrica)
+  // ya estaba definido por mol de premezcla, así que usar solo el caudal de
+  // gas mezclaba dos bases y subestimaba el largo ~13 veces con los valores
+  // por defecto de GLP (1,4 mm, físicamente implausible para una
+  // perforación de 2 mm). Premezcla por perforación llevada de 0 °C a la
+  // temperatura del gas, a 1 atm.
+  const caudalPremezclaPorPerforacionM3S = caudalPerforacionPremezcla1Nm3S * (temperaturaGasC + 273.15) / 273.15;
+  const largoLlamaMm = 1330 * caudalPremezclaPorPerforacionM3S * (temperaturaAmbienteC + 273.15) / (temperaturaGasC + 273.15)
     / Math.log(1 + 1 / racMolarEstequiometrica) * 1000;
+
+  // Coherencia inyector ↔ quemador (AGREGADO 2026-09-25): el inyector se
+  // calcula por su propia geometría y presión (1658,5·Cd·A·√(h/d)), sin
+  // mirar la potencia del quemador — con los valores por defecto de GLP
+  // entrega 4,8 kW para un quemador de 25 kW, sin ningún aviso. Se informa
+  // la desviación relativa para que la UI la marque.
+  const desviacionPotenciaInyector = potenciaKw > 0 ? (potenciaInyectorKw - potenciaKw) / potenciaKw : null;
 
   // Garganta Venturi — Diseño Quemador Atmosférico!D38 / H38 (ver nota arriba).
   // Usa su propia cantidad de perforaciones (H37=420), distinta de las
@@ -93,7 +111,7 @@ export function calcularQuemador(inputs) {
     flujoCombustibleKgS, molesGas, molesAirePremezcla1, fraccionMolarGas, fraccionMolarAire1,
     racEstequiometricaMasica, flujoAirePremezcla1KgS, pmPremezcla1, densidadPremezcla1,
     flujoPremezcla1KgS, caudalPremezcla1Nm3S, caudalPerforacionPremezcla1Nm3S,
-    racMolarEstequiometrica, caudalGasPorPerforacionM3S, largoLlamaMm,
-    relacionAreaGargantaPerforaciones,
+    racMolarEstequiometrica, caudalGasPorPerforacionM3S, caudalPremezclaPorPerforacionM3S, largoLlamaMm,
+    relacionAreaGargantaPerforaciones, desviacionPotenciaInyector,
   };
 }

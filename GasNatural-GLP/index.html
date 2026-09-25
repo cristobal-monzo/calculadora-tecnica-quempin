@@ -119,8 +119,16 @@
               <label for="rg-temperatura">Temperatura [°C]</label>
               <input id="rg-temperatura" type="text" inputmode="decimal" value="15" required>
             </div>
+            <div class="campo">
+              <label for="rg-desnivel" title="Cota final menos cota inicial del tramo (positivo si sube). D.S. 66 e.2: obligatorio considerarlo si los artefactos están más de 10 m sobre el punto de abastecimiento.">Desnivel del tramo [m]</label>
+              <input id="rg-desnivel" type="text" inputmode="decimal" value="0">
+            </div>
           </div>
         </div>
+
+        <!-- Composición del gas (2026-09-25): densidad relativa, poder
+             calorífico y Z salen de acá — ver calc-red-gas.js. -->
+        <div class="seccion" id="red-gas-campos-composicion"></div>
       </form>
       <div class="calc-resultados">
         <div class="resultados-encabezado">
@@ -153,7 +161,7 @@
         </div>
         <div class="campo" id="campo-pci">
           <label for="cb-pci">Poder calorífico [kJ/kg]</label>
-          <input id="cb-pci" type="text" inputmode="decimal" value="48029" required>
+          <input id="cb-pci" type="text" inputmode="decimal" value="45989.85" required>
         </div>
         <div class="campo">
           <label for="cb-presion-ref">Presión de referencia</label>
@@ -297,6 +305,11 @@
       </div>
 
       <div id="memoria-error" class="resultado-tile alerta no-imprimir" style="display:none;"></div>
+      <div id="memoria-aviso-condensacion" class="resultado-tile critico no-imprimir" style="display:none;"></div>
+
+      <!-- Composición del gas de toda la red (2026-09-25): igual que el
+           combustible, es un dato de la red y no de cada tramo. -->
+      <div class="seccion no-imprimir" id="memoria-campos-composicion"></div>
 
       <h3 class="seccion-titulo no-imprimir">Diagrama de la red</h3>
       <div class="arbol-contenedor no-imprimir"><svg id="memoria-arbol" width="100%" height="220" role="img" aria-label="Diagrama de la red de tramos"></svg></div>
@@ -315,9 +328,10 @@
               <th>Longitud [m]</th>
               <th>Presión inicial <select id="memoria-presion-inicial-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión inicial"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
               <th>Temp. [°C]</th>
+              <th title="Cota final menos cota inicial del tramo (positivo si sube) — D.S. 66 e.2">Desnivel [m]</th>
               <th class="col-calculada">Caudal objetivo [m³/h]</th>
               <th class="col-calculada">Velocidad [m/s]</th>
-              <th class="col-calculada">Pérdida requerida <select id="memoria-perdida-requerida-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida requerida"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th class="col-calculada" title="Fricción (Renouard) más la variación de presión por altura (D.S. 66 e.2)">Pérdida del tramo <select id="memoria-perdida-requerida-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida del tramo"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
               <th class="col-calculada">Pérdida acumulada <select id="memoria-perdida-acumulada-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida acumulada"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
               <th class="col-calculada">Presión final <select id="memoria-presion-final-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión final"><option value="Pa" selected>Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
               <th><span class="visualmente-oculto">Acciones</span></th>
