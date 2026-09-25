@@ -418,65 +418,78 @@
             <div><strong>Dirección:</strong> Carlos Fernando 983, Viña del Mar, Chile</div>
           </div>
           <div class="informe-doc">
-            <div><strong>N°. Doc.:</strong> <span id="informe-doc-num"></span></div>
-            <div><strong>Revisión:</strong> <span id="informe-doc-rev"></span></div>
-            <div><strong>Página:</strong> 1 de 1</div>
+            <div><strong>N° Doc.</strong> <span id="informe-doc-num"></span></div>
+            <div><strong>Revisión</strong> <span id="informe-doc-rev"></span></div>
+            <div><strong>Página</strong> 1 de 1</div>
           </div>
         </header>
 
         <h2 class="informe-titulo">MEMORIA DE CÁLCULO<span id="informe-subtitulo"></span></h2>
 
-        <table class="informe-datos">
-          <tr><th>Fecha</th><td id="informe-fecha"></td><th>Proyecto</th><td id="informe-proyecto"></td></tr>
-          <tr><th>Instalador</th><td id="informe-instalador"></td><th>Dirección</th><td id="informe-direccion"></td></tr>
-          <tr><th>Contacto</th><td id="informe-contacto"></td><th>Comuna</th><td id="informe-comuna"></td></tr>
-        </table>
+        <h3 class="informe-eyebrow"><span class="informe-num">1</span>Datos del proyecto</h3>
+        <div class="informe-ficha">
+          <div class="informe-campo"><span class="informe-campo-label">Proyecto</span><span class="informe-campo-valor" id="informe-proyecto"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Dirección</span><span class="informe-campo-valor" id="informe-direccion"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Comuna</span><span class="informe-campo-valor" id="informe-comuna"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Fecha</span><span class="informe-campo-valor" id="informe-fecha"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Instalador</span><span class="informe-campo-valor" id="informe-instalador"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Contacto</span><span class="informe-campo-valor" id="informe-contacto"></span></div>
+        </div>
 
-        <table class="informe-criterios">
-          <tr><th>Tipo de red</th><td id="informe-tipo-red"></td></tr>
-          <tr><th>Velocidad máxima flujo de gas</th><td id="informe-vel-max-flujo"></td></tr>
-          <tr><th>Velocidad de erosión</th><td id="informe-vel-erosion"></td></tr>
-          <tr><th>Máxima pérdida de carga acumulada</th><td id="informe-perdida-max"></td></tr>
-        </table>
+        <h3 class="informe-eyebrow"><span class="informe-num">2</span>Criterios de diseño</h3>
+        <div class="informe-ficha informe-ficha-4">
+          <div class="informe-campo"><span class="informe-campo-label">Tipo de red</span><span class="informe-campo-valor" id="informe-tipo-red"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Velocidad máx. de flujo</span><span class="informe-campo-valor" id="informe-vel-max-flujo"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Velocidad de erosión</span><span class="informe-campo-valor" id="informe-vel-erosion"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Pérdida de carga acum. máx.</span><span class="informe-campo-valor" id="informe-perdida-max"></span></div>
+        </div>
 
+        <h3 class="informe-eyebrow"><span class="informe-num">3</span>Demanda de potencia</h3>
         <table class="informe-artefactos">
-          <caption>Artefactos</caption>
+          <thead><tr><th>Artefacto</th><th>Potencia térmica<span class="informe-unidad">kW</span></th></tr></thead>
           <tbody id="informe-artefactos-cuerpo"></tbody>
           <tfoot>
-            <tr><th>Total</th><td id="informe-artefactos-total"></td></tr>
-            <tr><td colspan="2" class="informe-nota">No se considera operación simultánea</td></tr>
-            <tr><th>Potencia instalada</th><td id="informe-potencia-instalada"></td></tr>
+            <tr><th>Potencia instalada <span class="informe-nota">— no se considera operación simultánea</span></th><td id="informe-potencia-instalada"></td></tr>
           </tfoot>
         </table>
 
+        <h3 class="informe-eyebrow"><span class="informe-num">4</span>Detalle de tramos</h3>
         <table id="memoria-tabla-impresion">
-          <caption>Detalle de tramos</caption>
           <thead>
             <tr>
               <th>Tramo</th><th>Continúa desde</th>
-              <th id="memoria-impresion-th-presion">Presión inicial [Pa]</th>
-              <th>Longitud [m]</th><th>Potencia [kW]</th><th>Diámetro</th><th>Material</th>
-              <th id="memoria-impresion-th-parcial">P. Requerida [Pa]</th>
-              <th id="memoria-impresion-th-perdida">P. Acumulada [Pa]</th>
-              <th>V. flujo [m/s]</th>
+              <th id="memoria-impresion-th-presion"></th>
+              <th>Longitud<span class="informe-unidad">m</span></th>
+              <th>Potencia<span class="informe-unidad">kW</span></th>
+              <th>Diámetro</th><th>Material</th>
+              <th id="memoria-impresion-th-parcial"></th>
+              <th id="memoria-impresion-th-perdida"></th>
+              <th>Velocidad<span class="informe-unidad">m/s</span></th>
             </tr>
           </thead>
           <tbody id="memoria-tabla-impresion-cuerpo"></tbody>
         </table>
+        <p class="informe-leyenda" id="informe-leyenda-tramos"></p>
 
-        <table class="informe-resumen">
-          <tr><th>Pérdida acumulada máxima</th><td id="informe-perdida-acum-max"></td></tr>
-          <tr><th>Velocidad máxima de flujo</th><td id="informe-vel-flujo-max"></td></tr>
+        <h3 class="informe-eyebrow"><span class="informe-num">5</span>Verificación de criterios de diseño</h3>
+        <table class="informe-verificacion">
+          <thead><tr><th>Criterio</th><th>Límite</th><th>Máximo calculado</th><th>Tramo crítico</th><th>Resultado</th></tr></thead>
+          <tbody id="informe-verificacion-cuerpo"></tbody>
         </table>
+        <p class="informe-conclusion" id="informe-conclusion"></p>
 
-        <div class="informe-observaciones"><strong>OBS:</strong> <span id="informe-observaciones"></span></div>
+        <h3 class="informe-eyebrow"><span class="informe-num">6</span>Observaciones</h3>
+        <div class="informe-observaciones"><span id="informe-observaciones"></span></div>
 
         <div class="informe-firma">
+          <div class="informe-firma-etiqueta">Firma</div>
           <div class="informe-firma-linea"></div>
           <div id="informe-firma-nombre"></div>
           <div id="informe-firma-cargo"></div>
           <div id="informe-firma-run"></div>
         </div>
+
+        <footer class="informe-footer">QUEMPIN — RUT 76.772.215-k — Memoria de Cálculo, <span id="informe-footer-red"></span> — Doc. <span id="informe-footer-doc"></span></footer>
       </div>
     </section>
   </main>

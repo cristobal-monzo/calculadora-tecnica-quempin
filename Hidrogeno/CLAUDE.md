@@ -632,6 +632,80 @@ a `''` para no dejar la vista en pantalla achicada. Sin piso mínimo de
 escala a propósito — la instrucción es "siempre", no "salvo que haya
 demasiados tramos". Verificado con 20 tramos (bastante más de lo que el
 caso de uso típico necesita): factor ~0.76, cabe cómodo dentro de una A4.
+**Corregido el 2026-09-25**: igual salían 2 páginas — ver la sección
+siguiente (padding inferior de pantalla).
+
+## Informe legible: verificación de criterios y notación técnica (`index.html`/`ui.js`/`css/styles.css`, 2026-09-25, a pedido del usuario)
+
+Pedido: revisar visualmente el informe "con perspectiva de ingeniero de gas
+y de diseñador de documentos senior" para que se lea claro y conciso.
+Revisado sobre PDFs reales (`page.pdf()` de Chromium, A4, "Gráficos de
+fondo" desactivado como viene por defecto) con una red de 4 tramos con
+regulador. Mismo cambio en `GasNatural-GLP` (ver su `CLAUDE.md`). No toca
+motores de cálculo; `node Hidrogeno/tests/run-all.js` sigue en verde.
+
+- **Sección 5 "Verificación de criterios de diseño"** (reemplaza las 2
+  tarjetas de "Resumen de resultados"): el informe declaraba los límites
+  (sección 2) y mostraba los máximos, pero nunca decía si la red cumple —
+  con 20 m/s de límite y 52,25 m/s calculados, no había ninguna señal. Ahora
+  una fila por criterio definido (Criterio | Límite | Máximo calculado |
+  Tramo crítico | Resultado "Cumple"/"No cumple · N de M tramos"/"No
+  evaluado") y una conclusión de una línea con barra verde/roja.
+  "Velocidad de erosión" solo aparece si tiene valor (compara la misma
+  velocidad de flujo). `evaluarCriterio()`/`filaVerificacion()`/
+  `textoConclusion()` en `ui.js`.
+- **Valores fuera de límite marcados en la tabla de tramos** (`▲` + rojo +
+  negrita, `.informe-excede`) con leyenda al pie — el estado se lee por
+  forma, no solo por color (fotocopia en B/N).
+- **Unidades con su caja real**: el `text-transform: uppercase` de las
+  cabeceras convertía "MPa"/"mbar"/"m/s"/"kW" en "MPA"/"MBAR"/"M/S"/"KW" (en
+  SI la caja es parte del símbolo: m = mili, M = mega). La unidad va en su
+  propia línea (`thConUnidad()`, `.informe-unidad`).
+- **Notación SI en los valores**: "20 m/s", no "20 [m/s]" (los corchetes
+  quedan para rotular). Un criterio sin valor dice "No definida" en vez
+  de "- [m/s]" — revierte a propósito la decisión del 2026-09-03 de
+  copiar el guion del documento de ejemplo: en papel se leía como un dato
+  faltante por error.
+- **Criterio y resultado en la misma unidad**: la pérdida máxima se
+  ingresa en Pa pero se imprime en la unidad de la columna "ΔP acumulada"
+  (antes "5.000 [Pa]" arriba vs. "273,86 [mbar]" abajo).
+- **Presión manométrica explícita**: "Presión man." — el motor la trata
+  como manométrica (`calc-memoria.js`), y en H₂ la diferencia con absoluta
+  es de 1 bar. "P. Parcial"/"P. Acumulada" pasan a "ΔP tramo"/"ΔP
+  acumulada" ("P." se leía también como "presión").
+- **Reinicio de acumulada como marca "R"** junto al nombre del tramo, con
+  leyenda, en vez de "(reinicia acumulada)" dentro de la celda — ese texto
+  ensanchaba la tabla ~20px más allá del margen derecho de la hoja.
+  "— raíz —" (jerga de la app) pasa a "Inicio de red".
+- **Secciones numeradas** (1 a 6, número en naranja de marca, título en
+  negro — antes gris de 8,5px, indistinguible de una etiqueta de campo):
+  permite citar "ver 4" al revisar.
+- **Demanda de potencia** como tabla con cabecera (Artefacto | Potencia
+  térmica kW), números a la derecha y **una sola fila de total**: "Total" y
+  "Potencia instalada" repetían el mismo número (sin simultaneidad son
+  iguales). La nota de no simultaneidad va en la misma fila.
+- **Más compacto**: Datos del proyecto en 3 columnas (qué/dónde, cuándo/
+  quién) y Criterios en 4 — 3 filas menos. Con la red de ejemplo de 4
+  tramos, el informe entra en 1 hoja **a zoom 1** (antes lo reducía
+  `ajustarEscalaImpresion()`). Pie con "Doc. N°, Rev." (el documento se
+  identifica también abajo); "N°. Doc.:" pasa a "N° Doc.".
+- **Paleta fija en papel**: `#memoria-informe-impresion` redefine
+  `--gridline`/`--brand-gray-*`/`--estado-*` en `@media print`. En tema
+  oscuro `--gridline` vale `#2c2c2a`, así que imprimir con la app en "Modo
+  oscuro" dejaba todos los filetes casi negros (medido: `rgb(44,44,42)` →
+  ahora `rgb(225,224,217)` en ambos temas).
+- **`print-color-adjust: exact`**: Chrome no imprime fondos por defecto, y
+  sin esto se perdían la cebra, el tinte de cabecera, el cajetín de N° Doc
+  y los recuadros de estado. Verificado con `printBackground: false`.
+- **Fin de la 2ª hoja en blanco**: `main` (60px) y `.viz-root` (48px)
+  conservaban su padding inferior en papel, así que el PDF salía **siempre**
+  con 2 páginas, a cualquier zoom (medido con 1; 0,97; 0,94; 0,9) — y a
+  veces el pie del informe caía en la 2ª. `main, .viz-root {
+  padding-bottom: 0 }` en `@media print`. Con 20 tramos: zoom 0,77, 1 hoja.
+
+Verde de "Cumple" y rojo de "No cumple": los mismos `--estado-ok`
+(`#2e7d32`) y `--estado-critico` (`#c62828`) ya extrapolados para los
+tiles (ver "Rojo de estado crítico" arriba) — sin colores nuevos.
 
 ## Fix de foco al escribir en la Memoria de Cálculo (`ui.js`, 2026-09-08, a pedido del usuario)
 

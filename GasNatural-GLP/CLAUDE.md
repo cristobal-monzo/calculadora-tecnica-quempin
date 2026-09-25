@@ -326,7 +326,7 @@ completo, acá solo lo específico de este módulo):
   campos, tabla reglada, tarjetas de métrica, cajetín de N° Doc con
   borde) — su informe sigue en el estado del port original
   (`2cec801`). Si se quiere emparejar visualmente con Hidrógeno, es un
-  trabajo aparte.
+  trabajo aparte. **Hecho el 2026-09-25**, ver "Informe legible" más abajo.
 - **Más espacio para la firma manuscrita**: como este módulo no tiene la
   etiqueta "FIRMA" que sí tiene Hidrógeno (tampoco portada), el espacio se
   agregó como `margin-top: 46px` en `.informe-firma-linea` directamente
@@ -350,6 +350,45 @@ completo): `ajustarEscalaImpresion()`, enganchada a `beforeprint`/
 print` aplicado y lo reduce con `zoom` (no `transform: scale()`, que no
 reduce el alto de layout de la caja) si no entra en una A4 con márgenes
 de 14mm. Sin piso mínimo de escala — la instrucción es "siempre".
+**Corregido el 2026-09-25**: igual salían 2 páginas por el padding
+inferior de pantalla — ver "Informe legible" más abajo.
+
+## Informe legible: verificación de criterios y notación técnica (`index.html`/`ui.js`/`css/styles.css`, 2026-09-25, a pedido del usuario)
+
+Mismo cambio que `Hidrogeno` (ver su `CLAUDE.md` para el detalle y el
+porqué de cada punto: sección de verificación con Cumple/No cumple y tramo
+crítico, marcas `▲`/`R` con leyenda, unidades con su caja real, notación
+SI, criterio y resultado en la misma unidad, presión manométrica
+explícita, secciones numeradas, una sola fila de potencia instalada,
+paleta fija y `print-color-adjust` en papel, fin de la 2ª hoja en blanco).
+El bloque del informe en `@media print` de `css/styles.css` es ahora
+**copia exacta** del de Hidrógeno — este módulo nunca había recibido el
+rediseño visual del 2026-09-06 (ver pendiente arriba): tenía tablas con
+grilla completa, sin títulos de sección, sin etiqueta "Firma" ni pie.
+Motores sin cambios; `node GasNatural-GLP/tests/run-all.js` en verde.
+
+Lo propio de este módulo:
+
+- **Pérdida acumulada en una red mixta**: si la red mezcla tramos de baja
+  (`<10 kPa`) y media/alta presión, el criterio de pérdida acumulada se
+  evalúa **solo sobre los tramos de baja** y la fila lo dice ("Pérdida de
+  carga acumulada (tramos de baja presión)"); si no, sobre todos. Motivo:
+  el límite típico (D.S. 66: 150 Pa GLP / 120 Pa GN) es de baja presión,
+  del regulador al artefacto. Medido con estanque a 150 kPa + regulador +
+  3 tramos de baja: antes el máximo informado era 6.923 Pa (el tramo de
+  media, un 4,6% de su presión inicial — irrelevante contra 150 Pa) y
+  escondía el tramo de baja que de verdad no cumple (Calefont, 499,8 Pa).
+  La velocidad sí se evalúa en todos los tramos.
+- **Números del informe sin precisión espuria** (`formatearInforme()`/
+  `formatearPresionInforme()`): hasta 2 decimales pero nunca menos de 3
+  cifras significativas (`roundingPriority: 'morePrecision'`) — "150.000"
+  en vez de "150.000,0 Pa" y "70" en vez de "70,00 kW térmicos", sin que
+  un valor chico en una unidad grande (0,0028 MPa) se imprima como "0". La
+  tabla en pantalla sigue con `formatearFijo`/`formatearPresionFija`.
+- "Presión inicial" pasa a "P. inicial man." y "P. Requerida" a "ΔP
+  tramo" (mismo nombre que en Hidrógeno para la misma magnitud).
+- Título, "Tipo de red" y ahora también el pie ("Red de GLP"/"Red de Gas
+  Natural") siguen al combustible vigente.
 
 ## Rediseño UX/UI de las pestañas (`index.html`/`css/styles.css`/`ui.js`, 2026-09-24, a pedido del usuario)
 

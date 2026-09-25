@@ -889,12 +889,82 @@ function renderArbolMemoria(resultado) {
 }
 
 // Cajetín de un criterio de diseño opcional del encabezado del informe
-// (2026-09-03, a pedido del usuario, mirroring Hidrogeno/js/ui.js) — sin
-// valor manual se muestra "-" con la unidad, igual que el documento de
-// ejemplo de QUEMPIN.
-function formatearCriterio(valor, unidad) {
-  return valor === null || valor === undefined || Number.isNaN(valor)
-    ? `- [${unidad}]` : `${formatearLibre(valor)} [${unidad}]`;
+// (2026-09-03, a pedido del usuario, mirroring Hidrogeno/js/ui.js). Desde
+// el 2026-09-25 el valor va con notación SI ("20 m/s", sin corchetes: los
+// corchetes quedan para rotular columnas) y sin valor dice "No definida"
+// en vez de "- [m/s]", que en papel se leía como un dato faltante por error.
+function criterioDefinido(valor) {
+  return valor !== null && valor !== undefined && !Number.isNaN(valor);
+}
+
+function formatearCriterio(valor, formatear) {
+  return criterioDefinido(valor) ? formatear(valor) : 'No definida';
+}
+
+// Números del informe impreso (2026-09-25): sin la precisión fija de la
+// tabla en pantalla ("150.000,0 Pa", "0,150000 MPa") — hasta 2 decimales,
+// pero nunca menos de 3 cifras significativas, para que un valor chico en
+// una unidad grande (0,0028 MPa) no se imprima como "0".
+const FORMATO_INFORME = new Intl.NumberFormat('es-CL', {
+  maximumFractionDigits: 2, maximumSignificantDigits: 3, roundingPriority: 'morePrecision',
+});
+function formatearInforme(valor) {
+  return FORMATO_INFORME.format(valor);
+}
+
+function formatearPresionInforme(valorPa, unidad) {
+  return formatearInforme(desdePa(valorPa, unidad));
+}
+
+// Cabecera de columna del informe: etiqueta + unidad en su propia línea,
+// fuera del text-transform: uppercase de la cabecera — en mayúsculas
+// "kPa"/"mbar"/"m/s"/"kW" se leían "KPA"/"MBAR"/"M/S"/"KW", y en unidades
+// SI la caja es parte del símbolo (m = mili, M = mega).
+function thConUnidad(etiqueta, unidad) {
+  return `${escapeHtml(etiqueta)}<span class="informe-unidad">${escapeHtml(unidad)}</span>`;
+}
+
+// Verificación de un criterio de diseño contra la red resuelta
+// (2026-09-25, mismo criterio que Hidrogeno/js/ui.js): antes el informe
+// declaraba los límites y mostraba los máximos calculados sin compararlos
+// nunca, así que quien lo leía tenía que hacer la cuenta a mano para saber
+// si la red cumple. `valorDe` y `limite` van en la misma unidad canónica;
+// `formatear` decide cómo se muestran.
+function evaluarCriterio({ nombre, limite, tramos, valorDe, formatear }) {
+  const critico = tramos.reduce((max, t) => (max === null || valorDe(t) > valorDe(max) ? t : max), null);
+  const definido = criterioDefinido(limite);
+  const exceden = definido ? tramos.filter((t) => valorDe(t) > limite) : [];
+  return {
+    nombre, definido, exceden, critico, evaluados: tramos.length,
+    limiteTexto: definido ? `≤ ${formatear(limite)}` : 'No definido',
+    maximoTexto: critico ? formatear(valorDe(critico)) : '—',
+    estado: !definido || !critico ? 'sin-limite' : exceden.length ? 'no-cumple' : 'cumple',
+  };
+}
+
+function filaVerificacion(c) {
+  const resultado = {
+    'cumple': '<span class="informe-veredicto cumple">Cumple</span>',
+    'no-cumple': `<span class="informe-veredicto no-cumple">No cumple</span> <span class="informe-veredicto-detalle">${c.exceden.length} de ${c.evaluados} ${c.evaluados === 1 ? 'tramo' : 'tramos'}</span>`,
+    'sin-limite': '<span class="informe-veredicto-detalle">No evaluado</span>',
+  }[c.estado];
+  return `<tr><td>${escapeHtml(c.nombre)}</td><td>${c.limiteTexto}</td><td>${c.maximoTexto}</td>` +
+    `<td>${c.critico ? escapeHtml(c.critico.nombre) : '—'}</td><td>${resultado}</td></tr>`;
+}
+
+function textoConclusion(criterios) {
+  const evaluados = criterios.filter((c) => c.estado !== 'sin-limite');
+  if (!evaluados.length) {
+    return 'No se definieron límites de diseño: los máximos calculados se informan sin verificación.';
+  }
+  const incumplidos = evaluados.filter((c) => c.estado === 'no-cumple').length;
+  if (!incumplidos) {
+    return evaluados.length === 1
+      ? 'La red cumple el criterio de diseño definido.'
+      : `La red cumple los ${evaluados.length} criterios de diseño definidos.`;
+  }
+  return `La red no cumple ${incumplidos} de ${evaluados.length} ${evaluados.length === 1 ? 'criterio' : 'criterios'} de diseño. ` +
+    'Los valores fuera de límite se marcan con ▲ en la sección 4.';
 }
 
 function actualizarTotalArtefactos() {
@@ -928,47 +998,100 @@ function renderInformeImpresion(resultado) {
   // Título y "Tipo de red" reflejan el combustible vigente (a diferencia de
   // Hidrogeno, donde ambos son texto fijo "Hidrógeno gas" — acá el mismo
   // informe sirve para GLP o Gas Natural según el selector global).
-  document.getElementById('informe-subtitulo').textContent = combustible === 'GLP' ? 'RED DE GLP' : 'RED DE GAS NATURAL';
+  const nombreRed = combustible === 'GLP' ? 'Red de GLP' : 'Red de Gas Natural';
+  document.getElementById('informe-subtitulo').textContent = nombreRed.toUpperCase();
   document.getElementById('informe-tipo-red').textContent = combustible === 'GLP' ? 'GLP' : 'Gas Natural';
-
-  document.getElementById('informe-vel-max-flujo').textContent = formatearCriterio(proyecto.velocidadMaxFlujoDisenoMS, 'm/s');
-  document.getElementById('informe-vel-erosion').textContent = formatearCriterio(proyecto.velocidadErosionDisenoMS, 'm/s');
-  document.getElementById('informe-perdida-max').textContent = formatearCriterio(proyecto.perdidaMaxAcumuladaDisenoPa, 'Pa');
-
-  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
-  document.getElementById('informe-artefactos-cuerpo').innerHTML = proyecto.artefactos.length
-    ? proyecto.artefactos.map((a) => `<tr><td>${escapeHtml(a.nombre)}</td><td>${formatearFijo(Number(a.potenciaKw), 2)} kW térmicos</td></tr>`).join('')
-    : '<tr><td colspan="2">—</td></tr>';
-  document.getElementById('informe-artefactos-total').textContent = `${formatearFijo(totalKw, 2)} kW térmicos`;
-  document.getElementById('informe-potencia-instalada').textContent = `${formatearFijo(totalKw, 2)} kW térmicos`;
+  document.getElementById('informe-footer-red').textContent = nombreRed;
 
   const unidadPresionInicial = document.getElementById('memoria-presion-inicial-unidad').value;
   const unidadPerdidaRequerida = document.getElementById('memoria-perdida-requerida-unidad').value;
   const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
-  document.getElementById('memoria-impresion-th-presion').textContent = `Presión inicial [${unidadPresionInicial}]`;
-  document.getElementById('memoria-impresion-th-parcial').textContent = `P. Requerida [${unidadPerdidaRequerida}]`;
-  document.getElementById('memoria-impresion-th-perdida').textContent = `P. Acumulada [${unidadPerdidaAcumulada}]`;
+  const velocidad = (v) => `${formatearInforme(v)} m/s`;
+  // El criterio de pérdida se ingresa en Pa pero se muestra en la unidad de
+  // la columna "ΔP acumulada" — límite y resultado siempre comparables a
+  // simple vista, aunque se cambie la unidad de esa columna.
+  const perdidaAcum = (pa) => `${formatearPresionInforme(pa, unidadPerdidaAcumulada)} ${unidadPerdidaAcumulada}`;
+
+  document.getElementById('informe-vel-max-flujo').textContent = formatearCriterio(proyecto.velocidadMaxFlujoDisenoMS, velocidad);
+  document.getElementById('informe-vel-erosion').textContent = formatearCriterio(proyecto.velocidadErosionDisenoMS, velocidad);
+  document.getElementById('informe-perdida-max').textContent = formatearCriterio(proyecto.perdidaMaxAcumuladaDisenoPa, perdidaAcum);
+
+  // Una sola fila de total: antes "Total" y "Potencia instalada" repetían
+  // el mismo número (sin simultaneidad son lo mismo, decisión 2026-09-03).
+  const totalKw = proyecto.artefactos.reduce((suma, a) => suma + (Number(a.potenciaKw) || 0), 0);
+  document.getElementById('informe-artefactos-cuerpo').innerHTML = proyecto.artefactos.length
+    ? proyecto.artefactos.map((a) => `<tr><td>${escapeHtml(a.nombre)}</td><td>${formatearInforme(Number(a.potenciaKw) || 0)}</td></tr>`).join('')
+    : '<tr><td colspan="2" class="informe-vacio">Sin artefactos registrados</td></tr>';
+  document.getElementById('informe-potencia-instalada').textContent = formatearInforme(totalKw);
+
+  // Pérdida acumulada en una red mixta (2026-09-25): el límite típico de
+  // pérdida acumulada (D.S. 66: 150 Pa GLP / 120 Pa GN) es de BAJA presión,
+  // desde el regulador al artefacto. Comparado contra un tramo de media
+  // presión (p. ej. 6.923 Pa de caída sobre 150 kPa, un 4,6%) daba un "No
+  // cumple" sin sentido y escondía el tramo de baja que de verdad manda.
+  // Si la red mezcla regímenes se evalúan solo los tramos de baja presión,
+  // y el nombre del criterio lo dice; si no, todos.
+  const tramosBaja = resultado.filter((t) => t.regimenPresion === '<10 kPa');
+  const redMixta = tramosBaja.length > 0 && tramosBaja.length < resultado.length;
+  const criterios = [
+    evaluarCriterio({
+      nombre: 'Velocidad de flujo', limite: proyecto.velocidadMaxFlujoDisenoMS,
+      tramos: resultado, valorDe: (t) => t.velocidadMS, formatear: velocidad,
+    }),
+  ];
+  if (criterioDefinido(proyecto.velocidadErosionDisenoMS)) {
+    criterios.push(evaluarCriterio({
+      nombre: 'Velocidad de erosión', limite: proyecto.velocidadErosionDisenoMS,
+      tramos: resultado, valorDe: (t) => t.velocidadMS, formatear: velocidad,
+    }));
+  }
+  const criterioPerdida = evaluarCriterio({
+    nombre: redMixta ? 'Pérdida de carga acumulada (tramos de baja presión)' : 'Pérdida de carga acumulada',
+    limite: proyecto.perdidaMaxAcumuladaDisenoPa,
+    tramos: redMixta ? tramosBaja : resultado, valorDe: (t) => t.perdidaAcumuladaPa, formatear: perdidaAcum,
+  });
+  criterios.push(criterioPerdida);
+  const velocidadExcede = new Set(criterios.filter((c) => c !== criterioPerdida).flatMap((c) => c.exceden.map((t) => t.id)));
+  const perdidaExcede = new Set(criterioPerdida.exceden.map((t) => t.id));
+  const marcar = (texto, excede) => (excede ? `<span class="informe-excede">▲ ${texto}</span>` : texto);
+
+  document.getElementById('memoria-impresion-th-presion').innerHTML = thConUnidad('P. inicial man.', unidadPresionInicial);
+  document.getElementById('memoria-impresion-th-parcial').innerHTML = thConUnidad('ΔP tramo', unidadPerdidaRequerida);
+  document.getElementById('memoria-impresion-th-perdida').innerHTML = thConUnidad('ΔP acumulada', unidadPerdidaAcumulada);
   document.getElementById('memoria-tabla-impresion-cuerpo').innerHTML = resultado.map((t) => `
     <tr>
-      <td>${escapeHtml(t.nombre)}</td>
-      <td>${escapeHtml(porNombreTramoMemoria(t.continuaDesdeId))}${t.reseteaAcumulada ? ' (reinicia acumulada)' : ''}</td>
-      <td>${formatearPresionFija(t.presionInicialPa, unidadPresionInicial)}</td>
-      <td>${formatearLibre(t.longitudM)}</td>
-      <td>${formatearLibre(t.potenciaKw)}</td>
+      <td>${escapeHtml(t.nombre)}${t.reseteaAcumulada ? '<sup class="informe-marca">R</sup>' : ''}</td>
+      <td>${t.continuaDesdeId ? escapeHtml(porNombreTramoMemoria(t.continuaDesdeId)) : '<span class="informe-vacio">Inicio de red</span>'}</td>
+      <td>${formatearPresionInforme(t.presionInicialPa, unidadPresionInicial)}</td>
+      <td>${formatearInforme(t.longitudM)}</td>
+      <td>${formatearInforme(t.potenciaKw)}</td>
       <td>${etiquetaDiametroMemoria(t)}</td>
       <td>${t.pulgadas === 'manual' ? '—' : t.material}</td>
-      <td>${formatearPresionFija(t.perdidaPresionRequeridaPa, unidadPerdidaRequerida)}</td>
-      <td>${formatearPresionFija(t.perdidaAcumuladaPa, unidadPerdidaAcumulada)}</td>
-      <td>${formatearFijo(t.velocidadMS, 2)}</td>
+      <td>${formatearPresionInforme(t.perdidaPresionRequeridaPa, unidadPerdidaRequerida)}</td>
+      <td>${marcar(formatearPresionInforme(t.perdidaAcumuladaPa, unidadPerdidaAcumulada), perdidaExcede.has(t.id))}</td>
+      <td>${marcar(formatearInforme(t.velocidadMS), velocidadExcede.has(t.id))}</td>
     </tr>
   `).join('');
 
-  const perdidaAcumMaxPa = resultado.length ? Math.max(...resultado.map((t) => t.perdidaAcumuladaPa)) : 0;
-  const velFlujoMaxMS = resultado.length ? Math.max(...resultado.map((t) => t.velocidadMS)) : 0;
-  document.getElementById('informe-perdida-acum-max').textContent = `${formatearPresionFija(perdidaAcumMaxPa, unidadPerdidaAcumulada)} [${unidadPerdidaAcumulada}]`;
-  document.getElementById('informe-vel-flujo-max').textContent = `${formatearFijo(velFlujoMaxMS, 2)} [m/s]`;
+  // Leyenda solo de las marcas que aparecen en la tabla — el texto largo
+  // "(reinicia acumulada)" dentro de la celda partía "Continúa desde" en 3
+  // líneas y alargaba cada fila.
+  const leyenda = [];
+  if (resultado.some((t) => t.reseteaAcumulada)) {
+    leyenda.push('<sup class="informe-marca">R</sup> La pérdida acumulada se reinicia en este tramo (p. ej., aguas abajo de un regulador de presión).');
+  }
+  if (velocidadExcede.size || perdidaExcede.size) {
+    leyenda.push('<span class="informe-excede">▲</span> Valor fuera del límite de diseño (ver sección 5).');
+  }
+  document.getElementById('informe-leyenda-tramos').innerHTML = leyenda.join(' ');
+
+  document.getElementById('informe-verificacion-cuerpo').innerHTML = criterios.map(filaVerificacion).join('');
+  document.getElementById('informe-conclusion').textContent = textoConclusion(criterios);
+  document.getElementById('informe-conclusion').className =
+    `informe-conclusion ${criterios.some((c) => c.estado === 'no-cumple') ? 'no-cumple' : criterios.some((c) => c.estado === 'cumple') ? 'cumple' : ''}`;
 
   document.getElementById('informe-observaciones').textContent = proyecto.observaciones;
+  document.getElementById('informe-footer-doc').textContent = `${proyecto.numeroDoc}, Rev. ${proyecto.revision}`;
 
   document.getElementById('informe-firma-nombre').textContent = proyecto.instalador;
   document.getElementById('informe-firma-cargo').textContent = proyecto.cargoInstalador;
