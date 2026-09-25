@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Otros Gases — Calculadora Técnica QUEMPIN</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9A%97%EF%B8%8F</text></svg>">
+  <link rel="stylesheet" href="../assets/brand.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="viz-root">
+  <header class="viz-header">
+    <div class="viz-container">
+      <span class="viz-wordmark">QUEMP<span class="in">IN</span></span>
+      <div class="viz-titleblock">
+        <h1>Calculadora de Otros Gases</h1>
+        <p>CO₂, NH₃ o un gas definido por el usuario — Peng-Robinson, Darcy-Weisbach</p>
+      </div>
+      <label for="selector-gas" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Cambiar de gas</label>
+      <select id="selector-gas"></select>
+      <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
+    </div>
+  </header>
+
+  <div class="barra-pestanas">
+    <div class="barra-pestanas-interior">
+      <nav class="tabs" role="tablist">
+        <button class="tab active" id="tab-gas" role="tab" aria-selected="true" aria-controls="panel-gas" data-tab="gas">Propiedades del gas</button>
+        <button class="tab" id="tab-flujo" role="tab" aria-selected="false" aria-controls="panel-flujo" data-tab="flujo">Tubería y Flujo</button>
+        <button class="tab" id="tab-almacenamiento" role="tab" aria-selected="false" aria-controls="panel-almacenamiento" data-tab="almacenamiento">Almacenamiento</button>
+      </nav>
+      <!-- Gas activo: afecta a las 3 pestañas, por eso vive en la barra de
+           pestañas (fija al hacer scroll) y no dentro de una de ellas. -->
+      <div class="selector-gas-activo">
+        <label for="gas-activo">Gas</label>
+        <select id="gas-activo"></select>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <!-- ================================================================ -->
+    <section class="tab-panel active" id="panel-gas" role="tabpanel" aria-labelledby="tab-gas" data-panel="gas">
+      <div class="aviso-gas" id="aviso-gas-predefinido">
+        <p id="aviso-gas-texto"></p>
+        <div class="acciones-gas">
+          <button type="button" class="btn" id="gas-copiar-personalizado">Editar como gas personalizado</button>
+        </div>
+      </div>
+
+      <div class="calc-layout">
+      <form id="form-gas" class="calc-entradas" autocomplete="off">
+        <div class="seccion" id="seccion-gas-identificacion">
+          <h3 class="seccion-titulo">Identificación</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="gas-nombre">Nombre</label>
+              <input id="gas-nombre" type="text" maxlength="60">
+            </div>
+            <div class="campo">
+              <label for="gas-formula">Fórmula (opcional)</label>
+              <input id="gas-formula" type="text" maxlength="20" placeholder="Ej. N₂">
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <h3 class="seccion-titulo">Constantes del gas</h3>
+          <p class="ayuda">Con masa molar, punto crítico y factor acéntrico se calcula todo lo demás
+            (compresibilidad Z con Peng-Robinson, presión de vapor con Lee-Kesler). Están tabuladas para
+            casi cualquier gas (p. ej. Poling et al., <i>The Properties of Gases and Liquids</i>, Apéndice A).</p>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="gas-masa-molar">Masa molar [g/mol]</label>
+              <input id="gas-masa-molar" type="text" inputmode="decimal" required>
+            </div>
+            <div class="campo">
+              <label for="gas-tc">Temperatura crítica [°C]</label>
+              <input id="gas-tc" type="text" inputmode="decimal" required>
+            </div>
+            <div class="campo">
+              <label for="gas-pc">Presión crítica [abs]</label>
+              <div class="campo-con-unidad">
+                <input id="gas-pc" type="text" inputmode="decimal" required>
+                <select id="gas-pc-unidad" class="select-unidad" aria-label="Unidad de presión crítica">
+                  <option value="Pa">Pa</option>
+                  <option value="kPa">kPa</option>
+                  <option value="mbar">mbar</option>
+                  <option value="bar" selected>bar</option>
+                  <option value="MPa">MPa</option>
+                  <option value="psi">psi</option>
+                </select>
+              </div>
+            </div>
+            <div class="campo">
+              <label for="gas-omega">Factor acéntrico ω</label>
+              <input id="gas-omega" type="text" inputmode="decimal" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <h3 class="seccion-titulo">Flujo</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="gas-viscosidad">Viscosidad a ~20 °C [µPa·s]</label>
+              <input id="gas-viscosidad" type="text" inputmode="decimal" required>
+            </div>
+            <div class="campo">
+              <label for="gas-gamma">γ = cp/cv (gas ideal)</label>
+              <input id="gas-gamma" type="text" inputmode="decimal" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <h3 class="seccion-titulo">Opcionales</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="gas-pci">PCI [MJ/kg]</label>
+              <input id="gas-pci" type="text" inputmode="decimal" placeholder="Vacío = no combustible">
+            </div>
+            <div class="campo">
+              <label for="gas-llenado">Grado de llenado máx. [kg/L]</label>
+              <input id="gas-llenado" type="text" inputmode="decimal" placeholder="Vacío = no se licúa">
+            </div>
+          </div>
+          <p class="ayuda">El PCI habilita ingresar caudales en kW. El grado de llenado es la masa
+            máxima por litro de capacidad de agua con que la norma permite cargar el gas licuado
+            (se usa en Almacenamiento → Gas licuado).</p>
+        </div>
+      </form>
+
+      <div class="calc-resultados">
+        <div class="resultados-encabezado">
+          <h2>Propiedades calculadas</h2>
+          <span class="en-vivo">Se actualizan al escribir</span>
+        </div>
+        <div class="resultados" id="resultados-gas" aria-live="polite"></div>
+      </div>
+      </div>
+    </section>
+
+    <!-- ================================================================ -->
+    <section class="tab-panel" id="panel-flujo" role="tabpanel" aria-labelledby="tab-flujo" data-panel="flujo">
+      <div class="calc-layout">
+      <form id="form-flujo" class="calc-entradas" autocomplete="off">
+        <div class="seccion">
+          <h3 class="seccion-titulo">Condiciones de operación</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="flujo-presion">Presión manométrica</label>
+              <div class="campo-con-unidad">
+                <input id="flujo-presion" type="text" inputmode="decimal" value="10" required>
+                <select id="flujo-presion-unidad" class="select-unidad" aria-label="Unidad de presión manométrica">
+                  <option value="Pa">Pa</option>
+                  <option value="kPa">kPa</option>
+                  <option value="mbar">mbar</option>
+                  <option value="bar" selected>bar</option>
+                  <option value="MPa">MPa</option>
+                  <option value="psi">psi</option>
+                </select>
+              </div>
+            </div>
+            <div class="campo">
+              <label for="flujo-temperatura">Temperatura [°C]</label>
+              <input id="flujo-temperatura" type="text" inputmode="decimal" value="20" required>
+            </div>
+            <div class="campo">
+              <label for="flujo-caudal">Caudal</label>
+              <div class="campo-con-unidad">
+                <input id="flujo-caudal" type="text" inputmode="decimal" value="50" required>
+                <select id="flujo-caudal-unidad" class="select-unidad" aria-label="Unidad de caudal">
+                  <option value="kg/h" selected>kg/h</option>
+                  <option value="Nm3/h">Nm³/h</option>
+                  <option value="kW">kW</option>
+                </select>
+              </div>
+            </div>
+            <div class="campo">
+              <label for="flujo-largo">Largo de la línea [m]</label>
+              <input id="flujo-largo" type="text" inputmode="decimal" value="30" required>
+            </div>
+          </div>
+        </div>
+
+        <div class="seccion">
+          <h3 class="seccion-titulo">Tubería y diseño</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="flujo-tuberia">Tubería utilizada</label>
+              <select id="flujo-tuberia" required></select>
+            </div>
+            <div class="campo">
+              <label for="flujo-factor-diseno">Factor de diseño F</label>
+              <input id="flujo-factor-diseno" type="text" inputmode="decimal" value="0.4" required>
+            </div>
+          </div>
+          <p class="ayuda">F según la norma que rija la línea (ej. ASME B31.8 o B31.12, Clase de
+            ubicación 4 → 0,40, el más conservador). Unión longitudinal E = 1 (tubería sin costura).</p>
+
+          <fieldset class="subseccion" id="campo-flujo-tuberia-manual" style="display:none;">
+            <legend>Tubería manual</legend>
+            <div class="fila-campos">
+              <div class="campo">
+                <label for="flujo-tuberia-manual-di">Diámetro interior [mm]</label>
+                <input id="flujo-tuberia-manual-di" type="text" inputmode="decimal" value="10.2" required>
+              </div>
+              <div class="campo">
+                <label for="flujo-tuberia-manual-espesor">Espesor de pared [mm]</label>
+                <input id="flujo-tuberia-manual-espesor" type="text" inputmode="decimal" value="1.65" required>
+              </div>
+              <div class="campo">
+                <label for="flujo-tuberia-manual-limite">Límite elástico [MPa]</label>
+                <input id="flujo-tuberia-manual-limite" type="text" inputmode="decimal" value="170" required>
+              </div>
+              <div class="campo">
+                <label for="flujo-tuberia-manual-rugosidad">Rugosidad [mm]</label>
+                <input id="flujo-tuberia-manual-rugosidad" type="text" inputmode="decimal" value="0.0015" required>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="subseccion">
+            <legend>Accesorios (pérdidas locales)</legend>
+            <div class="fila-campos compacta">
+              <div class="campo">
+                <label for="flujo-codos">Codos</label>
+                <input id="flujo-codos" type="number" step="1" min="0" value="0">
+              </div>
+              <div class="campo">
+                <label for="flujo-tees">Tee</label>
+                <input id="flujo-tees" type="number" step="1" min="0" value="0">
+              </div>
+              <div class="campo">
+                <label for="flujo-valvulas">Válvulas</label>
+                <input id="flujo-valvulas" type="number" step="1" min="0" value="0">
+              </div>
+            </div>
+          </fieldset>
+        </div>
+      </form>
+
+      <div class="calc-resultados">
+        <div class="resultados-encabezado">
+          <h2>Resultados</h2>
+          <span class="en-vivo">Se actualizan al escribir</span>
+        </div>
+        <div class="resultados" id="resultados-flujo" aria-live="polite"></div>
+      </div>
+      </div>
+
+      <details class="no-imprimir">
+        <summary>Tabla de tubería (referencia)</summary>
+        <table id="tabla-tuberia-flujo"></table>
+      </details>
+    </section>
+
+    <!-- ================================================================ -->
+    <section class="tab-panel" id="panel-almacenamiento" role="tabpanel" aria-labelledby="tab-almacenamiento" data-panel="almacenamiento">
+      <div class="calc-layout">
+      <form id="form-almacenamiento" class="calc-entradas" autocomplete="off">
+        <div class="seccion">
+          <h3 class="seccion-titulo" id="etiqueta-alm-modo">Cómo está almacenado</h3>
+          <div class="segmentado" role="radiogroup" aria-labelledby="etiqueta-alm-modo">
+            <label><input type="radio" name="alm-modo" value="licuado"><span>Gas licuado</span></label>
+            <label><input type="radio" name="alm-modo" value="comprimido"><span>Gas comprimido</span></label>
+          </div>
+          <p class="ayuda" id="alm-modo-ayuda" style="margin-top:8px;"></p>
+        </div>
+
+        <div class="seccion">
+          <h3 class="seccion-titulo">Recipiente</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="alm-volumen" id="alm-volumen-etiqueta">Capacidad de agua</label>
+              <div class="campo-con-unidad">
+                <input id="alm-volumen" type="text" inputmode="decimal" value="36.8" required>
+                <select id="alm-volumen-unidad" class="select-unidad" aria-label="Unidad de volumen">
+                  <option value="L" selected>L</option>
+                  <option value="m3">m³</option>
+                </select>
+              </div>
+            </div>
+            <div class="campo">
+              <label for="alm-temperatura">Temperatura [°C]</label>
+              <input id="alm-temperatura" type="text" inputmode="decimal" value="20" required>
+            </div>
+            <div class="campo" id="campo-alm-presion">
+              <label for="alm-presion">Presión de almacenamiento [abs]</label>
+              <div class="campo-con-unidad">
+                <input id="alm-presion" type="text" inputmode="decimal" value="40" required>
+                <select id="alm-presion-unidad" class="select-unidad" aria-label="Unidad de presión de almacenamiento">
+                  <option value="Pa">Pa</option>
+                  <option value="kPa">kPa</option>
+                  <option value="mbar">mbar</option>
+                  <option value="bar" selected>bar</option>
+                  <option value="MPa">MPa</option>
+                  <option value="psi">psi</option>
+                </select>
+              </div>
+            </div>
+            <div class="campo" id="campo-alm-llenado">
+              <label for="alm-llenado">Grado de llenado [kg/L]</label>
+              <input id="alm-llenado" type="text" inputmode="decimal">
+            </div>
+          </div>
+          <p class="ayuda" id="alm-llenado-ayuda"></p>
+        </div>
+
+        <div class="seccion">
+          <h3 class="seccion-titulo">Consumo</h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="alm-consumo">Consumo</label>
+              <div class="campo-con-unidad">
+                <input id="alm-consumo" type="text" inputmode="decimal" value="2" required>
+                <select id="alm-consumo-unidad" class="select-unidad" aria-label="Unidad de consumo">
+                  <option value="kg/h" selected>kg/h</option>
+                  <option value="Nm3/h">Nm³/h</option>
+                  <option value="kW">kW</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div class="calc-resultados">
+        <div class="resultados-encabezado">
+          <h2>Resultados</h2>
+          <span class="en-vivo">Se actualizan al escribir</span>
+        </div>
+        <div class="resultados" id="resultados-almacenamiento" aria-live="polite"></div>
+      </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  (function () {
+    try {
+      var savedTheme = localStorage.getItem('quempin_h2_theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      }
+    } catch (e) {}
+
+    var themeBtn = document.getElementById('themeToggle');
+    function isDarkNow() {
+      var docEl = document.documentElement;
+      return docEl.getAttribute('data-theme') === 'dark' ||
+        (docEl.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    themeBtn.textContent = isDarkNow() ? 'Modo claro' : 'Modo oscuro';
+    themeBtn.addEventListener('click', function () {
+      var docEl = document.documentElement;
+      var next = isDarkNow() ? 'light' : 'dark';
+      docEl.setAttribute('data-theme', next);
+      themeBtn.textContent = next === 'dark' ? 'Modo claro' : 'Modo oscuro';
+      try { localStorage.setItem('quempin_h2_theme', next); } catch (e) {}
+    });
+  })();
+</script>
+<!-- Carga con cache-buster (GitHub Pages sirve los .js con max-age=600;
+     ver CLAUDE.md raíz, "Caché del navegador y el ?v="). -->
+<script type="module">
+  import(`./js/ui.js?v=${Date.now()}`);
+</script>
+</body>
+</html>

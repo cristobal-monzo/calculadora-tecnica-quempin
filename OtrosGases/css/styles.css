@@ -1,0 +1,374 @@
+/* Estilos del módulo Otros Gases. El sistema de marca (tipografía, paleta,
+   tema, cabecera, .viz-root) vive en assets/brand.css.
+
+   Patrón de pantalla COPIADO (no importado) de Hidrogeno/css/styles.css —
+   rediseño UX/UI 2026-09-24: barra de pestañas fija, .calc-layout entradas |
+   resultados, grupos de tiles, tokens de estado. Mantener los tres módulos
+   iguales al tocar uno (ver CLAUDE.md raíz). Este módulo no tiene Memoria de
+   Cálculo, así que no trae la tabla editable ni el informe impreso. */
+
+/* --- Tokens de estado (ok / alerta / crítico) y tinte de celdas
+   calculadas. El manual de marca no define verde ni rojo: se extrapolan
+   Material green 800 / red 800 (ya en uso desde 2026-09-02 / 2026-09-08)
+   y, en tema oscuro, sus variantes 400 — el verde 800 sobre la card oscura
+   (#221f1c) quedaba en ~3:1 de contraste, bajo el mínimo para texto.
+   Declarados en los mismos 3 selectores de tema que assets/brand.css para
+   que también respeten el botón "Modo oscuro/claro" (antes .critico solo
+   miraba prefers-color-scheme e ignoraba el botón). --- */
+.viz-root {
+  --estado-ok: #2e7d32;
+  --estado-ok-tinte: rgba(46, 125, 50, 0.06);
+  --estado-alerta: var(--brand-orange-ink);
+  --estado-alerta-tinte: rgba(255, 81, 0, 0.06);
+  --estado-critico: #c62828;
+  --estado-critico-tinte: rgba(198, 40, 40, 0.06);
+  --tinte-calculado: rgba(255, 81, 0, 0.045);
+  --alto-barra-pestanas: 46px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    --estado-ok: #66bb6a;
+    --estado-ok-tinte: rgba(102, 187, 106, 0.08);
+    --estado-alerta-tinte: rgba(255, 81, 0, 0.09);
+    --estado-critico: #ef5350;
+    --estado-critico-tinte: rgba(239, 83, 80, 0.09);
+    --tinte-calculado: rgba(255, 81, 0, 0.07);
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  --estado-ok: #66bb6a;
+  --estado-ok-tinte: rgba(102, 187, 106, 0.08);
+  --estado-alerta-tinte: rgba(255, 81, 0, 0.09);
+  --estado-critico: #ef5350;
+  --estado-critico-tinte: rgba(239, 83, 80, 0.09);
+  --tinte-calculado: rgba(255, 81, 0, 0.07);
+}
+
+/* Mismo ancho que .viz-container de la cabecera (assets/brand.css): antes
+   el contenido usaba 1100px y la cabecera 1180px, así que el borde
+   izquierdo del logo y el de los formularios no calzaban. */
+main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 20px 60px;
+}
+
+.visualmente-oculto {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* --- Barra de pestañas: fija arriba al hacer scroll, para cambiar de
+   herramienta sin volver al inicio de una página larga. En pantallas
+   angostas las pestañas se desplazan en horizontal en vez de partirse en
+   dos líneas. --- */
+.barra-pestanas {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--page-plane);
+  border-bottom: 1px solid var(--gridline);
+  margin: 0 0 24px;
+}
+.barra-pestanas-interior {
+  max-width: 1180px; margin: 0 auto; padding: 0 20px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0 20px;
+}
+.tabs {
+  display: flex; gap: 2px; flex: 1 1 auto; min-width: 0;
+  overflow-x: auto; scrollbar-width: none;
+  margin: 0 0 -1px -14px;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  font: inherit;
+  font-weight: 700;
+  font-size: 13.5px;
+  padding: 13px 14px 11px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.tab:hover { color: var(--text-primary); }
+.tab.active { color: var(--brand-orange-ink, var(--brand-orange)); border-bottom-color: var(--brand-orange); }
+.tab:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* --- Layout de calculadora: entradas | resultados. En escritorio los
+   resultados quedan al lado de los campos que los producen (antes había
+   que bajar hasta el final del formulario para ver el efecto de cada
+   cambio). `position: sticky` solo tiene efecto cuando la columna de
+   resultados es más corta que la de entradas — si es más larga, se
+   comporta como estática. --- */
+.calc-layout { display: grid; gap: 32px; }
+@media (min-width: 960px) {
+  .calc-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 0 48px; align-items: start;
+  }
+  .calc-resultados { position: sticky; top: calc(var(--alto-barra-pestanas) + 16px); }
+}
+.resultados-encabezado {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin: 0 0 12px;
+}
+.resultados-encabezado h2 {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-secondary); margin: 0;
+}
+/* No hay botón "Calcular": todo se recalcula en cada tecla. El indicador
+   lo hace explícito para quien llega por primera vez. */
+.en-vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-muted); }
+.en-vivo::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--estado-ok); }
+
+/* --- Formularios --- */
+.campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.campo label { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+.campo input, .campo select {
+  font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 6px;
+  border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary);
+  min-width: 0;
+}
+.campo input:hover, .campo select:hover { border-color: var(--baseline); }
+.campo input:focus-visible, .campo select:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+.fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0 20px; }
+.campo-ancho { grid-column: span 2; }
+
+/* Cajetín numérico con texto que no se puede leer como número: el motor
+   lo calcula como 0 (numeroFlexible() en ui.js), así que se marca en rojo
+   para que no pase inadvertido. aria-invalid lo pone ui.js. */
+input[aria-invalid="true"] {
+  border-color: var(--estado-critico) !important;
+  background-image: linear-gradient(var(--estado-critico-tinte), var(--estado-critico-tinte));
+}
+
+/* --- Campo de presión con selector de unidad propio --- */
+.campo-con-unidad { display: flex; gap: 6px; }
+.campo-con-unidad > *:first-child { flex: 1; min-width: 0; }
+.campo-con-unidad > .select-unidad { flex: 0 0 auto; width: 76px; padding: 8px 4px; }
+
+/* --- Subsección dentro de un formulario (ej. "Accesorios" en Tubería y
+   Flujo) — agrupa varios .campo relacionados con un borde propio, en la
+   misma pestaña/zona, sin ser una pestaña aparte. --- */
+.subseccion {
+  grid-column: 1 / -1; border: 1px solid var(--gridline); border-radius: 10px;
+  padding: 2px 16px 6px; margin: 4px 0 10px; min-width: 0;
+}
+.subseccion legend { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); padding: 0 6px; }
+.subseccion .fila-campos { padding-top: 10px; }
+/* Campos cortos (conteos: codos/tees/válvulas) — caben 3 por fila. */
+.fila-campos.compacta { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+
+/* --- Agrupación conceptual de campos dentro de un formulario largo
+   (auditoría UX 2026-09-03, ver CLAUDE.md maestro) — separa un formulario
+   plano en bloques con propósito claro ("Condiciones de operación",
+   "Tubería y diseño normativo", etc.). A propósito sin caja/borde: la
+   jerarquía se logra con tipografía y un hairline entre bloques, no
+   apilando más cards. --- */
+.seccion + .seccion { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-hairline); }
+.seccion-titulo {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-secondary); margin: 0 0 12px;
+}
+.seccion-titulo-nota { font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--text-muted); }
+
+/* --- Resultados: una columna de grupos, cada grupo con su propia grilla
+   auto-fit (ver grupo() en ui.js) — así los 2 KPI ocupan todo el ancho en
+   vez de dejar columnas vacías de una grilla común. --- */
+.resultados { display: flex; flex-direction: column; gap: 18px; }
+.grupo-resultados { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.grupo-resultados.kpis { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.resultado-tile {
+  background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px;
+  padding: 12px 14px; min-width: 0;
+}
+.resultado-tile .valor {
+  font-size: 20px; font-weight: 900; line-height: 1.2; color: var(--text-primary);
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+  font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+}
+/* text-secondary en vez de text-muted: el gris muted (#898781) sobre la
+   card blanca queda en ~3,5:1, poco para texto de 12px que además es lo
+   que dice QUÉ es cada número. */
+.resultado-tile .etiqueta { font-size: 12px; line-height: 1.35; color: var(--text-secondary); margin-top: 4px; }
+
+/* Estados: borde + barra lateral + tinte suave del mismo color, para que
+   el estado se lea también por forma y no solo por el color del número. */
+.resultado-tile.ok, .resultado-tile.alerta, .resultado-tile.critico {
+  background-image: linear-gradient(var(--tinte-estado), var(--tinte-estado));
+  box-shadow: inset 3px 0 0 var(--color-estado);
+  border-color: var(--color-estado);
+}
+.resultado-tile.ok { --color-estado: var(--estado-ok); --tinte-estado: var(--estado-ok-tinte); }
+.resultado-tile.alerta { --color-estado: var(--brand-orange); --tinte-estado: var(--estado-alerta-tinte); }
+.resultado-tile.critico { --color-estado: var(--estado-critico); --tinte-estado: var(--estado-critico-tinte); }
+.resultado-tile.ok .valor { color: var(--estado-ok); }
+.resultado-tile.alerta .valor { color: var(--estado-alerta); }
+/* Tercer estado, para el screening de flujo sónico (2026-09-08): el manual
+   de marca no define un rojo. Se extrapola igual que el verde de .ok —
+   que ya es Material green 800 — con Material red 800, y una variante más
+   clara en tema oscuro para conservar contraste. Ver Hidrogeno/CLAUDE.md. */
+.resultado-tile.critico .valor { color: var(--estado-critico); }
+
+/* --- Jerarquía de resultados: KPI (2-4 por pestaña, el resultado que de
+   verdad importa para decidir) vs. secundario/factor de verificación —
+   mismo componente .resultado-tile, distinto peso tipográfico. --- */
+.resultado-tile.kpi { padding: 16px 18px; border-radius: 12px; }
+/* Tile de veredicto dentro de un grupo (ej. "Estado" del screening de
+   flujo sónico): fila completa, con los números que lo respaldan debajo. */
+.resultado-tile.ancho { grid-column: 1 / -1; }
+.resultado-tile.kpi .valor { font-size: 28px; }
+.resultado-tile.kpi .etiqueta { font-size: 13px; }
+.resultado-tile.secundario { padding: 10px 12px; }
+.resultado-tile.secundario .valor { font-size: 15px; font-weight: 700; }
+.resultado-tile.secundario .etiqueta { font-size: 11.5px; }
+
+/* --- Subtítulo de un grupo de resultados (ej. "Factores de verificación"
+   al final de Tubería y Flujo) --- */
+.resultados-subtitulo {
+  grid-column: 1 / -1; font-size: 12.5px; font-weight: 700;
+  color: var(--text-secondary); padding-top: 12px;
+  border-top: 1px solid var(--gridline);
+}
+
+/* --- Nota al pie de un grupo de resultados: texto auxiliar a ancho
+   completo dentro de la grilla (ej. el alcance del screening de flujo
+   sónico en Tubería y Flujo, 2026-09-08). --- */
+.resultados-nota {
+  grid-column: 1 / -1; font-size: 11.5px; line-height: 1.45;
+  color: var(--text-secondary); margin-top: -2px;
+}
+
+/* --- Selector de unidad inline dentro de un tile de resultado: se lee
+   como parte del número (sin caja) hasta pasar el mouse por encima. --- */
+.select-unidad-inline {
+  font: inherit; font-size: 12px; font-weight: 700; color: var(--text-secondary);
+  padding: 2px 2px 2px 6px; border-radius: 6px; cursor: pointer;
+  border: 1px solid transparent; background: var(--page-plane);
+}
+.select-unidad-inline:hover { border-color: var(--baseline); }
+.select-unidad-inline:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+
+/* --- Botones --- */
+.btn {
+  font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1.2;
+  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--gridline);
+  background: var(--surface-card); color: var(--text-primary); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { border-color: var(--brand-orange); }
+.btn:focus-visible, .visualmente-oculto:focus-visible + .btn { outline: 2px solid var(--brand-orange); outline-offset: 2px; }
+/* Acción principal de la pestaña (el entregable): mismo tratamiento que
+   el botón "Abrir calculadora" del hub — naranja de marca con texto negro. */
+.btn-primario { background: var(--brand-orange); border-color: var(--brand-orange); color: #000000; font-weight: 900; }
+.btn-primario:hover { filter: brightness(1.08); }
+
+/* --- Tabla de referencia de tubería --- */
+details { margin-top: 24px; }
+summary { cursor: pointer; font-weight: 700; font-size: 13px; color: var(--text-secondary); }
+summary:hover { color: var(--text-primary); }
+summary:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; border-radius: 4px; }
+
+table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); }
+th { color: var(--text-secondary); font-size: 12px; }
+td { font-variant-numeric: tabular-nums; }
+
+/* --- Pantallas angostas --- */
+@media (max-width: 600px) {
+  .viz-titleblock p { display: none; }
+  .barra-pestanas { margin-bottom: 18px; }
+  /* Pestañas que no caben: desvanecido a la derecha como pista de que se
+     desplazan en horizontal. */
+  .tabs { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+  /* 2 tiles por fila en vez de 1: la pestaña Tubería y Flujo medía ~3000px
+     de alto en un teléfono con un tile por fila. */
+  .grupo-resultados { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .resultado-tile.kpi .valor { font-size: 24px; }
+}
+
+/* ======================================================================
+   Propio de Otros Gases
+   ====================================================================== */
+
+/* --- Gas activo: afecta a las 3 pestañas, por eso vive en la barra de
+   pestañas (fija al hacer scroll) — mismo criterio que el selector
+   GLP/GN de GasNatural-GLP. Es un <select> y no un control segmentado
+   porque la lista de gases crece (predefinidos + personalizado). --- */
+.selector-gas-activo { display: flex; align-items: center; gap: 10px; padding: 6px 0; margin-left: auto; }
+.selector-gas-activo label {
+  font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+.selector-gas-activo select {
+  font: inherit; font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 8px;
+  border: 1px solid var(--brand-orange); background: var(--surface-card); color: var(--text-primary);
+  max-width: 280px;
+}
+.selector-gas-activo select:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+@media (max-width: 820px) {
+  .viz-root { --alto-barra-pestanas: 92px; }
+  .selector-gas-activo { order: -1; width: 100%; justify-content: space-between; padding-top: 10px; }
+}
+
+/* --- Control segmentado (tipo de almacenamiento) — copiado de
+   GasNatural-GLP/css/styles.css (.segmentado). --- */
+.segmentado {
+  display: inline-flex; gap: 2px; padding: 3px; border-radius: 9px;
+  border: 1px solid var(--gridline); background: var(--surface-card);
+}
+.segmentado label { position: relative; display: block; }
+.segmentado input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.segmentado span {
+  display: block; padding: 5px 12px; border-radius: 6px; white-space: nowrap;
+  font-size: 13px; font-weight: 700; color: var(--text-secondary);
+}
+.segmentado label:hover span { color: var(--text-primary); }
+.segmentado input:checked + span { background: var(--brand-orange); color: #000000; font-weight: 900; }
+.segmentado input:focus-visible + span { outline: 2px solid var(--brand-orange-ink); outline-offset: 1px; }
+
+/* Texto de ayuda bajo un campo o un bloque (fuente de un valor, qué pasa
+   si se deja vacío). */
+.ayuda { font-size: 11.5px; line-height: 1.45; color: var(--text-muted); margin: -8px 0 14px; }
+.seccion > .ayuda:first-of-type { margin-top: -4px; }
+
+/* Propiedades de un gas predefinido: se muestran pero no se editan (para
+   ajustarlas se copia a "personalizado"). readonly y no disabled, para que
+   el texto siga seleccionable y con contraste completo. */
+.campo input[readonly] { background: var(--page-plane); border-style: dashed; cursor: default; }
+/* "Identificación" solo existe para el gas personalizado: oculta, no debe
+   dejar el filete separador sobre la sección siguiente. */
+.seccion.oculta { display: none; }
+.seccion.oculta + .seccion { margin-top: 0; padding-top: 0; border-top: none; }
+
+.aviso-gas {
+  background: var(--surface-card); border: 1px dashed var(--baseline); border-radius: 10px;
+  padding: 14px 16px; color: var(--text-secondary); font-size: 13px; line-height: 1.5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 18px;
+}
+.aviso-gas p { margin: 0; flex: 1 1 280px; }
+.acciones-gas { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Lista de errores de un gas personalizado inválido, o de notas de
+   seguridad de un gas predefinido — a ancho completo dentro de un grupo. */
+.lista-resultados { grid-column: 1 / -1; margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.55; color: var(--text-secondary); }
+.lista-resultados li + li { margin-top: 4px; }
+
+/* Curva de presión de vapor en la pestaña del gas. */
+.tabla-psat { grid-column: 1 / -1; margin-top: 0; font-size: 12.5px; background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px; border-collapse: separate; border-spacing: 0; overflow: hidden; }
+.tabla-psat th, .tabla-psat td { text-align: right; padding: 5px 12px; }
+.tabla-psat th:first-child, .tabla-psat td:first-child { text-align: left; }
+.tabla-psat tbody tr:last-child td { border-bottom: none; }
+.tabla-psat .fuera { color: var(--text-muted); font-style: italic; }
+.tabla-psat tr.actual td { font-weight: 700; background: var(--tinte-calculado); }
+
+/* --- Impresión: sin cromo de la app, resultados debajo de las entradas --- */
+@media print {
+  .barra-pestanas, .no-imprimir, .viz-theme-toggle, #selector-gas { display: none !important; }
+  .calc-layout { display: block; }
+  .calc-resultados { position: static; margin-top: 16px; }
+  html, body, .viz-root { background: #ffffff !important; color: #000000; }
+}

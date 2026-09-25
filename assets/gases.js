@@ -42,6 +42,20 @@ export const GASES = [
       { id: 'memoria', nombre: 'Memoria de Cálculo' },
     ],
   },
+  {
+    id: 'otros-gases',
+    nombre: 'Otros Gases',
+    icono: '⚗️',
+    ruta: 'OtrosGases/',
+    disponible: true,
+    normas: 'CO₂ · NH₃ · gas definido por el usuario',
+    desc: 'Cualquier gas a partir de sus constantes críticas: compresibilidad (Peng-Robinson), condensación, tubería y flujo, y almacenamiento comprimido o licuado.',
+    herramientas: [
+      { id: 'gas', nombre: 'Propiedades del Gas' },
+      { id: 'flujo', nombre: 'Tubería y Flujo' },
+      { id: 'almacenamiento', nombre: 'Almacenamiento' },
+    ],
+  },
 ];
 
 // `profundidad` = cuántas carpetas hay entre la página actual y la raíz del

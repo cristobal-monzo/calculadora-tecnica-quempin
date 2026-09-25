@@ -1,9 +1,10 @@
 # CLAUDE.md — Calculadora Técnica QUEMPIN (maestro)
 
 Dashboard estático de calculadoras de ingeniería de gases (dimensionamiento
-de tuberías, volúmenes y presiones de almacenamiento, entre otros). Se
-parte con hidrógeno; otros gases (Gas Natural, GLP) se agregan en ciclos de
-diseño futuros. Diseño completo y decisiones registradas en
+de tuberías, volúmenes y presiones de almacenamiento, entre otros). Tres
+módulos: `Hidrogeno/`, `GasNatural-GLP/` y `OtrosGases/` (CO₂, NH₃ o
+cualquier gas definido por sus constantes críticas, 2026-09-25). Diseño
+original y decisiones registradas en
 [`docs/superpowers/specs/2026-09-01-calculadora-tecnica-hidrogeno-design.md`](docs/superpowers/specs/2026-09-01-calculadora-tecnica-hidrogeno-design.md).
 
 Repo independiente de `finanzas-quempin` (mismo dueño de GitHub,
@@ -59,7 +60,7 @@ UI) salvo dos cosas que siempre se comparten desde `assets/`:
 
 ## Patrón de UI de los módulos (rediseño UX/UI 2026-09-24)
 
-Ambos módulos comparten la misma estructura de pantalla, copiada (no
+Los tres módulos comparten la misma estructura de pantalla, copiada (no
 importada) en cada `css/styles.css` — mantenerlas iguales al tocar una:
 barra de pestañas fija (`.barra-pestanas`), cada calculadora en
 `.calc-layout` = entradas (`.calc-entradas`) | resultados
@@ -69,9 +70,15 @@ tokens de estado `--estado-ok/alerta/critico` con variante propia en tema
 oscuro, y `aria-invalid` en cajetines numéricos con texto no numérico. El
 detalle y el porqué de cada decisión está en el `CLAUDE.md` de cada módulo. La decisión de "un sitio por gas vs. un selector
 compartido entre gases" se toma módulo por módulo — Hidrógeno tiene su
-propio sitio; Gas Natural y GLP (cuando se construyan) compartirán uno con
-selector interno, porque son más similares entre sí en normativa aplicable
-(D.S. 66) que con hidrógeno (ASME B31.12 / NFPA 2).
+propio sitio; Gas Natural y GLP comparten uno con selector interno, porque
+son más similares entre sí en normativa aplicable (D.S. 66) que con
+hidrógeno (ASME B31.12 / NFPA 2). `OtrosGases/` es el caso general: un solo
+sitio con selector de gas (predefinidos + uno personalizado) y motores que
+solo necesitan las constantes del gas (masa molar, Tc, Pc, ω) — agregar un
+gas nuevo ahí es agregar un objeto a `OtrosGases/js/biblioteca-gases.js`,
+no un módulo. Un gas pasa a tener módulo propio solo si necesita
+correlaciones o normativa específicas (como la Z NIST y el factor Hf del
+H₂).
 
 ## Hosting — GitHub Pages desde `main`
 
@@ -136,7 +143,10 @@ como código (`js/gas-<gas>.js` en cada módulo). Sí aplica el mismo espíritu
 de rigor con los datos: toda fórmula y constante debe citar su celda de
 origen en el Excel fuente y estar cubierta por un test de regresión que
 compare contra el valor cacheado del Excel (ver `<Gas>/CLAUDE.md` de cada
-módulo para el comando exacto).
+módulo para el comando exacto). `OtrosGases/` no tiene Excel fuente: ahí
+cada constante cita su fuente publicada (NIST WebBook, 49 CFR, ASME) y los
+tests comparan contra datos de referencia del NIST, con la tolerancia que
+corresponde a la exactitud real de la correlación (ver su `CLAUDE.md`).
 
 ## CI
 
