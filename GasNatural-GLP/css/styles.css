@@ -161,6 +161,33 @@ input[aria-invalid="true"] {
 }
 .subseccion legend { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); padding: 0 6px; }
 .subseccion .fila-campos { padding-top: 10px; }
+/* Límites del D.S. 66 en "Criterios de diseño" de la Memoria (2026-09-28):
+   checkbox + tabla GLP | Gas Natural, con la columna del combustible
+   vigente destacada (el mismo tinte naranja de las columnas calculadas).
+   Sin incluir, la tabla queda atenuada: es referencia, no se verifica. */
+.limites-ds66 { padding-top: 10px; margin-bottom: 6px; }
+.campo-check {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 32px;
+  font-size: 13.5px; font-weight: 700; color: var(--text-primary); cursor: pointer;
+}
+.campo-check input { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; accent-color: var(--brand-orange); }
+.campo-check input:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; }
+.tabla-limites-ds66 { margin-top: 6px; font-size: 12.5px; font-variant-numeric: tabular-nums; transition: opacity 0.15s; }
+.tabla-limites-ds66 th, .tabla-limites-ds66 td { padding: 6px 10px; vertical-align: top; }
+.tabla-limites-ds66 tbody th { font-weight: 400; color: var(--text-primary); }
+.tabla-limites-ds66 td { white-space: nowrap; }
+.tabla-limites-ds66 .activo { background: var(--tinte-calculado); color: var(--text-primary); font-weight: 700; }
+.tabla-limites-ds66 thead .activo { box-shadow: inset 0 2px 0 var(--brand-orange); }
+.limites-ds66-nota { font-size: 11.5px; font-weight: 400; color: var(--text-muted); white-space: nowrap; }
+.limites-ds66:has(#mp-limites-ds66:not(:checked)) .tabla-limites-ds66 { opacity: 0.55; }
+/* Área táctil de 44px del checkbox — acá y no en el bloque "Uso desde el
+   teléfono", que debe quedar idéntico en los tres módulos. */
+@media screen and (max-width: 600px), screen and (pointer: coarse) {
+  .campo-check { min-height: 44px; }
+  .campo-check input { width: 24px; height: 24px; }
+  .tabla-limites-ds66 th, .tabla-limites-ds66 td { padding: 6px 8px; }
+}
+
 /* Campos cortos (conteos: codos/tees/válvulas) — caben 3 por fila. */
 .fila-campos.compacta { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
 

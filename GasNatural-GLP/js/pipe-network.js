@@ -66,9 +66,30 @@ export function buscarTuberiaRedGas(pulgadas) {
 }
 
 // Pérdida de presión admisible — Bases de Cálculo!B17 = IF(B5="GLP",150,120).
-// Es el límite de BAJA presión de D.S. 66 (del regulador al artefacto).
+// Es el límite de BAJA presión de D.S. 66 (del regulador al artefacto):
+// art. 45.2.9 c.1 y d) remiten a la Tabla VIII, "Pérdida Máxima de Presión
+// Según el Tipo de Gas" — GLP 150 Pa, gas natural (y de ciudad) 120 Pa.
 export function perdidaAdmisiblePa(gas) {
   return gas === 'GLP' ? 150 : 120;
+}
+
+// D.S. 66 art. 45.2.9 d), texto literal: "Para las tuberías de gas que
+// operen a presiones superiores a la de abastecimiento directo a los
+// artefactos o equipos, cualquiera sea el tipo de gas, la velocidad de
+// flujo deberá ser inferior a 40 (m/s)." Límite estricto (< 40), igual
+// para GLP y GN, y solo para los tramos de media/alta presión.
+export const VELOCIDAD_MAXIMA_DS66_MS = 40;
+
+// Límites de diseño del D.S. 66 que la Memoria de Cálculo verifica cuando
+// el usuario los incluye (2026-09-28, a pedido del usuario): la pérdida de
+// carga acumulada depende del gas y se evalúa en los tramos de baja
+// presión; la velocidad es la misma para los dos y se evalúa en los de
+// media/alta.
+export function limitesDS66(gas) {
+  return {
+    perdidaAcumuladaBajaPresionPa: perdidaAdmisiblePa(gas),
+    velocidadMediaAltaPresionMS: VELOCIDAD_MAXIMA_DS66_MS,
+  };
 }
 
 // Media/alta presión (AGREGADO 2026-09-25): el límite de 150/120 Pa de

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
   buscarTuberiaRedGas, caudalBajaPresion, perdidaPresionBajaPresion,
   caudalMediaAltaPresion, perdidaPresionMediaAltaPresion, factorZPengRobinson,
-  TABLA_TUBERIA_RED_GAS, P_ATMOSFERICA_PA, perdidaAdmisibleMediaPresionPa, factorCr,
+  TABLA_TUBERIA_RED_GAS, P_ATMOSFERICA_PA, perdidaAdmisibleMediaPresionPa, factorCr, limitesDS66,
 } from '../js/pipe-network.js';
 
 function cerca(actual, esperado, tolerancia = 1e-6) {
@@ -109,6 +109,12 @@ cerca(caudalAlta, 0.12426 * 52.5 ** 2.623 * ((p1Abs ** 2 - p2Abs ** 2) * 1.02 / 
 
 // Criterio de media presión: 10 % de la presión inicial ABSOLUTA
 cerca(perdidaAdmisibleMediaPresionPa(50000), 0.1 * (50000 + 101325));
+
+// Límites del D.S. 66 de la Memoria: Tabla VIII (pérdida de carga en baja
+// presión, distinta por gas) y art. 45.2.9 d) (velocidad < 40 m/s en media/
+// alta presión, la misma para cualquier gas).
+assert.deepEqual(limitesDS66('GLP'), { perdidaAcumuladaBajaPresionPa: 150, velocidadMediaAltaPresionMS: 40 });
+assert.deepEqual(limitesDS66('GN'), { perdidaAcumuladaBajaPresionPa: 120, velocidadMediaAltaPresionMS: 40 });
 
 // Fixtures: Bases de Cálculo!R40 (GLP) y R41 (GN). El Excel evaluaba con
 // M40 = 0,01 bar (la presión manométrica B8) y 293,15 K; con esos mismos

@@ -165,6 +165,9 @@ original de Hidrógeno, no copia literal:
   en 20 m/s (límite NFPA 2 ya usado en "Tubería y Flujo"). Acá no hay una
   norma de referencia ya usada en el módulo de la que tomar ese número, así
   que el cajetín queda vacío ("—") hasta que el usuario lo complete.
+  *(Desde el 2026-09-28 el límite del D.S. 66 — < 40 m/s en media/alta
+  presión — se incluye aparte con un checkbox; el cajetín sigue vacío. Ver
+  "Límites del D.S. 66 en la Memoria".)*
 - **Título y "Tipo de red" dinámicos**: Hidrógeno los deja fijos
   ("Hidrógeno gas") porque es mono-gas; acá `#informe-subtitulo` y
   `#informe-tipo-red` se recalculan según el combustible vigente ("RED DE
@@ -467,6 +470,59 @@ su columna, velocidad; el tooltip agrega régimen, material y presión
 final). Las marcas ▲ salen de `evaluarCriteriosRed()`, extraída de
 `renderInformeImpresion()` — así respetan la regla de la red mixta (en la
 pérdida acumulada solo cuentan los tramos de baja presión).
+
+## Límites del D.S. 66 en la Memoria (`pipe-network.js`/`ui.js`/`index.html`/`css/styles.css`, 2026-09-28, a pedido del usuario)
+
+Checkbox "Incluir los límites del D.S. 66 en la verificación" al inicio de
+"Criterios de diseño" (dentro de "Datos del informe"), con una tabla
+GLP | Gas Natural al lado (`renderLimitesDS66()`) que destaca la columna
+del combustible vigente — la que se verifica. Se guarda como
+`proyecto.incluirLimitesDS66` (se exporta con el proyecto; uno anterior sin
+el campo queda sin incluir, igual que antes). Los límites salen de
+`limitesDS66(gas)` en `pipe-network.js` (test en `pipe-network.test.js`):
+
+| Límite | GLP | GN | Se evalúa en | Fuente |
+|---|---|---|---|---|
+| Pérdida de carga acumulada | ≤ 150 Pa | ≤ 120 Pa | tramos de baja presión | art. 45.2.9 c.1 y d) → Tabla VIII |
+| Velocidad | < 40 m/s | < 40 m/s | tramos de media/alta presión | art. 45.2.9 d) |
+
+- **Fuente**: texto oficial del decreto (BCN, publicado por SEC en
+  `sec.cl/sitioweb/transparencia_activa/julio2010/Decreto_66.pdf`). La
+  velocidad es literal: "Para las tuberías de gas que operen a presiones
+  superiores a la de abastecimiento directo a los artefactos o equipos,
+  cualquiera sea el tipo de gas, la velocidad de flujo deberá ser inferior
+  a 40 (m/s)" — límite estricto (`<`, `estricto` en `evaluarCriterio()`), y
+  "presiones superiores a la de abastecimiento directo" se lleva al régimen
+  `>10 kPa` del tramo. **La Tabla VIII es una imagen en ese texto** (no se
+  pudo leer): 150/120 Pa salen de `Bases de Cálculo!B17`, que ya usaba el
+  módulo, y coinciden con el manual de cobre que los cita como "normadas
+  por SEC" en baja presión (GC y GN 120 Pa, gas licuado 150 Pa).
+  **Confirmar con Cristóbal** si la Tabla VIII trae también una fila de
+  media presión (c.1 habla de la caída "hasta el equipo o al regulador de
+  segunda etapa") — hoy la app no aplica ningún límite de pérdida del
+  D.S. 66 a los tramos de media.
+- **Informe**: sección 2 lista el límite normativo junto al propio del
+  proyecto ("20 m/s; < 40 m/s en media/alta presión (D.S. 66)"), sección 5
+  agrega una fila por límite, que nombra la tabla/artículo y el gas. Con los
+  límites incluidos, un criterio propio SIN valor ya no aparece como fila
+  "No evaluado". Si la red no tiene tramos del régimen de un límite, la
+  fila dice "No aplica" (estado `no-aplica`, fuera del conteo de la
+  conclusión) en vez de un "Cumple" sin tramos evaluados. Las marcas ▲ de la
+  tabla y del diagrama salen de la `columna` de cada criterio.
+- El área táctil de 44px del checkbox va en una regla propia junto a sus
+  estilos, no en el bloque "Uso desde el teléfono" (idéntico en los tres
+  módulos).
+- La pestaña Red de Gas no cambió: su "Tubería adecuada" ya usa la Tabla
+  VIII en baja presión; en media sigue con el 10 % de la presión inicial y
+  no verifica los 40 m/s.
+
+**Hallazgo pendiente, no tocado**: el mismo texto oficial dice en art.
+45.2.9 f.2 que para tubos de acero "se deberán considerar los valores de
+D5 prescritos en la Tabla X" (también imagen). La auditoría del
+2026-09-25 reemplazó el `d5` literal del Excel en acero de 3/8" a 2-1/2"
+por DI^5, porque "equivalía a un diámetro 5-10 % menor" — es posible que
+ese `d5` del Excel fuera justamente la Tabla X. Revisar contra la tabla
+antes de dar por cerrado ese cambio.
 
 ## Fix de ids de tramo/artefacto repetidos en la Memoria de Cálculo (`ui.js`, 2026-09-24, a pedido del usuario)
 

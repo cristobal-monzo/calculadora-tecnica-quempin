@@ -395,6 +395,16 @@
 
           <fieldset class="subseccion">
             <legend>Criterios de diseño (opcional)</legend>
+            <!-- Límites del D.S. 66 (2026-09-28): se incluyen con el checkbox
+                 y siguen al combustible vigente; la tabla la arma ui.js
+                 (renderLimitesDS66) desde limitesDS66() de pipe-network.js. -->
+            <div class="limites-ds66">
+              <label class="campo-check">
+                <input id="mp-limites-ds66" type="checkbox" aria-describedby="mp-limites-ds66-tabla">
+                <span>Incluir los límites del D.S. 66 en la verificación</span>
+              </label>
+              <table class="tabla-limites-ds66" id="mp-limites-ds66-tabla"></table>
+            </div>
             <div class="fila-campos">
               <div class="campo">
                 <label for="mp-vel-max-flujo">Velocidad máxima flujo de gas [m/s]</label>

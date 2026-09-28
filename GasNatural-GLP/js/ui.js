@@ -1,4 +1,4 @@
-import { TABLA_TUBERIA_RED_GAS, P_ATMOSFERICA_PA } from './pipe-network.js';
+import { TABLA_TUBERIA_RED_GAS, P_ATMOSFERICA_PA, limitesDS66 } from './pipe-network.js';
 import { calcularRedGas, COMPOSICION_POR_DEFECTO, TABLA_VI_DS66, GAS_TABLA_VI_POR_DEFECTO, buscarGasTablaVI } from './calc-red-gas.js';
 import { calcularRedMemoria } from './calc-memoria-red-gas.js';
 import { cilindrosPorVaporizacion, cilindrosPorConsumoDiario, calcularEstanqueGLP } from './calc-almacenamiento-glp.js';
@@ -962,10 +962,13 @@ function proyectoPorDefecto() {
     fecha: '', proyecto: '', instalador: '', contacto: '', direccion: '', comuna: '',
     cargoInstalador: '', runInstalador: '', numeroDoc: '402604', revision: '1',
     // A diferencia de Hidrógeno (que precompleta 20 m/s, el límite NFPA 2 ya
-    // usado en "Tubería y Flujo"), acá se deja sin valor por defecto: no hay
-    // una norma de referencia ya usada en este módulo de la que tomar un
-    // límite de velocidad — el usuario lo completa si aplica a su proyecto.
+    // usado en "Tubería y Flujo"), acá se dejan sin valor por defecto: son
+    // límites propios del proyecto. Los del D.S. 66 (velocidad < 40 m/s en
+    // media/alta presión, Tabla VIII en baja) se incluyen aparte con
+    // `incluirLimitesDS66` (2026-09-28), porque cada uno se evalúa solo en
+    // los tramos de su régimen y estos cajetines, en todos.
     velocidadMaxFlujoDisenoMS: null, velocidadErosionDisenoMS: null, perdidaMaxAcumuladaDisenoPa: null,
+    incluirLimitesDS66: false,
     artefactos: [], observaciones: OBSERVACIONES_DEFECTO,
     // Gas de la red según D.S. 66 Tabla VI y composición real del GLP (solo
     // condensación), uno por combustible (2026-09-25) — ver opcionesGasMemoria().
@@ -993,6 +996,31 @@ function renderComposicionMemoria() {
     document.getElementById('mc-pct-butano').value = composicion.pctButano;
     document.getElementById('mc-pct-propano').value = composicion.pctPropano;
   }
+}
+
+// Tabla GLP | Gas Natural junto al checkbox "Incluir los límites del
+// D.S. 66" (2026-09-28, a pedido del usuario): muestra los límites de los
+// dos gases para que se vea en qué difieren, y destaca la columna del
+// combustible vigente, que es la que se verifica.
+function renderLimitesDS66() {
+  const gases = [{ id: 'GLP', nombre: 'GLP' }, { id: 'GN', nombre: 'Gas Natural' }];
+  const clase = (g) => (g.id === combustible ? ' class="activo"' : '');
+  const celdas = (texto) => gases.map((g) => `<td${clase(g)}>${texto(limitesDS66(g.id))}</td>`).join('');
+  document.getElementById('mp-limites-ds66-tabla').innerHTML = `
+    <thead><tr>
+      <th scope="col">Límite</th>
+      ${gases.map((g) => `<th scope="col"${clase(g)}>${g.nombre}${g.id === combustible ? ' <span class="limites-ds66-nota">(en uso)</span>' : ''}</th>`).join('')}
+    </tr></thead>
+    <tbody>
+      <tr>
+        <th scope="row">Pérdida de carga acumulada, tramos de baja presión <span class="limites-ds66-nota">Tabla VIII</span></th>
+        ${celdas((l) => `≤ ${formatearLibre(l.perdidaAcumuladaBajaPresionPa)} Pa`)}
+      </tr>
+      <tr>
+        <th scope="row">Velocidad, tramos de media/alta presión <span class="limites-ds66-nota">art. 45.2.9 d)</span></th>
+        ${celdas((l) => `&lt; ${formatearLibre(l.velocidadMediaAltaPresionMS)} m/s`)}
+      </tr>
+    </tbody>`;
 }
 
 // "GLP — Licuado (Iª a XIIª Región), D.S. 66 Tabla VI: d 2, PCS 119,7 MJ/m³"
@@ -1310,8 +1338,11 @@ function criterioDefinido(valor) {
   return valor !== null && valor !== undefined && !Number.isNaN(valor);
 }
 
-function formatearCriterio(valor, formatear) {
-  return criterioDefinido(valor) ? formatear(valor) : 'No definida';
+// `textoDS66`: el límite del D.S. 66 de la misma magnitud, si el usuario los
+// incluyó — se lista junto al propio del proyecto, o solo, si no hay.
+function formatearCriterio(valor, formatear, textoDS66 = null) {
+  const partes = [criterioDefinido(valor) ? formatear(valor) : null, textoDS66].filter(Boolean);
+  return partes.length ? partes.join('; ') : 'No definida';
 }
 
 // Números del informe impreso (2026-09-25): sin la precisión fija de la
@@ -1342,16 +1373,24 @@ function thConUnidad(etiqueta, unidad) {
 // declaraba los límites y mostraba los máximos calculados sin compararlos
 // nunca, así que quien lo leía tenía que hacer la cuenta a mano para saber
 // si la red cumple. `valorDe` y `limite` van en la misma unidad canónica;
-// `formatear` decide cómo se muestran.
-function evaluarCriterio({ nombre, limite, tramos, valorDe, formatear }) {
+// `formatear` decide cómo se muestran. Desde el 2026-09-28 (límites del
+// D.S. 66): `estricto` para un límite "inferior a" (< en vez de ≤),
+// `sinTramos` explica por qué no aplica un criterio definido cuando la red
+// no tiene tramos de su régimen, y `columna` ('velocidad' | 'perdida')
+// dice qué columna de la tabla de tramos marca con ▲.
+function evaluarCriterio({ nombre, limite, tramos, valorDe, formatear, estricto = false, sinTramos = null, columna = null }) {
   const critico = tramos.reduce((max, t) => (max === null || valorDe(t) > valorDe(max) ? t : max), null);
   const definido = criterioDefinido(limite);
-  const exceden = definido ? tramos.filter((t) => valorDe(t) > limite) : [];
+  const excede = (t) => (estricto ? valorDe(t) >= limite : valorDe(t) > limite);
+  const exceden = definido ? tramos.filter(excede) : [];
+  let estado = exceden.length ? 'no-cumple' : 'cumple';
+  if (!definido) estado = 'sin-limite';
+  else if (!critico) estado = sinTramos ? 'no-aplica' : 'sin-limite';
   return {
-    nombre, definido, exceden, critico, evaluados: tramos.length,
-    limiteTexto: definido ? `≤ ${formatear(limite)}` : 'No definido',
+    nombre, definido, exceden, critico, columna, sinTramos, evaluados: tramos.length,
+    limiteTexto: definido ? `${estricto ? '<' : '≤'} ${formatear(limite)}` : 'No definido',
     maximoTexto: critico ? formatear(valorDe(critico)) : '—',
-    estado: !definido || !critico ? 'sin-limite' : exceden.length ? 'no-cumple' : 'cumple',
+    estado,
   };
 }
 
@@ -1360,13 +1399,14 @@ function filaVerificacion(c) {
     'cumple': '<span class="informe-veredicto cumple">Cumple</span>',
     'no-cumple': `<span class="informe-veredicto no-cumple">No cumple</span> <span class="informe-veredicto-detalle">${c.exceden.length} de ${c.evaluados} ${c.evaluados === 1 ? 'tramo' : 'tramos'}</span>`,
     'sin-limite': '<span class="informe-veredicto-detalle">No evaluado</span>',
+    'no-aplica': `<span class="informe-veredicto-detalle">No aplica: ${escapeHtml(c.sinTramos ?? '')}</span>`,
   }[c.estado];
   return `<tr><td>${escapeHtml(c.nombre)}</td><td>${c.limiteTexto}</td><td>${c.maximoTexto}</td>` +
     `<td>${c.critico ? escapeHtml(c.critico.nombre) : '—'}</td><td>${resultado}</td></tr>`;
 }
 
 function textoConclusion(criterios) {
-  const evaluados = criterios.filter((c) => c.estado !== 'sin-limite');
+  const evaluados = criterios.filter((c) => c.estado === 'cumple' || c.estado === 'no-cumple');
   if (!evaluados.length) {
     return 'No se definieron límites de diseño: los máximos calculados se informan sin verificación.';
   }
@@ -1403,27 +1443,55 @@ function evaluarCriteriosRed(resultado) {
   // Si la red mezcla regímenes se evalúan solo los tramos de baja presión,
   // y el nombre del criterio lo dice; si no, todos.
   const tramosBaja = resultado.filter((t) => t.regimenPresion === '<10 kPa');
+  const tramosMediaAlta = resultado.filter((t) => t.regimenPresion !== '<10 kPa');
   const redMixta = tramosBaja.length > 0 && tramosBaja.length < resultado.length;
-  const criterios = [
-    evaluarCriterio({
+  const velocidadDe = (t) => t.velocidadMS;
+  const perdidaAcumuladaDe = (t) => t.perdidaAcumuladaPa;
+  // Límites del D.S. 66 (2026-09-28, a pedido del usuario), si se
+  // incluyeron: siguen al combustible vigente (Tabla VIII: 150 Pa GLP /
+  // 120 Pa GN) y cada uno se evalúa solo en los tramos de su régimen.
+  // Con ellos incluidos, un criterio propio sin valor ya no se lista como
+  // "No evaluado" — sería una fila vacía junto al límite normativo.
+  const ds66 = proyecto.incluirLimitesDS66 ? limitesDS66(combustible) : null;
+  const criterios = [];
+  if (!ds66 || criterioDefinido(proyecto.velocidadMaxFlujoDisenoMS)) {
+    criterios.push(evaluarCriterio({
       nombre: 'Velocidad de flujo', limite: proyecto.velocidadMaxFlujoDisenoMS,
-      tramos: resultado, valorDe: (t) => t.velocidadMS, formatear: velocidad,
-    }),
-  ];
+      tramos: resultado, valorDe: velocidadDe, formatear: velocidad, columna: 'velocidad',
+    }));
+  }
   if (criterioDefinido(proyecto.velocidadErosionDisenoMS)) {
     criterios.push(evaluarCriterio({
       nombre: 'Velocidad de erosión', limite: proyecto.velocidadErosionDisenoMS,
-      tramos: resultado, valorDe: (t) => t.velocidadMS, formatear: velocidad,
+      tramos: resultado, valorDe: velocidadDe, formatear: velocidad, columna: 'velocidad',
     }));
   }
-  const criterioPerdida = evaluarCriterio({
-    nombre: redMixta ? 'Pérdida de carga acumulada (tramos de baja presión)' : 'Pérdida de carga acumulada',
-    limite: proyecto.perdidaMaxAcumuladaDisenoPa,
-    tramos: redMixta ? tramosBaja : resultado, valorDe: (t) => t.perdidaAcumuladaPa, formatear: perdidaAcum,
-  });
-  criterios.push(criterioPerdida);
-  const velocidadExcede = new Set(criterios.filter((c) => c !== criterioPerdida).flatMap((c) => c.exceden.map((t) => t.id)));
-  const perdidaExcede = new Set(criterioPerdida.exceden.map((t) => t.id));
+  if (ds66) {
+    criterios.push(evaluarCriterio({
+      nombre: 'Velocidad en tramos de media/alta presión (D.S. 66, art. 45.2.9 letra d)',
+      limite: ds66.velocidadMediaAltaPresionMS, estricto: true,
+      tramos: tramosMediaAlta, valorDe: velocidadDe, formatear: velocidad, columna: 'velocidad',
+      sinTramos: 'la red no tiene tramos de media/alta presión',
+    }));
+  }
+  if (!ds66 || criterioDefinido(proyecto.perdidaMaxAcumuladaDisenoPa)) {
+    criterios.push(evaluarCriterio({
+      nombre: redMixta ? 'Pérdida de carga acumulada (tramos de baja presión)' : 'Pérdida de carga acumulada',
+      limite: proyecto.perdidaMaxAcumuladaDisenoPa,
+      tramos: redMixta ? tramosBaja : resultado, valorDe: perdidaAcumuladaDe, formatear: perdidaAcum, columna: 'perdida',
+    }));
+  }
+  if (ds66) {
+    criterios.push(evaluarCriterio({
+      nombre: `Pérdida de carga acumulada en tramos de baja presión (D.S. 66, Tabla VIII — ${combustible === 'GLP' ? 'GLP' : 'Gas Natural'})`,
+      limite: ds66.perdidaAcumuladaBajaPresionPa,
+      tramos: tramosBaja, valorDe: perdidaAcumuladaDe, formatear: perdidaAcum, columna: 'perdida',
+      sinTramos: 'la red no tiene tramos de baja presión',
+    }));
+  }
+  const tramosQueExceden = (columna) => new Set(criterios.filter((c) => c.columna === columna).flatMap((c) => c.exceden.map((t) => t.id)));
+  const velocidadExcede = tramosQueExceden('velocidad');
+  const perdidaExcede = tramosQueExceden('perdida');
   // Condensación del GLP (2026-09-25): no es un límite de diseño que se
   // elija, así que se evalúa siempre en GLP — presión absoluta inicial de
   // cada tramo como % de la presión de rocío de la mezcla a su temperatura.
@@ -1481,9 +1549,12 @@ function renderInformeImpresion(resultado) {
   const unidadPerdidaAcumulada = document.getElementById('memoria-perdida-acumulada-unidad').value;
   const { velocidad, perdidaAcum } = formatosCriterio();
 
-  document.getElementById('informe-vel-max-flujo').textContent = formatearCriterio(proyecto.velocidadMaxFlujoDisenoMS, velocidad);
+  const ds66 = proyecto.incluirLimitesDS66 ? limitesDS66(combustible) : null;
+  document.getElementById('informe-vel-max-flujo').textContent = formatearCriterio(proyecto.velocidadMaxFlujoDisenoMS, velocidad,
+    ds66 && `< ${velocidad(ds66.velocidadMediaAltaPresionMS)} en media/alta presión (D.S. 66)`);
   document.getElementById('informe-vel-erosion').textContent = formatearCriterio(proyecto.velocidadErosionDisenoMS, velocidad);
-  document.getElementById('informe-perdida-max').textContent = formatearCriterio(proyecto.perdidaMaxAcumuladaDisenoPa, perdidaAcum);
+  document.getElementById('informe-perdida-max').textContent = formatearCriterio(proyecto.perdidaMaxAcumuladaDisenoPa, perdidaAcum,
+    ds66 && `${perdidaAcum(ds66.perdidaAcumuladaBajaPresionPa)} en baja presión (D.S. 66)`);
 
   // Una sola fila de total: antes "Total" y "Potencia instalada" repetían
   // el mismo número (sin simultaneidad son lo mismo, decisión 2026-09-03).
@@ -1640,6 +1711,7 @@ function leerProyecto() {
     velocidadMaxFlujoDisenoMS: numOpcional('mp-vel-max-flujo'),
     velocidadErosionDisenoMS: numOpcional('mp-vel-erosion'),
     perdidaMaxAcumuladaDisenoPa: numOpcional('mp-perdida-max'),
+    incluirLimitesDS66: document.getElementById('mp-limites-ds66').checked,
     observaciones: val('mp-observaciones'),
   };
 }
@@ -1658,6 +1730,9 @@ function aplicarProyectoAForm() {
   document.getElementById('mp-vel-max-flujo').value = proyecto.velocidadMaxFlujoDisenoMS ?? '';
   document.getElementById('mp-vel-erosion').value = proyecto.velocidadErosionDisenoMS ?? '';
   document.getElementById('mp-perdida-max').value = proyecto.perdidaMaxAcumuladaDisenoPa ?? '';
+  // Un proyecto guardado o exportado antes del 2026-09-28 no trae el campo:
+  // queda sin incluir, igual que antes.
+  document.getElementById('mp-limites-ds66').checked = Boolean(proyecto.incluirLimitesDS66);
   document.getElementById('mp-observaciones').value = proyecto.observaciones;
 }
 
@@ -1728,6 +1803,7 @@ function initMemoria() {
   contadorArtefactoId = maxSufijoId(proyecto.artefactos);
   aplicarProyectoAForm();
   renderComposicionMemoria();
+  renderLimitesDS66();
 
   document.getElementById('memoria-campos-composicion').addEventListener('input', () => {
     proyecto.gasTablaVI = { ...(proyecto.gasTablaVI ?? {}), [combustible]: document.getElementById('mc-gas-tabla-vi').value };
@@ -1873,7 +1949,7 @@ function initMemoria() {
 
   document.getElementById('memoria-imprimir').addEventListener('click', () => window.print());
 
-  alCambiarCombustible(() => { renderComposicionMemoria(); recalcularMemoria(); });
+  alCambiarCombustible(() => { renderComposicionMemoria(); renderLimitesDS66(); recalcularMemoria(); });
   recalcularMemoria();
   // El diagrama mide sus textos con Lato: si la fuente aún no cargaba, se
   // midió con la de reserva — se redibuja cuando llega.
