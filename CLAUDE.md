@@ -3,7 +3,9 @@
 Dashboard estático de calculadoras de ingeniería de gases (dimensionamiento
 de tuberías, volúmenes y presiones de almacenamiento, entre otros). Tres
 módulos: `Hidrogeno/`, `GasNatural-GLP/` y `OtrosGases/` (CO₂, NH₃ o
-cualquier gas definido por sus constantes críticas, 2026-09-25). Diseño
+cualquier gas definido por sus constantes críticas, 2026-09-25), más una
+calculadora rápida transversal, `DiametroTuberia/` (gas + potencia + largo
++ codos → diámetro, 2026-09-28). Diseño
 original y decisiones registradas en
 [`docs/superpowers/specs/2026-09-01-calculadora-tecnica-hidrogeno-design.md`](docs/superpowers/specs/2026-09-01-calculadora-tecnica-hidrogeno-design.md).
 
@@ -34,19 +36,20 @@ calculadora-tecnica-quempin/
 │   ├── brand.css          # sistema de marca compartido (fuentes, paleta, tema)
 │   ├── LOGO QUEMPIN.PNG
 │   └── OFICIAL MANUAL DE MARCA GRÁFICA QUEMPIN.pdf
-└── <Gas o familia de gases>/
-    ├── CLAUDE.md           # contenido: fórmulas, fuente, supuestos, discrepancias
-    ├── index.html
-    ├── css/styles.css      # estilos propios de ese módulo (no repite assets/brand.css)
-    ├── js/
-    └── tests/
+├── <Gas o familia de gases>/
+│   ├── CLAUDE.md           # contenido: fórmulas, fuente, supuestos, discrepancias
+│   ├── index.html
+│   ├── css/styles.css      # estilos propios de ese módulo (no repite assets/brand.css)
+│   ├── js/
+│   └── tests/
+└── DiametroTuberia/        # calculadora rápida: misma estructura, importa motores de los módulos
 ```
 
 Cada módulo de gas es autocontenido (su propio motor de cálculo, su propia
 UI) salvo dos cosas que siempre se comparten desde `assets/`:
 - `assets/brand.css` — sistema de marca (fuentes, paleta, tema).
 - `assets/gases.js` + `assets/gas-switcher.js` — el registro único de
-  módulos y el selector "Cambiar de gas" de la cabecera, que permite
+  módulos y el selector "Cambiar de calculadora" de la cabecera, que permite
   moverse entre herramientas sin volver al hub. Al agregar un módulo nuevo:
   agregarlo a `GASES` en `assets/gases.js` (una sola vez — el hub y el
   selector de cada módulo lo leen de ahí), con su lista `herramientas`
@@ -57,6 +60,18 @@ UI) salvo dos cosas que siempre se comparten desde `assets/`:
   `ui.js` (ver `Hidrogeno/js/ui.js` como referencia). Copiar también
   `initTabs()` de ese `ui.js`: activa la pestaña desde el hash de la URL,
   que es lo que hace funcionar esos enlaces directos del hub.
+
+**Calculadoras rápidas** (2026-09-28): herramientas de una sola pantalla
+que atraviesan gases (su primera pregunta es el gas) van en
+`CALCULADORAS_RAPIDAS` de `assets/gases.js`, no en `GASES` — el hub las
+muestra en la sección "Cálculo rápido" y el selector de cabecera (ahora
+"Cambiar de calculadora", con grupos "Por gas"/"Cálculo rápido") en su
+propio grupo. Hoy: `DiametroTuberia/`. Son la **única excepción** a "cada
+módulo es autocontenido": **importan** (no copian) los motores de cálculo
+de los módulos de gas, para que una corrección de física se herede sola —
+ver `DiametroTuberia/CLAUDE.md`. Al tocar `calc-red-gas.js`,
+`pipe-network.js`, `calc-flujo.js` o `gas-h2.js`, correr también
+`node DiametroTuberia/tests/run-all.js`.
 
 ## Patrón de UI de los módulos (rediseño UX/UI 2026-09-24)
 

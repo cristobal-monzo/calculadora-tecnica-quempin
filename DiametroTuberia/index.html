@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diámetro de Tubería — Calculadora Técnica QUEMPIN</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%93%8F</text></svg>">
+  <link rel="stylesheet" href="../assets/brand.css">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="viz-root">
+  <header class="viz-header">
+    <div class="viz-container">
+      <span class="viz-wordmark">QUEMP<span class="in">IN</span></span>
+      <div class="viz-titleblock">
+        <h1>Diámetro de Tubería</h1>
+        <p>GLP y Gas Natural (D.S. N°66) · Hidrógeno (Darcy-Weisbach, ASME B31.12)</p>
+      </div>
+      <label for="selector-gas" class="visualmente-oculto">Cambiar de calculadora</label>
+      <select id="selector-gas"></select>
+      <button class="viz-theme-toggle" id="themeToggle" type="button">Modo oscuro</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Una sola herramienta, sin barra de pestañas: el panel se marca como
+         .tab-panel.active para que initResumenMovil() (idéntico en todos los
+         módulos) encuentre la calculadora en uso. -->
+    <section class="tab-panel active" id="panel-diametro" data-panel="diametro" aria-labelledby="titulo-diametro">
+      <div class="intro">
+        <h2 id="titulo-diametro">¿Qué diámetro necesita la tubería?</h2>
+        <p>Responde las preguntas de la izquierda: se propone el <strong>menor diámetro comercial</strong>
+          que cumple el criterio de diseño del gas, y se muestra cuánto margen deja.</p>
+      </div>
+
+      <div class="calc-layout">
+        <form id="form-diametro" class="calc-entradas" autocomplete="off" novalidate>
+          <div class="seccion">
+            <h3 class="seccion-titulo" id="etiqueta-gas"><span class="paso" aria-hidden="true">1</span>Gas utilizado</h3>
+            <div class="segmentado segmentado-gas" role="radiogroup" aria-labelledby="etiqueta-gas" aria-describedby="ayuda-gas">
+              <label><input type="radio" name="gas" value="GLP"><span>GLP</span></label>
+              <label><input type="radio" name="gas" value="GN"><span>Gas natural</span></label>
+              <label><input type="radio" name="gas" value="H2"><span>Hidrógeno</span></label>
+            </div>
+            <p class="ayuda ayuda-bajo-control" id="ayuda-gas"></p>
+          </div>
+
+          <div class="seccion">
+            <h3 class="seccion-titulo"><span class="paso" aria-hidden="true">2</span>Consumo</h3>
+            <div class="fila-campos">
+              <div class="campo">
+                <label for="dt-potencia">Potencia de los artefactos [kW]</label>
+                <input id="dt-potencia" type="text" inputmode="decimal" value="30" required aria-describedby="ayuda-potencia">
+              </div>
+            </div>
+            <p class="ayuda" id="ayuda-potencia">Suma de las potencias nominales de los artefactos que alimenta esta tubería (todos encendidos a la vez).</p>
+          </div>
+
+          <div class="seccion">
+            <h3 class="seccion-titulo"><span class="paso" aria-hidden="true">3</span>Recorrido</h3>
+            <div class="fila-campos">
+              <div class="campo">
+                <label for="dt-largo">Largo de la tubería [m]</label>
+                <input id="dt-largo" type="text" inputmode="decimal" value="10" required>
+              </div>
+              <div class="campo">
+                <label for="dt-codos">Cantidad de codos</label>
+                <div class="contador">
+                  <button type="button" class="btn contador-btn" data-paso="-1" aria-controls="dt-codos" aria-label="Quitar un codo">−</button>
+                  <input id="dt-codos" type="number" inputmode="numeric" min="0" step="1" value="0" required aria-describedby="ayuda-codos">
+                  <button type="button" class="btn contador-btn" data-paso="1" aria-controls="dt-codos" aria-label="Agregar un codo">+</button>
+                </div>
+              </div>
+            </div>
+            <p class="ayuda" id="ayuda-codos"></p>
+          </div>
+
+          <!-- Supuestos: tienen un valor razonable por defecto y se guardan por
+               gas. Cerrados por defecto (divulgación progresiva); el resumen
+               del <summary> los deja a la vista sin abrirlos. -->
+          <details class="seccion-avanzada" id="supuestos">
+            <summary>Supuestos del cálculo <span class="supuestos-resumen" id="supuestos-resumen"></span></summary>
+            <div class="fila-campos">
+              <div class="campo">
+                <label for="dt-presion">Presión de suministro (man.)</label>
+                <div class="campo-con-unidad">
+                  <input id="dt-presion" type="text" inputmode="decimal" data-por-gas required>
+                  <select id="dt-presion-unidad" class="select-unidad" data-por-gas aria-label="Unidad de la presión de suministro">
+                    <option value="Pa">Pa</option>
+                    <option value="kPa">kPa</option>
+                    <option value="mbar">mbar</option>
+                    <option value="bar">bar</option>
+                    <option value="psi">psi</option>
+                  </select>
+                </div>
+              </div>
+              <div class="campo">
+                <label for="dt-temperatura">Temperatura del gas [°C]</label>
+                <input id="dt-temperatura" type="text" inputmode="decimal" data-por-gas required>
+              </div>
+              <div class="campo" data-solo-gas="GLP GN">
+                <label for="dt-material">Material</label>
+                <select id="dt-material" data-por-gas>
+                  <option value="Cobre tipo L">Cobre tipo L (ASTM B88)</option>
+                  <option value="Acero Sch40">Acero Sch 40 (ASME B36.10)</option>
+                </select>
+              </div>
+              <div class="campo" data-solo-gas="GLP GN">
+                <label for="dt-tabla-vi">Tipo de gas y región (D.S. 66, Tabla VI)</label>
+                <select id="dt-tabla-vi" data-por-gas></select>
+              </div>
+              <div class="campo" data-solo-gas="GLP GN">
+                <label for="dt-ld-codo">Largo equivalente por codo [diámetros]</label>
+                <input id="dt-ld-codo" type="text" inputmode="decimal" data-por-gas required>
+              </div>
+              <div class="campo" data-solo-gas="H2">
+                <label for="dt-vmax">Velocidad máxima del gas [m/s]</label>
+                <input id="dt-vmax" type="text" inputmode="decimal" data-por-gas required>
+              </div>
+            </div>
+            <p class="ayuda" id="ayuda-supuestos"></p>
+            <button type="button" class="btn" id="dt-restablecer">Restablecer supuestos</button>
+          </details>
+        </form>
+
+        <div class="calc-resultados">
+          <div class="resultados-encabezado">
+            <h2>Resultado</h2>
+            <span class="en-vivo">Se actualiza al escribir</span>
+          </div>
+          <div class="resultados" id="resultados-diametro" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  (function () {
+    try {
+      var savedTheme = localStorage.getItem('quempin_h2_theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+      }
+    } catch (e) {}
+
+    var themeBtn = document.getElementById('themeToggle');
+    function isDarkNow() {
+      var docEl = document.documentElement;
+      return docEl.getAttribute('data-theme') === 'dark' ||
+        (docEl.getAttribute('data-theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    themeBtn.textContent = isDarkNow() ? 'Modo claro' : 'Modo oscuro';
+    themeBtn.addEventListener('click', function () {
+      var docEl = document.documentElement;
+      var next = isDarkNow() ? 'light' : 'dark';
+      docEl.setAttribute('data-theme', next);
+      themeBtn.textContent = next === 'dark' ? 'Modo claro' : 'Modo oscuro';
+      try { localStorage.setItem('quempin_h2_theme', next); } catch (e) {}
+    });
+  })();
+</script>
+<!-- Carga con cache-buster (GitHub Pages sirve los .js con max-age=600;
+     ver CLAUDE.md raíz, "Caché del navegador y el ?v="). -->
+<script type="module">
+  import(`./js/ui.js?v=${Date.now()}`);
+</script>
+</body>
+</html>

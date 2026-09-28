@@ -21,6 +21,10 @@
       color: var(--text-secondary); margin: 0;
     }
     .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 14px 0 12px; }
+    /* Cálculo rápido (2026-09-28): auto-fill y no auto-fit, para que una
+       sola tarjeta tenga el mismo ancho que las de "por gas" en vez de
+       estirarse a toda la fila. */
+    .hub-grid.rapidas { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); margin-bottom: 20px; }
     .hub-card {
       background: var(--surface-card); border: 1px solid var(--border-hairline); border-radius: 14px;
       padding: 24px; display: flex; flex-direction: column; gap: 14px;
@@ -97,9 +101,12 @@
     <div class="hub-hero">
       <h2>Herramientas de ingeniería para instalaciones de gas</h2>
       <p>Diámetro de tuberías, presión máxima de diseño, volumen/masa/autonomía de almacenamiento
-      y memorias de cálculo. Elige un gas, o entra directo a una de sus herramientas — cada enlace
-      abre en una pestaña nueva.</p>
+      y memorias de cálculo. ¿Solo necesitas el diámetro? Usa el cálculo rápido. Para el detalle,
+      elige un gas o entra directo a una de sus herramientas — cada enlace abre en una pestaña nueva.</p>
     </div>
+
+    <h2 class="hub-section-title">Cálculo rápido</h2>
+    <div class="hub-grid rapidas" id="hub-rapidas"></div>
 
     <h2 class="hub-section-title">Calculadoras por gas</h2>
     <div class="hub-grid" id="hub-grid"></div>
@@ -135,9 +142,9 @@
   })();
 </script>
 <script type="module">
-  import { GASES, enlaceGas } from './assets/gases.js';
+  import { GASES, CALCULADORAS_RAPIDAS, enlaceGas } from './assets/gases.js';
 
-  document.getElementById('hub-grid').innerHTML = GASES.map((gas) => `
+  const tarjeta = (gas) => `
     <article class="hub-card${gas.disponible ? '' : ' proximamente'}">
       <div class="hub-card-cabecera">
         <div class="icon" aria-hidden="true">${gas.icono}</div>
@@ -155,7 +162,9 @@
         ? `<a class="btn" href="${enlaceGas(gas, 0)}" target="_blank" rel="noopener">Abrir calculadora →</a>`
         : `<a class="btn" href="#" aria-disabled="true">Próximamente</a>`}
     </article>
-  `).join('');
+  `;
+  document.getElementById('hub-rapidas').innerHTML = CALCULADORAS_RAPIDAS.map(tarjeta).join('');
+  document.getElementById('hub-grid').innerHTML = GASES.map(tarjeta).join('');
 </script>
 </body>
 </html>

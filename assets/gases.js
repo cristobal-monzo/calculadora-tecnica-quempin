@@ -58,6 +58,24 @@ export const GASES = [
   },
 ];
 
+// Calculadoras rápidas (2026-09-28): herramientas de una sola pantalla que
+// atraviesan gases — su primera pregunta ES el gas, así que no caben en una
+// tarjeta "por gas". Mismo shape que GASES; el hub las muestra en su propia
+// sección y el selector de cabecera en su propio grupo. Reutilizan los
+// motores de los módulos de gas (ver DiametroTuberia/CLAUDE.md).
+export const CALCULADORAS_RAPIDAS = [
+  {
+    id: 'diametro-tuberia',
+    nombre: 'Diámetro de Tubería',
+    icono: '📏',
+    ruta: 'DiametroTuberia/',
+    disponible: true,
+    normas: 'GLP · Gas natural · Hidrógeno',
+    desc: 'Indica el gas, la potencia, el largo y la cantidad de codos: entrega el menor diámetro comercial que cumple la pérdida de carga admisible, con su margen.',
+    herramientas: [],
+  },
+];
+
 // `profundidad` = cuántas carpetas hay entre la página actual y la raíz del
 // repo (0 desde el hub, 1 desde Hidrogeno/index.html, etc.)
 export function enlaceGas(gas, profundidad = 0) {

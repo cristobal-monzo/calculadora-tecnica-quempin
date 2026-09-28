@@ -155,4 +155,7 @@
     flex: 0 0 auto;
   }
   #selector-gas:hover { background: rgba(255,255,255,0.2); }
-  #selector-gas option { color: #000000; }
+  /* optgroup también: con los grupos "Por gas"/"Cálculo rápido"
+     (2026-09-28) su rótulo heredaba el blanco del select sobre la lista
+     desplegable blanca. */
+  #selector-gas option, #selector-gas optgroup { color: #000000; }

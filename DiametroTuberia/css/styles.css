@@ -1,0 +1,570 @@
+/* Estilos de la calculadora "Diámetro de Tubería". El sistema de marca
+   (tipografía, paleta, tema, cabecera, .viz-root) vive en assets/brand.css.
+
+   Patrón de pantalla COPIADO (no importado) de OtrosGases/css/styles.css —
+   rediseño UX/UI 2026-09-24 y "Uso desde el teléfono" 2026-09-25:
+   .calc-layout entradas | resultados, grupos de tiles, tokens de estado,
+   barra de resumen móvil. Mantener igual a los otros módulos al tocar uno
+   (ver CLAUDE.md raíz). Lo propio de esta calculadora va al final. */
+
+/* --- Tokens de estado (ok / alerta / crítico) y tinte de celdas
+   calculadas. El manual de marca no define verde ni rojo: se extrapolan
+   Material green 800 / red 800 (ya en uso desde 2026-09-02 / 2026-09-08)
+   y, en tema oscuro, sus variantes 400 — el verde 800 sobre la card oscura
+   (#221f1c) quedaba en ~3:1 de contraste, bajo el mínimo para texto.
+   Declarados en los mismos 3 selectores de tema que assets/brand.css para
+   que también respeten el botón "Modo oscuro/claro" (antes .critico solo
+   miraba prefers-color-scheme e ignoraba el botón). --- */
+.viz-root {
+  --estado-ok: #2e7d32;
+  --estado-ok-tinte: rgba(46, 125, 50, 0.06);
+  --estado-alerta: var(--brand-orange-ink);
+  --estado-alerta-tinte: rgba(255, 81, 0, 0.06);
+  --estado-critico: #c62828;
+  --estado-critico-tinte: rgba(198, 40, 40, 0.06);
+  --tinte-calculado: rgba(255, 81, 0, 0.045);
+  --alto-barra-pestanas: 46px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .viz-root {
+    --estado-ok: #66bb6a;
+    --estado-ok-tinte: rgba(102, 187, 106, 0.08);
+    --estado-alerta-tinte: rgba(255, 81, 0, 0.09);
+    --estado-critico: #ef5350;
+    --estado-critico-tinte: rgba(239, 83, 80, 0.09);
+    --tinte-calculado: rgba(255, 81, 0, 0.07);
+  }
+}
+:root[data-theme="dark"] .viz-root {
+  --estado-ok: #66bb6a;
+  --estado-ok-tinte: rgba(102, 187, 106, 0.08);
+  --estado-alerta-tinte: rgba(255, 81, 0, 0.09);
+  --estado-critico: #ef5350;
+  --estado-critico-tinte: rgba(239, 83, 80, 0.09);
+  --tinte-calculado: rgba(255, 81, 0, 0.07);
+}
+
+/* Mismo ancho que .viz-container de la cabecera (assets/brand.css): antes
+   el contenido usaba 1100px y la cabecera 1180px, así que el borde
+   izquierdo del logo y el de los formularios no calzaban. */
+main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 20px 60px;
+}
+
+.visualmente-oculto {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* --- Barra de pestañas: fija arriba al hacer scroll, para cambiar de
+   herramienta sin volver al inicio de una página larga. En pantallas
+   angostas las pestañas se desplazan en horizontal en vez de partirse en
+   dos líneas. --- */
+.barra-pestanas {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--page-plane);
+  border-bottom: 1px solid var(--gridline);
+  margin: 0 0 24px;
+}
+.barra-pestanas-interior {
+  max-width: 1180px; margin: 0 auto; padding: 0 20px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0 20px;
+}
+.tabs {
+  display: flex; gap: 2px; flex: 1 1 auto; min-width: 0;
+  overflow-x: auto; scrollbar-width: none;
+  margin: 0 0 -1px -14px;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  font: inherit;
+  font-weight: 700;
+  font-size: 13.5px;
+  padding: 13px 14px 11px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.tab:hover { color: var(--text-primary); }
+.tab.active { color: var(--brand-orange-ink, var(--brand-orange)); border-bottom-color: var(--brand-orange); }
+.tab:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -2px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* --- Layout de calculadora: entradas | resultados. En escritorio los
+   resultados quedan al lado de los campos que los producen (antes había
+   que bajar hasta el final del formulario para ver el efecto de cada
+   cambio). `position: sticky` solo tiene efecto cuando la columna de
+   resultados es más corta que la de entradas — si es más larga, se
+   comporta como estática. --- */
+.calc-layout { display: grid; gap: 32px; }
+@media (min-width: 960px) {
+  .calc-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 0 48px; align-items: start;
+  }
+  .calc-resultados { position: sticky; top: calc(var(--alto-barra-pestanas) + 16px); }
+}
+.resultados-encabezado {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  margin: 0 0 12px;
+}
+.resultados-encabezado h2 {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-secondary); margin: 0;
+}
+/* No hay botón "Calcular": todo se recalcula en cada tecla. El indicador
+   lo hace explícito para quien llega por primera vez. */
+.en-vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-muted); }
+.en-vivo::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--estado-ok); }
+
+/* --- Formularios --- */
+.campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.campo label { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
+.campo input, .campo select {
+  font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 6px;
+  border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary);
+  min-width: 0;
+}
+.campo input:hover, .campo select:hover { border-color: var(--baseline); }
+.campo input:focus-visible, .campo select:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+.fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0 20px; }
+.campo-ancho { grid-column: span 2; }
+
+/* Cajetín numérico con texto que no se puede leer como número: el motor
+   lo calcula como 0 (numeroFlexible() en ui.js), así que se marca en rojo
+   para que no pase inadvertido. aria-invalid lo pone ui.js. */
+input[aria-invalid="true"] {
+  border-color: var(--estado-critico) !important;
+  background-image: linear-gradient(var(--estado-critico-tinte), var(--estado-critico-tinte));
+}
+
+/* --- Campo de presión con selector de unidad propio --- */
+.campo-con-unidad { display: flex; gap: 6px; }
+.campo-con-unidad > *:first-child { flex: 1; min-width: 0; }
+.campo-con-unidad > .select-unidad { flex: 0 0 auto; width: 76px; padding: 8px 4px; }
+
+/* --- Subsección dentro de un formulario (ej. "Accesorios" en Tubería y
+   Flujo) — agrupa varios .campo relacionados con un borde propio, en la
+   misma pestaña/zona, sin ser una pestaña aparte. --- */
+.subseccion {
+  grid-column: 1 / -1; border: 1px solid var(--gridline); border-radius: 10px;
+  padding: 2px 16px 6px; margin: 4px 0 10px; min-width: 0;
+}
+.subseccion legend { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); padding: 0 6px; }
+.subseccion .fila-campos { padding-top: 10px; }
+/* Campos cortos (conteos: codos/tees/válvulas) — caben 3 por fila. */
+.fila-campos.compacta { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+
+/* --- Agrupación conceptual de campos dentro de un formulario largo
+   (auditoría UX 2026-09-03, ver CLAUDE.md maestro) — separa un formulario
+   plano en bloques con propósito claro ("Condiciones de operación",
+   "Tubería y diseño normativo", etc.). A propósito sin caja/borde: la
+   jerarquía se logra con tipografía y un hairline entre bloques, no
+   apilando más cards. --- */
+.seccion + .seccion { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-hairline); }
+.seccion-titulo {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-secondary); margin: 0 0 12px;
+}
+.seccion-titulo-nota { font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--text-muted); }
+
+/* --- Resultados: una columna de grupos, cada grupo con su propia grilla
+   auto-fit (ver grupo() en ui.js) — así los 2 KPI ocupan todo el ancho en
+   vez de dejar columnas vacías de una grilla común. --- */
+.resultados { display: flex; flex-direction: column; gap: 18px; }
+.grupo-resultados { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.grupo-resultados.kpis { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.resultado-tile {
+  background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px;
+  padding: 12px 14px; min-width: 0;
+}
+.resultado-tile .valor {
+  font-size: 20px; font-weight: 900; line-height: 1.2; color: var(--text-primary);
+  display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+  font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+}
+/* text-secondary en vez de text-muted: el gris muted (#898781) sobre la
+   card blanca queda en ~3,5:1, poco para texto de 12px que además es lo
+   que dice QUÉ es cada número. */
+.resultado-tile .etiqueta { font-size: 12px; line-height: 1.35; color: var(--text-secondary); margin-top: 4px; }
+
+/* Estados: borde + barra lateral + tinte suave del mismo color, para que
+   el estado se lea también por forma y no solo por el color del número. */
+.resultado-tile.ok, .resultado-tile.alerta, .resultado-tile.critico {
+  background-image: linear-gradient(var(--tinte-estado), var(--tinte-estado));
+  box-shadow: inset 3px 0 0 var(--color-estado);
+  border-color: var(--color-estado);
+}
+.resultado-tile.ok { --color-estado: var(--estado-ok); --tinte-estado: var(--estado-ok-tinte); }
+.resultado-tile.alerta { --color-estado: var(--brand-orange); --tinte-estado: var(--estado-alerta-tinte); }
+.resultado-tile.critico { --color-estado: var(--estado-critico); --tinte-estado: var(--estado-critico-tinte); }
+.resultado-tile.ok .valor { color: var(--estado-ok); }
+.resultado-tile.alerta .valor { color: var(--estado-alerta); }
+/* Tercer estado, para el screening de flujo sónico (2026-09-08): el manual
+   de marca no define un rojo. Se extrapola igual que el verde de .ok —
+   que ya es Material green 800 — con Material red 800, y una variante más
+   clara en tema oscuro para conservar contraste. Ver Hidrogeno/CLAUDE.md. */
+.resultado-tile.critico .valor { color: var(--estado-critico); }
+
+/* --- Jerarquía de resultados: KPI (2-4 por pestaña, el resultado que de
+   verdad importa para decidir) vs. secundario/factor de verificación —
+   mismo componente .resultado-tile, distinto peso tipográfico. --- */
+.resultado-tile.kpi { padding: 16px 18px; border-radius: 12px; }
+/* Tile de veredicto dentro de un grupo (ej. "Estado" del screening de
+   flujo sónico): fila completa, con los números que lo respaldan debajo. */
+.resultado-tile.ancho { grid-column: 1 / -1; }
+.resultado-tile.kpi .valor { font-size: 28px; }
+.resultado-tile.kpi .etiqueta { font-size: 13px; }
+.resultado-tile.secundario { padding: 10px 12px; }
+.resultado-tile.secundario .valor { font-size: 15px; font-weight: 700; }
+.resultado-tile.secundario .etiqueta { font-size: 11.5px; }
+
+/* --- Subtítulo de un grupo de resultados (ej. "Factores de verificación"
+   al final de Tubería y Flujo) --- */
+.resultados-subtitulo {
+  grid-column: 1 / -1; font-size: 12.5px; font-weight: 700;
+  color: var(--text-secondary); padding-top: 12px;
+  border-top: 1px solid var(--gridline);
+}
+
+/* --- Nota al pie de un grupo de resultados: texto auxiliar a ancho
+   completo dentro de la grilla (ej. el alcance del screening de flujo
+   sónico en Tubería y Flujo, 2026-09-08). --- */
+.resultados-nota {
+  grid-column: 1 / -1; font-size: 11.5px; line-height: 1.45;
+  color: var(--text-secondary); margin-top: -2px;
+}
+
+/* --- Selector de unidad inline dentro de un tile de resultado: se lee
+   como parte del número (sin caja) hasta pasar el mouse por encima. --- */
+.select-unidad-inline {
+  font: inherit; font-size: 12px; font-weight: 700; color: var(--text-secondary);
+  padding: 2px 2px 2px 6px; border-radius: 6px; cursor: pointer;
+  border: 1px solid transparent; background: var(--page-plane);
+}
+.select-unidad-inline:hover { border-color: var(--baseline); }
+.select-unidad-inline:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+
+/* --- Botones --- */
+.btn {
+  font: inherit; font-size: 12.5px; font-weight: 700; line-height: 1.2;
+  padding: 8px 14px; border-radius: 8px; border: 1px solid var(--gridline);
+  background: var(--surface-card); color: var(--text-primary); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { border-color: var(--brand-orange); }
+.btn:focus-visible, .visualmente-oculto:focus-visible + .btn { outline: 2px solid var(--brand-orange); outline-offset: 2px; }
+/* Acción principal de la pestaña (el entregable): mismo tratamiento que
+   el botón "Abrir calculadora" del hub — naranja de marca con texto negro. */
+.btn-primario { background: var(--brand-orange); border-color: var(--brand-orange); color: #000000; font-weight: 900; }
+.btn-primario:hover { filter: brightness(1.08); }
+
+/* --- Tabla de referencia de tubería --- */
+details { margin-top: 24px; }
+summary { cursor: pointer; font-weight: 700; font-size: 13px; color: var(--text-secondary); }
+summary:hover { color: var(--text-primary); }
+summary:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; border-radius: 4px; }
+
+table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); }
+th { color: var(--text-secondary); font-size: 12px; }
+td { font-variant-numeric: tabular-nums; }
+
+/* ======================================================================
+   Uso desde el teléfono (auditoría móvil 2026-09-25, ver CLAUDE.md del
+   módulo). Bloque común a los tres módulos — mantener igual en
+   GasNatural-GLP/ y OtrosGases/. `screen and` a propósito: una hoja A4
+   impresa mide ~690px de ancho y activaría las reglas de pantalla angosta.
+   ====================================================================== */
+
+/* --- Resumen fijo de resultados al pie (initResumenMovil() en ui.js).
+   Solo bajo 960px, donde .calc-layout apila entradas y resultados y los
+   KPI quedan lejos del campo que se edita. Filete superior naranja como el
+   de la cabecera: se lee como cromo de la app, no como otra tarjeta. --- */
+.calc-resultados { scroll-margin-top: calc(var(--alto-barra-pestanas) + 12px); }
+.resumen-movil {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface-card); color: var(--text-primary);
+  border: none; border-top: 2px solid var(--brand-orange);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.10);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.resumen-movil[hidden] { display: none; }
+.resumen-movil:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: -4px; }
+/* Estado también por forma (barra lateral), igual que .resultado-tile. */
+.resumen-movil-item {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 1px;
+  padding: 2px 8px; border-left: 3px solid var(--gridline);
+}
+.resumen-movil-item.ok { border-left-color: var(--estado-ok); }
+.resumen-movil-item.alerta { border-left-color: var(--brand-orange); }
+.resumen-movil-item.critico { border-left-color: var(--estado-critico); }
+.resumen-movil-valor {
+  font-size: 16px; font-weight: 900; line-height: 1.25; font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.resumen-movil-item.ok .resumen-movil-valor { color: var(--estado-ok); }
+.resumen-movil-item.alerta .resumen-movil-valor { color: var(--estado-alerta); }
+.resumen-movil-item.critico .resumen-movil-valor { color: var(--estado-critico); }
+.resumen-movil-etiqueta {
+  font-size: 11px; line-height: 1.3; color: var(--text-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.resumen-movil-ir {
+  flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--brand-orange); color: #000000; font-size: 17px; font-weight: 900;
+}
+@media (min-width: 960px) { .resumen-movil { display: none !important; } }
+/* 3 KPI (Quemador) no caben legibles en un teléfono angosto: quedan 2. */
+@media (max-width: 420px) { .resumen-movil-item:nth-child(3) { display: none; } }
+/* Aire al final para que la barra no tape lo último de la página. */
+@media screen and (max-width: 959px) { main { padding-bottom: 96px; } }
+
+/* --- Pantallas táctiles: cajetines a 16px (bajo 16px Safari de iPhone
+   hace zoom a la página al tocar un cajetín, y no vuelve) y controles de
+   al menos 44px de alto (área táctil mínima de Apple / WCAG 2.5.5; antes
+   los botones medían ~31px y la ✕ de eliminar ~26px). --- */
+@media screen and (max-width: 600px), screen and (pointer: coarse) {
+  .campo input, .campo select, .seccion-avanzada textarea,
+  .artefacto-fila input, #memoria-tabla input, #memoria-tabla select,
+  .select-unidad-inline, .selector-gas-activo select { font-size: 16px; }
+  .campo input, .campo select, .artefacto-fila input { min-height: 44px; }
+  .btn { min-height: 44px; padding: 10px 16px; font-size: 13.5px; justify-content: center; text-align: center; }
+  .mem-eliminar, .af-eliminar { min-width: 44px; min-height: 44px; font-size: 16px; }
+  .select-unidad-inline { min-height: 36px; padding: 4px 4px 4px 8px; }
+  .segmentado span { padding: 8px 14px; }
+  .viz-theme-toggle, #selector-gas { min-height: 40px; }
+  summary { padding: 8px 0; }
+}
+
+/* --- Pantallas angostas (teléfono) --- */
+@media screen and (max-width: 600px) {
+  .viz-titleblock p { display: none; }
+  .viz-header { padding: 14px 0; margin-bottom: 8px; }
+  .barra-pestanas { margin-bottom: 18px; }
+  /* Pestañas que no caben: desvanecido a la derecha como pista de que se
+     desplazan en horizontal. El padding deja que la última pestaña
+     salga del desvanecido al llegar al final. */
+  .tabs { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 28px; }
+  /* 2 tiles por fila en vez de 1: la pestaña Tubería y Flujo medía ~3000px
+     de alto en un teléfono con un tile por fila. */
+  .grupo-resultados { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .resultado-tile.kpi .valor { font-size: 24px; }
+  /* .campo-ancho (span 2) creaba una 2ª columna implícita cuando la grilla
+     tiene una sola (bajo ~420px), y la página entera se desbordaba en
+     horizontal (Red de Gas de GN/GLP). */
+  .campo-ancho { grid-column: 1 / -1; }
+  /* Codos / Tee / Válvulas: 3 por fila también en el teléfono (antes 2 + 1). */
+  .fila-campos.compacta { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 10px; }
+  .subseccion { padding: 2px 12px 6px; }
+  .seccion-avanzada { padding: 12px; }
+  .artefacto-fila { grid-template-columns: minmax(0, 1fr) 84px 44px; }
+  /* Tablas de referencia (tubería) dentro de un <details>: se desplazan en
+     horizontal en vez de ensanchar la página en un teléfono de 320px. */
+  details > table { display: block; overflow-x: auto; }
+  /* Barra de acciones de la Memoria en grilla de 2 (antes 4 botones de
+     anchos distintos apilados): agregar tramo arriba, importar | exportar,
+     y la acción principal (imprimir) a lo ancho al final. */
+  .barra-acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .barra-acciones-grupo { display: contents; }
+  #memoria-agregar-tramo, #memoria-imprimir, .barra-acciones-estado { grid-column: 1 / -1; }
+}
+
+/* --- Memoria de Cálculo en el teléfono: una tarjeta por tramo. La tabla
+   tiene 14-16 columnas; con scroll horizontal en 360px solo se veían 3 a
+   la vez y no había cómo leer un tramo completo. Cada <td> trae su
+   encabezado (con unidad) en data-label, puesto por renderTablaMemoria() en
+   ui.js, y lo muestra arriba con ::before. Del <thead> quedan solo los
+   encabezados con selector de unidad, como barra de "Unidades". --- */
+@media screen and (max-width: 720px) {
+  .tabla-contenedor { overflow: visible; border: none; border-radius: 0; background: none; }
+  #memoria-tabla, #memoria-tabla thead, #memoria-tabla tbody { display: block; width: 100%; min-width: 0; }
+  #memoria-tabla thead tr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+    padding: 10px 12px; margin-bottom: 12px;
+    background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px;
+  }
+  #memoria-tabla thead tr::before {
+    content: 'Unidades'; flex-basis: 100%;
+    font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary);
+  }
+  #memoria-tabla thead th { display: none; }
+  #memoria-tabla thead th:has(.select-unidad-columna) {
+    display: flex; align-items: center; gap: 6px; padding: 0; border: none; background: none;
+    font-size: 12.5px; color: var(--text-primary); white-space: nowrap;
+  }
+  #memoria-tabla th .select-unidad-columna { margin-left: 0; min-height: 36px; }
+  #memoria-tabla tbody tr {
+    position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+    padding: 14px; margin-bottom: 12px;
+    background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 12px;
+  }
+  #memoria-tabla tbody tr:last-child { margin-bottom: 0; }
+  #memoria-tabla tbody td {
+    display: flex; flex-direction: column; gap: 4px; min-width: 0;
+    padding: 0; border: none; white-space: normal;
+  }
+  #memoria-tabla tbody td[data-label]::before {
+    content: attr(data-label); font-size: 12px; font-weight: 700; color: var(--text-secondary);
+  }
+  #memoria-tabla tbody td[colspan] { grid-column: 1 / -1; }
+  #memoria-tabla tr[data-id] :is(input, select) { min-width: 0; min-height: 44px; }
+  /* Nombre del tramo a lo ancho, con lugar a la derecha para la ✕. */
+  #memoria-tabla .mem-celda-nombre { grid-column: 1 / -1; padding-right: 52px; }
+  #memoria-tabla .mem-celda-acciones { position: absolute; top: 8px; right: 8px; }
+  #memoria-tabla .mem-celda-check { align-items: flex-start; }
+  #memoria-tabla tr[data-id] input[type="checkbox"] { width: 24px; height: 24px; min-height: 0; margin: 10px 0 0; }
+  /* Celdas calculadas: mismo tinte que en la tabla, en su propia caja. */
+  #memoria-tabla tbody td.col-calculada { padding: 8px 10px; border-radius: 8px; font-size: 15px; white-space: normal; }
+  .mem-tuberia-manual { min-width: 0; gap: 6px; }
+  .mem-tuberia-manual input { font-size: 16px !important; padding: 6px 8px !important; }
+}
+
+/* ======================================================================
+   Propio de Diámetro de Tubería (2026-09-28)
+   ====================================================================== */
+
+/* Una sola herramienta: no hay barra de pestañas (el panel se marca
+   .tab-panel.active solo para initResumenMovil). Sin barra fija, los
+   resultados fijos y el scroll a ellos no descuentan nada arriba. */
+.viz-root { --alto-barra-pestanas: 0px; }
+main { padding-top: 8px; }
+
+/* Un [hidden] del HTML pierde contra `.campo { display: flex }` (misma
+   especificidad del atributo UA, menor que una clase de autor). */
+.campo[hidden] { display: none; }
+
+/* --- Encabezado de la pregunta --- */
+.intro { max-width: 700px; margin: 0 0 24px; }
+.intro h2 { font-size: 22px; font-weight: 900; line-height: 1.25; margin: 0 0 6px; color: var(--text-primary); }
+.intro p { font-size: 14px; line-height: 1.55; color: var(--text-secondary); margin: 0; }
+
+/* Número de paso en el título de cada pregunta: el formulario se lee como
+   una secuencia corta (1 gas → 2 consumo → 3 recorrido) y no como una
+   planilla de campos. */
+.paso {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; margin-right: 8px; border-radius: 50%;
+  background: var(--brand-orange); color: #000000;
+  font-size: 11.5px; font-weight: 900; letter-spacing: 0; vertical-align: 1px;
+}
+
+/* --- Control segmentado — copiado de GasNatural-GLP/css/styles.css
+   (.segmentado). El de gas ocupa todo el ancho: es la primera pregunta y
+   un control de 3 opciones a la vista (sin abrir un desplegable) es más
+   rápido de leer y de tocar que un <select>. --- */
+.segmentado {
+  display: inline-flex; gap: 2px; padding: 3px; border-radius: 9px;
+  border: 1px solid var(--gridline); background: var(--surface-card);
+}
+.segmentado label { position: relative; display: block; }
+.segmentado input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.segmentado span {
+  display: block; padding: 5px 12px; border-radius: 6px; white-space: nowrap;
+  font-size: 13px; font-weight: 700; color: var(--text-secondary);
+}
+.segmentado label:hover span { color: var(--text-primary); }
+.segmentado input:checked + span { background: var(--brand-orange); color: #000000; font-weight: 900; }
+.segmentado input:focus-visible + span { outline: 2px solid var(--brand-orange-ink); outline-offset: 1px; }
+.segmentado-gas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; box-sizing: border-box; }
+/* white-space normal: a 320px "Gas natural" no cabe en su tercio de fila;
+   mejor partirlo en dos líneas que desbordar el control. */
+.segmentado-gas span { padding: 9px 8px; text-align: center; font-size: 14px; white-space: normal; line-height: 1.2; }
+
+/* Texto de ayuda bajo un campo o un bloque — mismo de OtrosGases. */
+.ayuda { font-size: 11.5px; line-height: 1.45; color: var(--text-muted); margin: -8px 0 14px; }
+.ayuda-bajo-control { margin: 8px 0 0; }
+
+/* --- Contador de codos: − [n] + --- */
+.contador { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; gap: 6px; }
+.contador input { text-align: center; font-weight: 700; -moz-appearance: textfield; appearance: textfield; }
+.contador input::-webkit-inner-spin-button, .contador input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.contador-btn { justify-content: center; padding: 0; font-size: 18px; line-height: 1; }
+.contador-btn[aria-disabled="true"] { opacity: 0.4; cursor: default; }
+.contador-btn[aria-disabled="true"]:hover { border-color: var(--gridline); }
+
+/* --- Supuestos del cálculo: <details> con borde, como "Datos del
+   informe" de las Memorias; el resumen de los valores vigentes va en el
+   mismo <summary> para no tener que abrirlo para saber qué se asumió. --- */
+.seccion-avanzada {
+  border: 1px solid var(--gridline); border-radius: 10px; padding: 12px 16px; margin: 20px 0 0;
+  background: var(--surface-card);
+}
+.seccion-avanzada summary { font-size: 12.5px; line-height: 1.5; }
+.seccion-avanzada[open] summary { margin-bottom: 14px; }
+.supuestos-resumen { font-weight: 400; color: var(--text-muted); }
+.seccion-avanzada .ayuda { margin-top: -4px; }
+
+/* --- Criterios verificados (H₂): ✓/✗ + texto, el estado se lee por forma --- */
+.lista-criterios { grid-column: 1 / -1; list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 12.5px; line-height: 1.45; color: var(--text-secondary); }
+.lista-criterios li { display: flex; gap: 8px; align-items: baseline; }
+.lista-criterios strong { color: var(--text-primary); }
+.lista-criterios .marca { flex: 0 0 auto; width: 16px; font-weight: 900; }
+.lista-criterios .cumple .marca { color: var(--estado-ok); }
+.lista-criterios .no-cumple .marca { color: var(--estado-critico); }
+
+/* --- Comparación con los diámetros vecinos --- */
+.tabla-comparacion-contenedor {
+  grid-column: 1 / -1; overflow-x: auto;
+  background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px;
+}
+.tabla-comparacion { margin: 0; font-size: 13px; }
+.tabla-comparacion th, .tabla-comparacion td { padding: 7px 10px; white-space: nowrap; }
+.tabla-comparacion thead th { font-size: 11.5px; }
+.tabla-comparacion td:nth-child(2), .tabla-comparacion td:nth-child(3), .tabla-comparacion td:nth-child(4),
+.tabla-comparacion thead th:nth-child(2), .tabla-comparacion thead th:nth-child(3), .tabla-comparacion thead th:nth-child(4) { text-align: right; }
+.tabla-comparacion tbody th { color: var(--text-primary); font-size: 13px; }
+.tabla-comparacion tbody tr:last-child > * { border-bottom: none; }
+.tabla-comparacion .fila-recomendada > * { background: var(--estado-ok-tinte); font-weight: 700; }
+.tabla-comparacion .fila-recomendada > th:first-child { box-shadow: inset 3px 0 0 var(--estado-ok); }
+.estado-si { color: var(--estado-ok); font-weight: 700; }
+.estado-no { color: var(--estado-critico); }
+
+.nota-metodo a { color: var(--brand-orange-ink); font-weight: 700; }
+
+/* --- Teléfono: propio de esta calculadora --- */
+@media screen and (max-width: 600px), screen and (pointer: coarse) {
+  .segmentado-gas span { padding: 11px 6px; }
+  .contador { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .contador-btn { font-size: 20px; }
+}
+@media screen and (max-width: 600px) {
+  .intro h2 { font-size: 19px; }
+  .intro { margin-bottom: 18px; }
+  /* Largo y codos lado a lado en vez de uno por fila (la potencia, sola en
+     su sección, sigue a lo ancho); los supuestos, uno por fila. */
+  .seccion .fila-campos { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0 12px; }
+  .seccion-avanzada .fila-campos { grid-template-columns: minmax(0, 1fr); }
+  .tabla-comparacion th, .tabla-comparacion td { padding: 7px 8px; }
+}
+/* 320px: a 2 columnas el cajetín de codos quedaba de ~30px entre − y +. */
+@media screen and (max-width: 360px) {
+  .seccion .fila-campos { grid-template-columns: minmax(0, 1fr); }
+}
+/* La tabla de vecinos medía 390px: a 320px la columna "Resultado" (la que
+   importa) quedaba escondida tras el scroll horizontal. Se oculta DI (el del
+   diámetro elegido ya está en el primer KPI) y "Resultado" parte en dos
+   líneas. */
+@media screen and (max-width: 420px) {
+  .tabla-comparacion th:nth-child(2), .tabla-comparacion td:nth-child(2) { display: none; }
+  .tabla-comparacion th, .tabla-comparacion td { padding: 7px 6px; }
+  .tabla-comparacion td:last-child { white-space: normal; min-width: 76px; }
+}
+
+/* --- Impresión: sin cromo de la app, resultados debajo de las entradas --- */
+@media print {
+  .no-imprimir, .viz-theme-toggle, #selector-gas, .resumen-movil, .contador-btn, #dt-restablecer { display: none !important; }
+  .calc-layout { display: block; }
+  .calc-resultados { position: static; margin-top: 16px; }
+  html, body, .viz-root { background: #ffffff !important; color: #000000; }
+}
