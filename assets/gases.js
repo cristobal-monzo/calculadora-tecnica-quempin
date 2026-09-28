@@ -49,11 +49,12 @@ export const GASES = [
     ruta: 'OtrosGases/',
     disponible: true,
     normas: 'CO₂ · NH₃ · gas definido por el usuario',
-    desc: 'Cualquier gas a partir de sus constantes críticas: compresibilidad (Peng-Robinson), condensación, tubería y flujo, y almacenamiento comprimido o licuado.',
+    desc: 'Cualquier gas a partir de sus constantes críticas: compresibilidad (Peng-Robinson), condensación, tubería y flujo, almacenamiento comprimido o licuado, y memoria de cálculo de redes ramificadas.',
     herramientas: [
       { id: 'gas', nombre: 'Propiedades del Gas' },
       { id: 'flujo', nombre: 'Tubería y Flujo' },
       { id: 'almacenamiento', nombre: 'Almacenamiento' },
+      { id: 'memoria', nombre: 'Memoria de Cálculo' },
     ],
   },
 ];

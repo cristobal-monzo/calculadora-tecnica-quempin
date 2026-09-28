@@ -340,7 +340,8 @@ completo, acá solo lo específico de este módulo):
   — mismo código `40XXXX`/fila 18 de `QUEMPIN_Control de Documentos
   2026.xlsx` que usa Hidrógeno (a pedido explícito del usuario, en vez del
   código más específico `41XXXX`/fila 19 "Memoria de cálculo de red de
-  gas"), siguiente disponible después del `402603` que tomó Hidrógeno.
+  gas"), siguiente disponible después del `402603` que tomó Hidrógeno
+  (OtrosGases tomó el `402605` el 2026-09-28, misma fila).
   Ver el `CLAUDE.md` de `Hidrogeno` para el detalle del formato del código
   y el criterio de mantenimiento (hay que subir el default a mano cada vez
   que se emite una memoria real — la app no puede escribir en la

@@ -15,7 +15,7 @@
       <span class="viz-wordmark">QUEMP<span class="in">IN</span></span>
       <div class="viz-titleblock">
         <h1>Calculadora de Otros Gases</h1>
-        <p>CO₂, NH₃ o un gas definido por el usuario — Peng-Robinson, Darcy-Weisbach</p>
+        <p>CO₂, NH₃ o un gas definido por el usuario — Peng-Robinson, Darcy-Weisbach, memoria de cálculo</p>
       </div>
       <label for="selector-gas" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Cambiar de calculadora</label>
       <select id="selector-gas"></select>
@@ -29,8 +29,9 @@
         <button class="tab active" id="tab-gas" role="tab" aria-selected="true" aria-controls="panel-gas" data-tab="gas">Propiedades del gas</button>
         <button class="tab" id="tab-flujo" role="tab" aria-selected="false" aria-controls="panel-flujo" data-tab="flujo">Tubería y Flujo</button>
         <button class="tab" id="tab-almacenamiento" role="tab" aria-selected="false" aria-controls="panel-almacenamiento" data-tab="almacenamiento">Almacenamiento</button>
+        <button class="tab" id="tab-memoria" role="tab" aria-selected="false" aria-controls="panel-memoria" data-tab="memoria">Memoria de Cálculo</button>
       </nav>
-      <!-- Gas activo: afecta a las 3 pestañas, por eso vive en la barra de
+      <!-- Gas activo: afecta a las 4 pestañas, por eso vive en la barra de
            pestañas (fija al hacer scroll) y no dentro de una de ellas. -->
       <div class="selector-gas-activo">
         <label for="gas-activo">Gas</label>
@@ -334,6 +335,219 @@
         </div>
         <div class="resultados" id="resultados-almacenamiento" aria-live="polite"></div>
       </div>
+      </div>
+    </section>
+
+    <!-- ================================================================ -->
+    <!-- Memoria de Cálculo (2026-09-28): red ramificada + informe impreso,
+         copiada de Hidrogeno/index.html y adaptada a un gas cualquiera — el
+         del selector "Gas" de la barra de pestañas. -->
+    <section class="tab-panel" id="panel-memoria" role="tabpanel" aria-labelledby="tab-memoria" data-panel="memoria">
+      <div class="barra-acciones no-imprimir">
+        <button type="button" id="memoria-agregar-tramo" class="btn">+ Agregar tramo</button>
+        <div class="barra-acciones-grupo">
+          <input type="file" id="memoria-importar" class="visualmente-oculto" accept="application/json">
+          <label for="memoria-importar" class="btn">Importar proyecto (.json)</label>
+          <button type="button" id="memoria-exportar" class="btn">Exportar proyecto (.json)</button>
+          <button type="button" id="memoria-imprimir" class="btn btn-primario">Imprimir / Guardar PDF</button>
+        </div>
+        <p class="barra-acciones-estado" id="memoria-estado" role="status" aria-live="polite"></p>
+      </div>
+
+      <p class="aviso-memoria no-imprimir" id="memoria-aviso-gas"></p>
+
+      <h3 class="seccion-titulo no-imprimir">Diagrama de la red</h3>
+      <div class="arbol-contenedor no-imprimir"><svg id="memoria-arbol" width="100%" height="220" role="img" aria-label="Diagrama de la red de tramos"></svg></div>
+
+      <h3 class="seccion-titulo no-imprimir">Tramos <span class="seccion-titulo-nota">— las columnas sombreadas se calculan solas</span></h3>
+      <div class="tabla-contenedor no-imprimir">
+        <table id="memoria-tabla" class="no-imprimir">
+          <thead>
+            <tr>
+              <th>Tramo</th><th>Continúa desde</th>
+              <th title="Reinicia la pérdida de carga acumulada desde este tramo (ej. después de un regulador de presión)">Reinicia acum.</th>
+              <th>Presión man. <select id="memoria-presion-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Presión"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar">mbar</option><option value="bar" selected>bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th>Longitud [m]</th>
+              <th>Caudal <select id="memoria-caudal-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Caudal"><option value="kg/h" selected>kg/h</option><option value="Nm3/h">Nm³/h</option><option value="kW">kW</option></select></th>
+              <th>Diámetro</th><th>Material</th><th>Temp. [°C]</th>
+              <th class="col-calculada">Densidad [kg/m³]</th><th class="col-calculada">Velocidad [m/s]</th>
+              <th class="col-calculada">Pérdida parcial <select id="memoria-perdida-parcial-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida parcial"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar" selected>mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th class="col-calculada">Pérdida acumulada <select id="memoria-perdida-acumulada-unidad" class="select-unidad-columna" aria-label="Unidad de la columna Pérdida acumulada"><option value="Pa">Pa</option><option value="kPa">kPa</option><option value="mbar" selected>mbar</option><option value="bar">bar</option><option value="MPa">MPa</option><option value="psi">psi</option></select></th>
+              <th><span class="visualmente-oculto">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody id="memoria-tabla-cuerpo"></tbody>
+        </table>
+      </div>
+
+      <details class="seccion-avanzada no-imprimir">
+        <summary>Datos del informe</summary>
+        <form id="form-memoria-proyecto" class="fila-campos" autocomplete="off">
+          <div class="campo">
+            <label for="mp-fecha">Fecha</label>
+            <input id="mp-fecha" type="text" placeholder="Marzo 2026">
+          </div>
+          <div class="campo">
+            <label for="mp-proyecto">Proyecto</label>
+            <input id="mp-proyecto" type="text" placeholder="Nombre del proyecto">
+          </div>
+          <div class="campo">
+            <label for="mp-instalador">Instalador</label>
+            <input id="mp-instalador" type="text" placeholder="Nombre del instalador">
+          </div>
+          <div class="campo">
+            <label for="mp-contacto">Contacto</label>
+            <input id="mp-contacto" type="text" placeholder="correo@quempin.cl">
+          </div>
+          <div class="campo">
+            <label for="mp-direccion">Dirección</label>
+            <input id="mp-direccion" type="text" placeholder="Dirección del proyecto">
+          </div>
+          <div class="campo">
+            <label for="mp-comuna">Comuna</label>
+            <input id="mp-comuna" type="text" placeholder="Comuna">
+          </div>
+
+          <fieldset class="subseccion">
+            <legend>Firma y documento</legend>
+            <div class="fila-campos">
+              <div class="campo">
+                <label for="mp-cargo">Cargo / clase de instalador</label>
+                <input id="mp-cargo" type="text" placeholder="Instalador de Gas Clase 1 y 5">
+              </div>
+              <div class="campo">
+                <label for="mp-run">RUN instalador</label>
+                <input id="mp-run" type="text" placeholder="19.137.364-2">
+              </div>
+              <div class="campo">
+                <label for="mp-doc">N° Documento</label>
+                <input id="mp-doc" type="text" value="402605">
+              </div>
+              <div class="campo">
+                <label for="mp-revision">Revisión</label>
+                <input id="mp-revision" type="text" value="1">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="subseccion">
+            <legend>Criterios de diseño</legend>
+            <div class="fila-campos">
+              <div class="campo">
+                <label for="mp-vel-max-flujo">Velocidad máxima flujo de gas [m/s]</label>
+                <input id="mp-vel-max-flujo" type="text" inputmode="decimal" value="20">
+              </div>
+              <div class="campo">
+                <label for="mp-perdida-max">Máxima pérdida de carga acumulada [Pa]</label>
+                <input id="mp-perdida-max" type="text" inputmode="decimal" placeholder="—">
+              </div>
+              <div class="campo">
+                <label for="mp-factor-diseno">Factor de diseño F (Barlow)</label>
+                <input id="mp-factor-diseno" type="text" inputmode="decimal" value="0.4">
+              </div>
+            </div>
+            <p class="ayuda" style="margin:0;">Vacío = no se verifica. Además se verifican siempre, tramo por tramo: velocidad
+              bajo la erosional (API RP 14E, C = 100), presión de operación bajo la máxima de diseño (Barlow con F,
+              E = 1 y factor T) y fase gaseosa con al menos 10 °C de margen sobre la condensación.</p>
+          </fieldset>
+
+          <fieldset class="subseccion">
+            <legend>Observaciones</legend>
+            <textarea id="mp-observaciones" rows="4" aria-label="Observaciones"></textarea>
+          </fieldset>
+        </form>
+
+        <fieldset class="subseccion" style="margin-bottom:0;">
+          <legend>Puntos de consumo</legend>
+          <div id="memoria-artefactos-cuerpo"></div>
+          <button type="button" id="memoria-artefacto-agregar" class="btn">+ Agregar consumo</button>
+          <div id="memoria-artefactos-total-txt" class="artefactos-total"></div>
+        </fieldset>
+      </details>
+
+      <div id="memoria-informe-impresion" style="display:none;">
+        <header class="informe-header">
+          <img src="../assets/logo-quempin-informe.png" alt="QUEMPIN" class="informe-logo">
+          <div class="informe-empresa">
+            <div><strong>RUT:</strong> 76.772.215-k</div>
+            <div><strong>Giro:</strong> FABRICACIÓN DE HORNOS, HOGARES Y QUEMADORES</div>
+            <div><strong>Dirección:</strong> Carlos Fernando 983, Viña del Mar, Chile</div>
+          </div>
+          <div class="informe-doc">
+            <div><strong>N° Doc.</strong> <span id="informe-doc-num"></span></div>
+            <div><strong>Revisión</strong> <span id="informe-doc-rev"></span></div>
+            <div><strong>Página</strong> 1 de 1</div>
+          </div>
+        </header>
+
+        <h2 class="informe-titulo">MEMORIA DE CÁLCULO<span id="informe-subtitulo"></span></h2>
+
+        <h3 class="informe-eyebrow"><span class="informe-num">1</span>Datos del proyecto</h3>
+        <div class="informe-ficha">
+          <div class="informe-campo"><span class="informe-campo-label">Proyecto</span><span class="informe-campo-valor" id="informe-proyecto"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Dirección</span><span class="informe-campo-valor" id="informe-direccion"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Comuna</span><span class="informe-campo-valor" id="informe-comuna"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Fecha</span><span class="informe-campo-valor" id="informe-fecha"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Instalador</span><span class="informe-campo-valor" id="informe-instalador"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Contacto</span><span class="informe-campo-valor" id="informe-contacto"></span></div>
+        </div>
+
+        <h3 class="informe-eyebrow"><span class="informe-num">2</span>Gas y criterios de diseño</h3>
+        <div class="informe-ficha informe-ficha-4" id="informe-gas"></div>
+        <div class="informe-ficha informe-ficha-4 informe-ficha-criterios">
+          <div class="informe-campo"><span class="informe-campo-label">Velocidad máx. de flujo</span><span class="informe-campo-valor" id="informe-vel-max-flujo"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Velocidad erosional</span><span class="informe-campo-valor">Ve = 100/√ρ, por tramo</span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Pérdida de carga acum. máx.</span><span class="informe-campo-valor" id="informe-perdida-max"></span></div>
+          <div class="informe-campo"><span class="informe-campo-label">Presión máx. de diseño</span><span class="informe-campo-valor" id="informe-barlow"></span></div>
+        </div>
+
+        <h3 class="informe-eyebrow"><span class="informe-num">3</span>Demanda de gas</h3>
+        <table class="informe-artefactos">
+          <thead><tr><th>Punto de consumo</th><th id="informe-artefactos-th-consumo"></th></tr></thead>
+          <tbody id="informe-artefactos-cuerpo"></tbody>
+          <tfoot>
+            <tr><th>Demanda instalada <span class="informe-nota">— no se considera operación simultánea</span></th><td id="informe-potencia-instalada"></td></tr>
+          </tfoot>
+        </table>
+
+        <h3 class="informe-eyebrow"><span class="informe-num">4</span>Detalle de tramos</h3>
+        <table id="memoria-tabla-impresion">
+          <thead>
+            <tr>
+              <th>Tramo</th><th>Continúa desde</th>
+              <th id="memoria-impresion-th-presion"></th>
+              <th>Temp.<span class="informe-unidad">°C</span></th>
+              <th>Longitud<span class="informe-unidad">m</span></th>
+              <th id="memoria-impresion-th-caudal"></th>
+              <th>Diámetro</th><th>Material</th>
+              <th id="memoria-impresion-th-parcial"></th>
+              <th id="memoria-impresion-th-perdida"></th>
+              <th>Velocidad<span class="informe-unidad">m/s</span></th>
+            </tr>
+          </thead>
+          <tbody id="memoria-tabla-impresion-cuerpo"></tbody>
+        </table>
+        <p class="informe-leyenda" id="informe-leyenda-tramos"></p>
+
+        <h3 class="informe-eyebrow"><span class="informe-num">5</span>Verificación de criterios de diseño</h3>
+        <table class="informe-verificacion">
+          <thead><tr><th>Criterio</th><th>Límite</th><th>Máximo calculado</th><th>Tramo crítico</th><th>Resultado</th></tr></thead>
+          <tbody id="informe-verificacion-cuerpo"></tbody>
+        </table>
+        <p class="informe-conclusion" id="informe-conclusion"></p>
+
+        <h3 class="informe-eyebrow"><span class="informe-num">6</span>Observaciones</h3>
+        <div class="informe-observaciones"><span id="informe-observaciones"></span></div>
+
+        <div class="informe-firma">
+          <div class="informe-firma-etiqueta">Firma</div>
+          <div class="informe-firma-linea"></div>
+          <div id="informe-firma-nombre"></div>
+          <div id="informe-firma-cargo"></div>
+          <div id="informe-firma-run"></div>
+        </div>
+
+        <footer class="informe-footer">QUEMPIN — RUT 76.772.215-k — <span id="informe-footer-titulo"></span> — Doc. <span id="informe-footer-doc"></span></footer>
       </div>
     </section>
   </main>

@@ -678,13 +678,15 @@ distorsiona el juicio sobre cómo se ve realmente el PDF impreso.
   Como los dos módulos comparten una única numeración de la fila 18,
   Hidrógeno tomó `402603` y GasNatural-GLP `402604` (siguiente disponible
   después de asignar el de Hidrógeno) — ver el `CLAUDE.md` de
-  `GasNatural-GLP` para el mismo detalle.
+  `GasNatural-GLP` para el mismo detalle. **OtrosGases** (Memoria agregada
+  el 2026-09-28) comparte la misma fila y tomó `402605` ("Último Emitido"
+  seguía en `402602` ese día).
   **Mantenimiento**: este número NO se actualiza solo — la app es estática
   y no tiene forma de escribir en la planilla. Cada vez que el usuario
   confirme que emitió/entregó una memoria de cálculo real, hay que (1)
   actualizar "Último Emitido" en la planilla (y agregar la fila con
   autor/fecha/referencia si corresponde) y (2) subir el default de
-  `numeroDoc` de ambos módulos al siguiente número disponible.
+  `numeroDoc` de los tres módulos al siguiente número disponible.
 
 ## El informe siempre entra en una sola hoja (`ui.js`, 2026-09-08, a pedido del usuario)
 

@@ -4,8 +4,10 @@
    Patrón de pantalla COPIADO (no importado) de Hidrogeno/css/styles.css —
    rediseño UX/UI 2026-09-24: barra de pestañas fija, .calc-layout entradas |
    resultados, grupos de tiles, tokens de estado. Mantener los tres módulos
-   iguales al tocar uno (ver CLAUDE.md raíz). Este módulo no tiene Memoria de
-   Cálculo, así que no trae la tabla editable ni el informe impreso. */
+   iguales al tocar uno (ver CLAUDE.md raíz). Memoria de Cálculo (tabla
+   editable, diagrama unifilar, informe impreso) copiada de Hidrógeno el
+   2026-09-28; su tabla impresa tiene 11 columnas (suma Temperatura), así que
+   las columnas de texto alineadas a la izquierda son la 1, 2, 7 y 8. */
 
 /* --- Tokens de estado (ok / alerta / crítico) y tinte de celdas
    calculadas. El manual de marca no define verde ni rojo: se extrapolan
@@ -127,13 +129,14 @@ main {
 /* --- Formularios --- */
 .campo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
 .campo label { font-size: 12.5px; font-weight: 700; color: var(--text-secondary); }
-.campo input, .campo select {
+.campo input, .campo select, .seccion-avanzada textarea {
   font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 6px;
   border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary);
   min-width: 0;
 }
-.campo input:hover, .campo select:hover { border-color: var(--baseline); }
-.campo input:focus-visible, .campo select:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+.campo input:hover, .campo select:hover, .seccion-avanzada textarea:hover { border-color: var(--baseline); }
+.campo input:focus-visible, .campo select:focus-visible, .seccion-avanzada textarea:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+.seccion-avanzada textarea { width: 100%; font-size: 13px; line-height: 1.5; resize: vertical; }
 .fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0 20px; }
 .campo-ancho { grid-column: span 2; }
 
@@ -272,10 +275,108 @@ summary { cursor: pointer; font-weight: 700; font-size: 13px; color: var(--text-
 summary:hover { color: var(--text-primary); }
 summary:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 2px; border-radius: 4px; }
 
+/* --- Bloque colapsable de datos secundarios (ej. "Datos del informe" en
+   Memoria de Cálculo) — mismo <details> nativo de arriba, con una caja
+   propia para que se note que agrupa varios campos, no solo una tabla de
+   referencia. Cerrado por defecto vía el atributo HTML (ver index.html):
+   el usuario debería poder trabajar la tabla de tramos sin tener que
+   revisar los datos del informe primero. --- */
+.seccion-avanzada {
+  border: 1px solid var(--gridline); border-radius: 10px; padding: 12px 16px; margin: 20px 0;
+  background: var(--surface-card);
+}
+.seccion-avanzada summary { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+.seccion-avanzada summary::after { content: ' — opcional, solo para el informe impreso'; font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--text-muted); }
+
 table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 13px; }
 th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); }
 th { color: var(--text-secondary); font-size: 12px; }
 td { font-variant-numeric: tabular-nums; }
+
+/* --- Memoria de Cálculo: barra de acciones --- */
+.barra-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 22px; }
+.barra-acciones-grupo { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+/* Confirmación de importar/exportar (antes no había ninguna respuesta
+   visible, y un .json inválido fallaba en silencio). */
+.barra-acciones-estado { flex-basis: 100%; margin: 2px 0 0; font-size: 12.5px; color: var(--text-secondary); }
+.barra-acciones-estado:empty { display: none; }
+.barra-acciones-estado.error { color: var(--estado-critico); font-weight: 700; }
+
+/* --- Memoria de Cálculo: tabla editable --- */
+#panel-memoria .campo,
+#panel-memoria .fila-campos { padding-top: 0; }
+/* position: relative para que el texto .visualmente-oculto (absoluto) de
+   la cabecera quede contenido en el scroll — sin esto ensanchaba la
+   página completa cuando la tabla es más ancha que la pantalla. */
+.tabla-contenedor {
+  position: relative; overflow-x: auto; border: 1px solid var(--gridline); border-radius: 10px;
+  background: var(--surface-card);
+}
+#memoria-tabla { margin-top: 0; }
+#memoria-tabla th, #memoria-tabla td { padding: 6px 7px; }
+#memoria-tabla th { font-size: 11.5px; vertical-align: bottom; padding-top: 10px; }
+#memoria-tabla td { vertical-align: top; }
+#memoria-tabla tbody tr:last-child td { border-bottom: none; }
+#memoria-tabla input, #memoria-tabla select {
+  font: inherit; font-size: 12.5px; padding: 4px 6px; border-radius: 4px;
+  border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary); width: 100%;
+}
+#memoria-tabla input:focus-visible, #memoria-tabla select:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 0; }
+/* Ancho mínimo en las columnas de texto (antes "Tramo 1" se veía como
+   "Tramc" y "AISI 316L" como "AISI 31"); si la tabla ya no cabe, el
+   contenedor hace scroll horizontal — mismo criterio que GasNatural-GLP. */
+#memoria-tabla .mem-nombre, #memoria-tabla .mem-padre { min-width: 96px; }
+#memoria-tabla .mem-material { min-width: 84px; }
+#memoria-tabla .mem-tuberia { min-width: 70px; }
+#memoria-tabla input[inputmode="decimal"] { min-width: 54px; }
+#memoria-tabla input[type="checkbox"] { width: auto; margin-top: 6px; accent-color: var(--brand-orange); }
+/* Columnas calculadas (solo lectura): sombreadas para que se distingan de
+   las que se editan. */
+#memoria-tabla .col-calculada,
+#memoria-tabla .mem-densidad, #memoria-tabla .mem-velocidad,
+#memoria-tabla .mem-perdida-parcial, #memoria-tabla .mem-perdida-acumulada { background: var(--tinte-calculado); }
+#memoria-tabla .mem-densidad, #memoria-tabla .mem-velocidad,
+#memoria-tabla .mem-perdida-parcial, #memoria-tabla .mem-perdida-acumulada { font-weight: 700; padding-top: 10px; white-space: nowrap; }
+#memoria-tabla th .select-unidad-columna { width: auto; font-weight: 700; padding: 2px 4px; margin-left: 4px; }
+.mem-tuberia-manual { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 4px; min-width: 90px; }
+.mem-tuberia-manual input { width: 100%; font-size: 11px !important; padding: 2px 3px !important; }
+.mem-eliminar, .af-eliminar {
+  background: none; border: 1px solid transparent; border-radius: 6px; color: var(--text-muted);
+  cursor: pointer; font-size: 14px; line-height: 1; padding: 5px 7px;
+}
+.mem-eliminar:hover, .af-eliminar:hover { color: var(--estado-critico); border-color: var(--gridline); }
+.mem-eliminar:focus-visible, .af-eliminar:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+/* El diagrama se desplaza en horizontal dentro de su caja si la red es más
+   ancha que la pantalla (min-width lo fija renderArbol() en ui.js). */
+.arbol-contenedor { overflow-x: auto; background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 10px; margin-bottom: 22px; }
+#memoria-arbol { display: block; }
+/* Diagrama unifilar (2026-09-25) — dibujarDiagramaRed() en ui.js mide los
+   textos con estas mismas fuentes (DIAGRAMA.fuente*): cambiar un tamaño o
+   peso acá es cambiarlo también allá. */
+#memoria-arbol text { font-family: 'Lato', system-ui, sans-serif; }
+.arbol-tuberia, .arbol-bajada { stroke: var(--text-muted); fill: none; }
+.arbol-tramo.excede .arbol-tuberia { stroke: var(--estado-critico); }
+.arbol-tramo:hover .arbol-tuberia { stroke: var(--brand-orange); }
+.arbol-nodo { fill: var(--brand-orange); stroke: var(--surface-card); stroke-width: 2; }
+.arbol-inicio { fill: var(--text-primary); }
+.arbol-regulador path { fill: var(--surface-card); stroke: var(--text-primary); stroke-width: 1.5; stroke-linejoin: round; }
+.arbol-nombre { font-size: 12.5px; font-weight: 700; fill: var(--text-primary); }
+.arbol-tramo:hover .arbol-nombre { fill: var(--brand-orange-ink); }
+.arbol-dato { font-size: 11px; fill: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.arbol-leyenda { font-size: 11px; fill: var(--text-secondary); }
+.arbol-excede { fill: var(--estado-critico); font-weight: 700; }
+.arbol-vacio { font-size: 12.5px; fill: var(--text-muted); }
+
+/* --- Memoria de Cálculo: cajetines del proyecto y lista de artefactos --- */
+.artefacto-fila { display: grid; grid-template-columns: 1fr 110px 32px; gap: 8px; align-items: center; margin-bottom: 6px; }
+.artefacto-fila input {
+  font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 6px; min-width: 0;
+  border: 1px solid var(--gridline); background: var(--surface-card); color: var(--text-primary);
+}
+.artefacto-fila input:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+#memoria-artefacto-agregar { margin-top: 4px; }
+.artefactos-total { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+
 
 /* ======================================================================
    Uso desde el teléfono (auditoría móvil 2026-09-25, ver CLAUDE.md del
@@ -517,10 +618,236 @@ td { font-variant-numeric: tabular-nums; }
 .tabla-psat .fuera { color: var(--text-muted); font-style: italic; }
 .tabla-psat tr.actual td { font-weight: 700; background: var(--tinte-calculado); }
 
-/* --- Impresión: sin cromo de la app, resultados debajo de las entradas --- */
+/* --- Memoria de Cálculo: propio de este módulo --- */
+/* Qué gas se está calculando (se elige en la barra de pestañas y cambia
+   toda la memoria), o por qué no se pudo resolver la red — en ese caso la
+   tabla sigue editable con los cálculos en "—". */
+.aviso-memoria { margin: -8px 0 18px; font-size: 13px; line-height: 1.5; color: var(--text-secondary); }
+.aviso-memoria.error {
+  color: var(--text-primary); background: var(--estado-critico-tinte); border-left: 3px solid var(--estado-critico);
+  padding: 8px 12px; border-radius: 6px;
+}
+/* Tramo en fase líquida: la celda de densidad lo dice en vez de un número. */
+#memoria-tabla .mem-liquido { color: var(--estado-critico); }
+/* Las opciones de tubería llevan la cédula ("1/2" Sch 40") y el material
+   por defecto es más largo que en Hidrógeno: con sus mínimos se recortaban. */
+#memoria-tabla .mem-tuberia { min-width: 100px; }
+#memoria-tabla .mem-material { min-width: 110px; }
+
+/* --- Impresión (Memoria de Cálculo) --- */
 @media print {
   .barra-pestanas, .no-imprimir, .viz-theme-toggle, #selector-gas, .resumen-movil { display: none !important; }
+  /* Sin columnas ni sticky en papel (solo aplica si alguien imprime una
+     pestaña de cálculo en vez de la Memoria). */
   .calc-layout { display: block; }
   .calc-resultados { position: static; margin-top: 16px; }
   html, body, .viz-root { background: #ffffff !important; color: #000000; }
+  /* Solo se imprime la pestaña activa (evita que las 3 pestañas queden
+     apiladas en el PDF) — el default ya oculta .tab-panel sin .active. */
+  .tab-panel.active { display: block !important; }
+  /* El informe formal es autocontenido (trae su propio encabezado con logo
+     QUEMPIN) — se oculta el resto del cromo de la app (header/selector de
+     gas) y el diagrama de árbol (ayuda visual de edición, no parte del
+     documento entregable) para que el PDF sea solo la memoria de cálculo. */
+  .viz-header, #memoria-arbol { display: none !important; }
+  @page { size: A4; margin: 14mm; }
+  /* Sin el aire inferior de pantalla (60px de main + 48px de .viz-root):
+     en papel esos 108px caían bajo el informe y abrían SIEMPRE una 2ª hoja
+     en blanco — o empujaban el pie del informe a ella —, aunque
+     ajustarEscalaImpresion() ya lo hubiera dejado dentro de una A4
+     (2026-09-25, medido: 2 páginas a cualquier zoom, 1 sin este padding). */
+  main, .viz-root { padding-bottom: 0; }
+  /* Otros Gases (2026-09-28): sin el relleno lateral de main, el informe
+     ocupa exactamente el ancho útil de la hoja (210 − 2·14 = 182 mm), que
+     es el ancho con que ajustarEscalaImpresion() lo mide (ver abajo). */
+  main { padding: 0; max-width: none; }
+  #memoria-informe-impresion { display: block !important; }
+}
+
+/* --- Informe impreso de la Memoria de Cálculo ---
+   FUERA de @media print a propósito (2026-09-28, propio de Otros Gases):
+   Chrome dispara `beforeprint` todavía con los estilos de pantalla — medido
+   con page.pdf(): matchMedia('print') = false y el informe, oculto, mide
+   0 px —, así que ajustarEscalaImpresion() no podía medir el alto real y el
+   informe salía en 2 hojas. Con las reglas acá, ui.js lo mide fuera de la
+   pantalla con el ancho del papel (182 mm) antes de que Chrome arme la hoja.
+   En pantalla no se ve nada de esto: el informe va con style="display:none"
+   y solo @media print lo muestra. Mismas reglas que Hidrógeno salvo eso. */
+/* Paleta fija del informe en papel (2026-09-25): el informe usa
+   --gridline/--brand-gray-* de assets/brand.css, y --gridline vale
+   #2c2c2a en tema oscuro — imprimir con la app en "Modo oscuro" dejaba
+   todos los filetes casi negros. En papel manda siempre la paleta clara.
+   print-color-adjust: Chrome no imprime fondos por defecto ("Gráficos de
+   fondo" desmarcado), y sin esto se perdían la cebra, el tinte de la
+   cabecera de la tabla y los recuadros de estado. */
+#memoria-informe-impresion {
+  font-family: 'Lato', system-ui, sans-serif; color: #1a1a1a;
+  --gridline: #e1e0d9; --brand-gray-11: #54565a; --brand-gray-7: #98989a;
+  --estado-ok: #2e7d32; --estado-critico: #c62828;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+
+/* align-items: center (2026-09-07, a pedido del usuario) — con el logo
+   ya en un tamaño más comedido (60px) queda mejor centrado con el
+   bloque de texto de al lado que alineado por el borde superior. */
+.informe-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 3px solid var(--brand-orange); padding-bottom: 10px; margin-bottom: 8px; break-inside: avoid; }
+/* Logo con la imagen recortada a su contenido visible (2026-09-07,
+   a pedido del usuario, ignorando a propósito el espacio de resguardo
+   que exige el manual de marca para este uso puntual) — usa
+   assets/logo-quempin-informe.png en vez de assets/LOGO QUEMPIN.PNG: ese
+   archivo oficial trae ~17-24% de margen transparente alrededor de la
+   marca, así que ampliar su altura no acercaba el trazo visible del logo
+   al texto de la derecha. El archivo oficial NO se tocó — sigue siendo
+   la fuente de verdad para cualquier otro uso del logo en el sitio.
+   Tamaño: subió a 76px en la misma sesión y se redujo ~20% a pedido del
+   usuario tras revisión visual (quedaba demasiado grande). */
+.informe-logo { max-height: 60px; width: auto; flex-shrink: 0; }
+.informe-empresa { flex: 1; font-size: 9.5px; line-height: 1.75; color: var(--brand-gray-11); }
+.informe-empresa strong, .informe-doc strong { color: #000000; font-weight: 700; }
+/* Cajetín de control del documento (N° / Revisión / Página) — tratamiento
+   de "title block" de plano técnico: caja con borde propio y filas
+   etiqueta-izquierda/valor-derecha, en vez de texto suelto alineado a la
+   derecha. Refuerza la lectura de "documento controlado" del membrete. */
+.informe-doc {
+  flex-shrink: 0; min-width: 148px; font-size: 9.5px; line-height: 1.5; color: var(--brand-gray-11);
+  border: 1px solid var(--gridline); padding: 6px 10px; background: rgba(255, 81, 0, 0.03);
+}
+.informe-doc div { display: flex; justify-content: space-between; gap: 14px; white-space: nowrap; }
+.informe-doc div + div { margin-top: 2px; }
+
+.informe-titulo { text-align: center; margin: 8px 0 2px; font-size: 19px; font-weight: 900; letter-spacing: 0.02em; }
+.informe-titulo span { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--brand-orange); margin-top: 4px; }
+
+/* Título de sección, numerado (2026-09-25): antes era una etiqueta gris
+   de 8,5px que no se distinguía de las etiquetas de campo, y sin número
+   no había cómo citar una sección al revisar ("ver 4. Detalle de
+   tramos"). El número va en naranja de marca; el texto, en negro. */
+.informe-eyebrow {
+  display: flex; align-items: baseline; gap: 7px;
+  font-size: 9.5px; font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #1a1a1a; text-align: left;
+  margin: 13px 0 6px; padding-top: 7px; border-top: 1px solid var(--gridline);
+  break-after: avoid;
+}
+.informe-num { color: var(--brand-orange); }
+.informe-header + .informe-titulo + .informe-eyebrow { margin-top: 10px; }
+
+/* Ficha de campos (Datos del proyecto / Criterios de diseño) — etiqueta
+   ARRIBA y valor abajo (una tabla etiqueta|valor partía mal etiquetas
+   largas). 3 columnas en Datos (qué/dónde en la 1ª fila, cuándo/quién
+   en la 2ª) y 4 en Criterios: la misma información en 2 y 1 filas en vez
+   de 3 y 2, que es parte de lo que deja el informe típico en una hoja
+   sin reducirlo. */
+.informe-ficha { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 20px; }
+.informe-ficha-4 { grid-template-columns: repeat(4, 1fr); }
+/* Sección 2 de Otros Gases: constantes del gas y, debajo, los criterios. */
+.informe-ficha + .informe-ficha-criterios { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--gridline); }
+/* Símbolo dentro de un rótulo en mayúsculas ("ω" no debe volverse "Ω"). */
+.informe-simbolo { text-transform: none; letter-spacing: 0; }
+.informe-campo { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.informe-campo-label { font-size: 8px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-gray-11); }
+.informe-campo-valor { font-size: 10.5px; color: #1a1a1a; overflow-wrap: anywhere; }
+
+/* Unidad de una cabecera de columna, en su propia línea y con su caja
+   real ("MPa", "mbar", "kW") — fuera del uppercase de la cabecera. */
+.informe-unidad { display: block; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--brand-gray-11); }
+
+/* Demanda de potencia — tabla con cabecera, números alineados a la
+   derecha bajo su unidad, y una sola fila de total. */
+.informe-artefactos { width: 100%; border-collapse: collapse; font-size: 10px; font-variant-numeric: tabular-nums; }
+.informe-artefactos th, .informe-artefactos td { text-align: left; padding: 3px 0; border-bottom: 1px solid var(--gridline); }
+.informe-artefactos th:last-child, .informe-artefactos td:last-child { text-align: right; width: 110px; }
+.informe-artefactos thead th {
+  font-size: 8px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-gray-11);
+  border-bottom: 1px solid var(--brand-gray-7); vertical-align: bottom;
+}
+/* "Potencia instalada" es el número que de verdad importa de esta
+   sección (lo que dimensiona la red) — se destaca como el total final de
+   una cotización/factura. */
+.informe-artefactos tfoot th, .informe-artefactos tfoot td {
+  font-size: 11.5px; font-weight: 900; color: #1a1a1a; border-bottom: none;
+  border-top: 1.5px solid var(--brand-gray-11); padding-top: 5px;
+}
+.informe-nota { font-size: 9px; font-weight: 400; font-style: italic; color: var(--brand-gray-11); }
+.informe-vacio { color: var(--brand-gray-7); font-style: italic; }
+
+/* Tabla de tramos — "reglada" (solo filetes horizontales + cebra) en vez
+   de grilla completa (borde en las 4 direcciones de cada celda): la
+   grilla completa es el aspecto por defecto de una planilla exportada;
+   quitar los verticales y apoyarse en la cebra + el filete de cabecera
+   en naranja de marca da un aspecto de tabla diseñada a propósito. */
+#memoria-tabla-impresion { width: 100%; border-collapse: collapse; font-size: 9.5px; font-variant-numeric: tabular-nums; }
+/* Si la red crece a mas tramos de los que caben en una pagina, repetir
+   la cabecera en cada pagina y no partir una fila de tramo a la mitad. */
+#memoria-tabla-impresion thead { display: table-header-group; }
+#memoria-tabla-impresion tbody tr { break-inside: avoid; }
+#memoria-tabla-impresion th, #memoria-tabla-impresion td { border: none; border-bottom: 1px solid var(--gridline); padding: 4px 6px; text-align: right; }
+#memoria-tabla-impresion th {
+  font-size: 8px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; vertical-align: bottom;
+  background: rgba(255, 81, 0, 0.06); color: var(--brand-gray-11); border-bottom: 2px solid var(--brand-orange);
+}
+#memoria-tabla-impresion th:nth-child(1), #memoria-tabla-impresion td:nth-child(1),
+#memoria-tabla-impresion th:nth-child(2), #memoria-tabla-impresion td:nth-child(2),
+#memoria-tabla-impresion th:nth-child(7), #memoria-tabla-impresion td:nth-child(7),
+#memoria-tabla-impresion th:nth-child(8), #memoria-tabla-impresion td:nth-child(8) { text-align: left; }
+/* Números y códigos cortos en una línea; el nombre del tramo y su
+   "continúa desde" son los únicos que pueden partirse. */
+#memoria-tabla-impresion td { white-space: nowrap; }
+#memoria-tabla-impresion td:nth-child(1), #memoria-tabla-impresion td:nth-child(2) { white-space: normal; }
+#memoria-tabla-impresion td:nth-child(1) { min-width: 96px; }
+#memoria-tabla-impresion tbody tr:nth-child(even) { background: #fafafa; }
+#memoria-tabla-impresion tbody tr:last-child td { border-bottom: 1.5px solid var(--brand-gray-11); }
+
+/* Marcas de la tabla de tramos (2026-09-25), explicadas en la leyenda de
+   abajo: "R" = tramo que reinicia la pérdida acumulada; "▲" + rojo +
+   negrita = valor fuera del límite de diseño — el estado se lee también
+   por forma, no solo por color (fotocopia en blanco y negro). */
+.informe-marca { font-size: 7px; font-weight: 900; color: var(--brand-orange); margin-left: 2px; }
+.informe-excede { color: var(--estado-critico); font-weight: 900; }
+.informe-leyenda { font-size: 8.5px; line-height: 1.5; color: var(--brand-gray-11); margin: 4px 0 0; }
+.informe-leyenda:empty { display: none; }
+
+/* Verificación de criterios de diseño (2026-09-25) — reemplaza las 2
+   tarjetas de "Resumen de resultados", que mostraban los máximos sin
+   compararlos con los límites de la sección 2. */
+.informe-verificacion { width: 100%; border-collapse: collapse; font-size: 10px; font-variant-numeric: tabular-nums; }
+.informe-verificacion th, .informe-verificacion td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--gridline); }
+.informe-verificacion thead th {
+  font-size: 8px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--brand-gray-11);
+  border-bottom: 1px solid var(--brand-gray-7); padding-top: 0;
+}
+.informe-verificacion th:nth-child(2), .informe-verificacion td:nth-child(2),
+.informe-verificacion th:nth-child(3), .informe-verificacion td:nth-child(3) { text-align: right; padding-right: 22px; white-space: nowrap; }
+.informe-veredicto { font-weight: 900; white-space: nowrap; }
+.informe-veredicto::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 5px; background: currentColor; vertical-align: 1px; }
+.informe-veredicto.cumple { color: var(--estado-ok); }
+.informe-veredicto.no-cumple { color: var(--estado-critico); }
+.informe-veredicto-detalle { font-size: 9px; color: var(--brand-gray-11); }
+.informe-conclusion {
+  margin: 6px 0 0; padding: 6px 10px; font-size: 10px; font-weight: 700; line-height: 1.45;
+  border-left: 3px solid var(--brand-gray-7); background: #f7f6f3; break-inside: avoid;
+}
+.informe-conclusion.cumple { border-left-color: var(--estado-ok); background: rgba(46, 125, 50, 0.07); }
+.informe-conclusion.no-cumple { border-left-color: var(--estado-critico); background: rgba(198, 40, 40, 0.07); }
+
+/* Esquinas rectas en todo el informe a proposito (aca y en .informe-doc)
+   — un documento controlado/tecnico se lee mas formal con bordes
+   cuadrados que con las esquinas redondeadas de una tarjeta de app. */
+.informe-observaciones { font-size: 9.5px; line-height: 1.5; color: var(--brand-gray-11); border: 1px solid var(--gridline); padding: 6px 10px; margin-bottom: 16px; break-inside: avoid; }
+
+.informe-firma { width: 260px; margin: 0 auto 16px; text-align: center; font-size: 10.5px; break-inside: avoid; }
+.informe-firma-etiqueta {
+  font-size: 8px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--brand-gray-7); margin-bottom: 46px; /* 2026-09-07: más espacio en blanco para la firma manuscrita, a pedido del usuario (antes 22px) */
+}
+.informe-firma-linea { border-top: 1px solid #000000; margin-bottom: 6px; }
+#informe-firma-nombre { font-weight: 700; }
+#informe-firma-cargo, #informe-firma-run { color: var(--brand-gray-11); }
+
+/* Pie de cierre del documento — remata la pagina identificando al
+   emisor y el documento (N° y revisión, 2026-09-25), en vez de terminar
+   de golpe despues de la firma. */
+.informe-footer {
+  text-align: center; font-size: 8px; letter-spacing: 0.03em; color: var(--brand-gray-7);
+  border-top: 1px solid var(--gridline); padding-top: 7px;
 }

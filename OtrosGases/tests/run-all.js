@@ -7,5 +7,6 @@ await import('./physics.test.js');
 await import('./biblioteca-gases.test.js');
 await import('./calc-flujo.test.js');
 await import('./calc-almacenamiento.test.js');
+await import('./calc-memoria.test.js');
 
 console.log('\nTodos los tests de regresión pasaron.');
