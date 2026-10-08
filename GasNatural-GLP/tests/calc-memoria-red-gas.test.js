@@ -86,6 +86,16 @@ assert.throws(
   /[Cc]iclo/
 );
 
+// Ciclo con un tramo que reinicia la acumulada (2026-09-28): el reinicio
+// corta la suma, pero la red sigue sin ser un árbol — antes pasaba sin error.
+assert.throws(
+  () => calcularRedMemoria([
+    { id: 'X', nombre: 'X', continuaDesdeId: 'Y', regimenPresion: '<10 kPa', material: 'Acero Sch40', pulgadas: 0.5, potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15 },
+    { id: 'Y', nombre: 'Y', continuaDesdeId: 'X', reseteaAcumulada: true, regimenPresion: '<10 kPa', material: 'Acero Sch40', pulgadas: 0.5, potenciaKw: 30, longitudM: 10, presionInicialPa: 1000, temperaturaC: 15 },
+  ], 'GLP'),
+  /[Cc]iclo/
+);
+
 // continuaDesdeId inválido -> error explícito
 assert.throws(
   () => calcularRedMemoria([

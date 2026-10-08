@@ -54,6 +54,21 @@ export function calcularRed(tramos) {
     }
   }
 
+  // Ciclos en "Continúa desde", recorriendo la cadena de padres (2026-09-28,
+  // igual en los tres motores de Memoria): perdidaAcumulada() también los
+  // detecta, pero un tramo con reinicio dentro del ciclo corta su recursión,
+  // así que A → B (reinicia) → A pasaba sin error. Una red de tramos es un
+  // árbol.
+  for (const t of calculados) {
+    const vistos = new Set([t.id]);
+    for (let padre = porId.get(t.continuaDesdeId); padre; padre = porId.get(padre.continuaDesdeId)) {
+      if (vistos.has(padre.id)) {
+        throw new Error(`Ciclo en "Continúa desde": el tramo "${padre.nombre}" termina continuando desde sí mismo.`);
+      }
+      vistos.add(padre.id);
+    }
+  }
+
   const acumuladaCache = new Map();
   const enProgreso = new Set();
 

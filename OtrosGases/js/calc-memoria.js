@@ -61,10 +61,11 @@ export function calcularRed(tramos, opciones) {
     }
   }
 
-  // Ciclos en "Continúa desde", recorriendo la cadena de padres — no solo
-  // al sumar: en Hidrógeno el ciclo se detecta dentro de perdidaAcumulada(),
-  // y un tramo con reinicio dentro del ciclo corta esa recursión, así que
-  // A → B (reinicia) → A pasaba sin error. Una red de tramos es un árbol.
+  // Ciclos en "Continúa desde", recorriendo la cadena de padres (2026-09-28,
+  // igual en los tres motores de Memoria): perdidaAcumulada() también los
+  // detecta, pero un tramo con reinicio dentro del ciclo corta su recursión,
+  // así que A → B (reinicia) → A pasaba sin error. Una red de tramos es un
+  // árbol.
   for (const t of calculados) {
     const vistos = new Set([t.id]);
     for (let padre = porId.get(t.continuaDesdeId); padre; padre = porId.get(padre.continuaDesdeId)) {

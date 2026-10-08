@@ -47,6 +47,16 @@ assert.throws(
   /[Cc]iclo/
 );
 
+// Ciclo con un tramo que reinicia la acumulada (2026-09-28): el reinicio
+// corta la suma, pero la red sigue sin ser un árbol — antes pasaba sin error.
+assert.throws(
+  () => calcularRed([
+    { id: 'X', nombre: 'X', continuaDesdeId: 'Y', presionMPa: 1, longitudM: 1, potenciaKw: 1, tuberiaPulgadas: 0.25, material: '-', temperaturaC: 20 },
+    { id: 'Y', nombre: 'Y', continuaDesdeId: 'X', reseteaAcumulada: true, presionMPa: 1, longitudM: 1, potenciaKw: 1, tuberiaPulgadas: 0.25, material: '-', temperaturaC: 20 },
+  ]),
+  /[Cc]iclo/
+);
+
 // Tubería manual por tramo (2026-09-02, a pedido del usuario) — un tramo
 // con tuberiaManual igual a la fila tabulada de 1/4" (diMm:3.95 — DI real
 // desde 2026-09-25, ver gas-h2.js —, espesorMm:1.2, limiteElasticoMPa:185,

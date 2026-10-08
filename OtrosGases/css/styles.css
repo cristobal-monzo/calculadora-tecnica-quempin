@@ -657,22 +657,22 @@ td { font-variant-numeric: tabular-nums; }
      ajustarEscalaImpresion() ya lo hubiera dejado dentro de una A4
      (2026-09-25, medido: 2 páginas a cualquier zoom, 1 sin este padding). */
   main, .viz-root { padding-bottom: 0; }
-  /* Otros Gases (2026-09-28): sin el relleno lateral de main, el informe
-     ocupa exactamente el ancho útil de la hoja (210 − 2·14 = 182 mm), que
-     es el ancho con que ajustarEscalaImpresion() lo mide (ver abajo). */
+  /* Sin el relleno lateral de main (2026-09-28): el informe ocupa
+     exactamente el ancho útil de la hoja (210 − 2·14 = 182 mm), que es el
+     ancho con que ajustarEscalaImpresion() lo mide (ver abajo). */
   main { padding: 0; max-width: none; }
   #memoria-informe-impresion { display: block !important; }
 }
 
 /* --- Informe impreso de la Memoria de Cálculo ---
-   FUERA de @media print a propósito (2026-09-28, propio de Otros Gases):
-   Chrome dispara `beforeprint` todavía con los estilos de pantalla — medido
-   con page.pdf(): matchMedia('print') = false y el informe, oculto, mide
-   0 px —, así que ajustarEscalaImpresion() no podía medir el alto real y el
-   informe salía en 2 hojas. Con las reglas acá, ui.js lo mide fuera de la
-   pantalla con el ancho del papel (182 mm) antes de que Chrome arme la hoja.
-   En pantalla no se ve nada de esto: el informe va con style="display:none"
-   y solo @media print lo muestra. Mismas reglas que Hidrógeno salvo eso. */
+   FUERA de @media print a propósito (2026-09-28, igual en los tres módulos
+   con Memoria): Chrome dispara `beforeprint` todavía con los estilos de
+   pantalla — medido con page.pdf(): matchMedia('print') = false y el
+   informe, oculto, mide 0 px —, así que ajustarEscalaImpresion() no podía
+   medir el alto real y el informe largo salía en 2 hojas. Con las reglas
+   acá, ui.js lo mide fuera de la pantalla con el ancho del papel (182 mm)
+   antes de que Chrome arme la hoja. En pantalla no se ve nada de esto: el
+   informe va con style="display:none" y solo @media print lo muestra. */
 /* Paleta fija del informe en papel (2026-09-25): el informe usa
    --gridline/--brand-gray-* de assets/brand.css, y --gridline vale
    #2c2c2a en tema oscuro — imprimir con la app en "Modo oscuro" dejaba

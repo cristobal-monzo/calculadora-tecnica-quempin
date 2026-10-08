@@ -1115,9 +1115,29 @@ function textoPerdida(mbar, unidad) {
   return calc(mbar, (v) => formatearPresionBonita(aPa(v, 'mbar'), unidad));
 }
 
+// Tramos que continúan (directa o indirectamente) desde `id`: elegir uno de
+// ellos en "Continúa desde" cerraría un ciclo, así que no se ofrecen
+// (2026-09-28, igual en los tres módulos). El motor igual rechaza un ciclo
+// que llegue en un .json importado.
+function descendientesDe(id, lista) {
+  const hijosDe = new Map();
+  lista.forEach((t) => {
+    if (t.continuaDesdeId) hijosDe.set(t.continuaDesdeId, [...(hijosDe.get(t.continuaDesdeId) ?? []), t.id]);
+  });
+  const descendientes = new Set();
+  const pendientes = [...(hijosDe.get(id) ?? [])];
+  while (pendientes.length) {
+    const actual = pendientes.pop();
+    if (actual === id || descendientes.has(actual)) continue;
+    descendientes.add(actual);
+    pendientes.push(...(hijosDe.get(actual) ?? []));
+  }
+  return descendientes;
+}
+
 function renderTablaMemoria(resultado) {
   const opcionesPadre = (actualId) => ['<option value="">— raíz —</option>'].concat(
-    tramos.filter((t) => t.id !== actualId).map((t) => `<option value="${t.id}">${escapeHtml(t.nombre)}</option>`),
+    tramos.filter((t) => t.id !== actualId && !descendientesDe(actualId, tramos).has(t.id)).map((t) => `<option value="${t.id}">${escapeHtml(t.nombre)}</option>`),
   ).join('');
 
   const unidadPresion = document.getElementById('memoria-presion-unidad').value;
@@ -1747,16 +1767,17 @@ function leerFilaMemoria(fila) {
   };
 }
 
-// El informe entra siempre en una sola hoja A4 — mismo objetivo y mismo
-// `zoom` que Hidrógeno (2026-09-08; `zoom` y no `transform`, para que la
-// paginación vea el alto ya reducido), pero midiendo distinto: Chrome
-// dispara `beforeprint` con los estilos de PANTALLA todavía activos (medido
-// con page.pdf() el 2026-09-28: matchMedia('print') = false y el informe,
-// oculto, mide 0 px), así que medir el informe "en su lugar" daba siempre 0
-// y nunca se achicaba — una red de 5 tramos ya salía en 2 hojas. Acá se
-// muestra un instante fuera de la pantalla con el ancho útil de la hoja
-// (A4 menos los márgenes de 14 mm del @page) y se mide ahí; sus estilos
-// viven fuera de @media print justamente para eso (ver css/styles.css).
+// El informe entra siempre en una sola hoja A4 (2026-09-08, a pedido del
+// usuario): si no cabe, se reduce todo con `zoom` — no `transform: scale()`,
+// que no achica el alto de layout y la paginación seguiría viendo el
+// original. Cómo se mide (2026-09-28, igual en los tres módulos con
+// Memoria): Chrome dispara `beforeprint` con los estilos de PANTALLA
+// todavía activos (medido con page.pdf(): matchMedia('print') = false y el
+// informe, oculto, mide 0 px), así que medirlo "en su lugar" daba siempre 0
+// y nunca se achicaba. Acá se muestra un instante fuera de la pantalla con
+// el ancho útil de la hoja (A4 menos los márgenes de 14 mm del @page) y se
+// mide ahí; sus estilos viven fuera de @media print para eso (ver
+// css/styles.css).
 //
 // El factor no es simplemente disponible/natural: con `zoom` el informe
 // sigue ocupando el ancho de la hoja, así que por dentro se ensancha (182/z
@@ -1775,7 +1796,7 @@ function ajustarEscalaImpresion() {
       `width:${anchoHojaMm / zoom}mm;zoom:${zoom};`);
     return el.getBoundingClientRect().height;
   };
-  // ×0.98: margen contra el redondeo de `zoom` (mismo criterio que Hidrógeno).
+  // ×0.98: margen contra el redondeo de `zoom` (medido ~3 px, 2026-09-08).
   const altoDisponiblePx = (297 - 2 * 14) * (96 / 25.4) * 0.98;
   const altoNaturalPx = altoCon(1);
   let zoom = 1;

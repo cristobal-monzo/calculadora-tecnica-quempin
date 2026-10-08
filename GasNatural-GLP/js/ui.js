@@ -1081,9 +1081,29 @@ function porNombreTramoMemoria(id) {
   return id ? (tramosMemoria.find((t) => t.id === id)?.nombre ?? '') : '— raíz —';
 }
 
+// Tramos que continúan (directa o indirectamente) desde `id`: elegir uno de
+// ellos en "Continúa desde" cerraría un ciclo, así que no se ofrecen
+// (2026-09-28, igual en los tres módulos). El motor igual rechaza un ciclo
+// que llegue en un .json importado.
+function descendientesDe(id, lista) {
+  const hijosDe = new Map();
+  lista.forEach((t) => {
+    if (t.continuaDesdeId) hijosDe.set(t.continuaDesdeId, [...(hijosDe.get(t.continuaDesdeId) ?? []), t.id]);
+  });
+  const descendientes = new Set();
+  const pendientes = [...(hijosDe.get(id) ?? [])];
+  while (pendientes.length) {
+    const actual = pendientes.pop();
+    if (actual === id || descendientes.has(actual)) continue;
+    descendientes.add(actual);
+    pendientes.push(...(hijosDe.get(actual) ?? []));
+  }
+  return descendientes;
+}
+
 function renderTablaMemoria(resultado) {
   const opcionesPadre = (actualId) => ['<option value="">— raíz —</option>'].concat(
-    tramosMemoria.filter((t) => t.id !== actualId).map((t) => `<option value="${t.id}">${escapeHtml(t.nombre)}</option>`)
+    tramosMemoria.filter((t) => t.id !== actualId && !descendientesDe(actualId, tramosMemoria).has(t.id)).map((t) => `<option value="${t.id}">${escapeHtml(t.nombre)}</option>`)
   ).join('');
 
   // Unidad elegida en cada cabecera de columna de presión — independiente
@@ -1769,24 +1789,50 @@ function leerFilaMemoria(fila) {
   };
 }
 
-// El informe debe entrar siempre en una sola hoja (2026-09-08, a pedido
-// del usuario, mismo criterio que Hidrogeno — ver su CLAUDE.md para el
-// detalle). Con una red de muchos tramos la tabla puede crecer más alto
-// que una A4; en vez de desbordar a una 2ª página, se mide el alto real
-// ya renderizado con los estilos de impresión aplicados (beforeprint
-// dispara después de que el navegador cambia a @media print) y, si no
-// entra, se reduce todo el informe con `zoom` (a diferencia de
-// `transform: scale()`, sí reduce el alto de layout de la caja, así que
-// la paginación de impresión ve el tamaño ya achicado).
+// El informe entra siempre en una sola hoja A4 (2026-09-08, a pedido del
+// usuario): si no cabe, se reduce todo con `zoom` — no `transform: scale()`,
+// que no achica el alto de layout y la paginación seguiría viendo el
+// original. Cómo se mide (2026-09-28, igual en los tres módulos con
+// Memoria): Chrome dispara `beforeprint` con los estilos de PANTALLA
+// todavía activos (medido con page.pdf(): matchMedia('print') = false y el
+// informe, oculto, mide 0 px), así que medirlo "en su lugar" daba siempre 0
+// y nunca se achicaba. Acá se muestra un instante fuera de la pantalla con
+// el ancho útil de la hoja (A4 menos los márgenes de 14 mm del @page) y se
+// mide ahí; sus estilos viven fuera de @media print para eso (ver
+// css/styles.css).
+//
+// El factor no es simplemente disponible/natural: con `zoom` el informe
+// sigue ocupando el ancho de la hoja, así que por dentro se ensancha (182/z
+// mm), las líneas se parten menos y el alto baja MÁS que proporcionalmente
+// (medido: z = 0,83 dejaba ~11 mm libres al pie). Ese cociente siempre cabe
+// y es la cota inferior; una búsqueda binaria encuentra el mayor z que
+// todavía entra, midiendo con el mismo ancho visual que tendrá en papel.
 function ajustarEscalaImpresion() {
   const el = document.getElementById('memoria-informe-impresion');
   if (!el) return;
   el.style.zoom = '';
-  // ×0.98: margen de seguridad contra el redondeo de `zoom` (mismo
-  // criterio que Hidrogeno, ver su CLAUDE.md).
+  const estilo = el.getAttribute('style') ?? '';
+  const anchoHojaMm = 210 - 2 * 14;
+  const altoCon = (zoom) => {
+    el.setAttribute('style', `${estilo};display:block;position:absolute;left:-10000px;top:0;visibility:hidden;` +
+      `width:${anchoHojaMm / zoom}mm;zoom:${zoom};`);
+    return el.getBoundingClientRect().height;
+  };
+  // ×0.98: margen contra el redondeo de `zoom` (medido ~3 px, 2026-09-08).
   const altoDisponiblePx = (297 - 2 * 14) * (96 / 25.4) * 0.98;
-  const altoNaturalPx = el.scrollHeight;
-  el.style.zoom = altoNaturalPx > altoDisponiblePx ? altoDisponiblePx / altoNaturalPx : '';
+  const altoNaturalPx = altoCon(1);
+  let zoom = 1;
+  if (altoNaturalPx > altoDisponiblePx) {
+    let cabe = altoDisponiblePx / altoNaturalPx;
+    let noCabe = 1;
+    for (let i = 0; i < 8; i++) {
+      const medio = (cabe + noCabe) / 2;
+      if (altoCon(medio) <= altoDisponiblePx) cabe = medio; else noCabe = medio;
+    }
+    zoom = cabe;
+  }
+  el.setAttribute('style', estilo);
+  el.style.zoom = zoom < 1 ? String(zoom) : '';
 }
 
 function initMemoria() {
