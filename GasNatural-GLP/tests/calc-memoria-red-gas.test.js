@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { calcularRedMemoria } from '../js/calc-memoria-red-gas.js';
+import { calcularRedMemoria, pruebaHermeticidadRed } from '../js/calc-memoria-red-gas.js';
 
 function cerca(actual, esperado, tolerancia = 1e-6) {
   assert.ok(
@@ -116,5 +116,10 @@ const porIdReset = Object.fromEntries(resultadoReset.map((t) => [t.id, t]));
 cerca(porIdReset.Q.perdidaAcumuladaPa, porIdReset.Q.perdidaPresionRequeridaPa);
 assert.notEqual(porIdReset.Q.perdidaAcumuladaPa, porIdReset.Q.perdidaPresionRequeridaPa + porIdReset.P.perdidaAcumuladaPa);
 cerca(porIdReset.R.perdidaAcumuladaPa, porIdReset.R.perdidaPresionRequeridaPa + porIdReset.Q.perdidaAcumuladaPa);
+
+// Prueba de hermeticidad de la red (D.S. 66 f.11): suma el volumen de todos los tramos
+const pruebaRed = pruebaHermeticidadRed(resultado);
+cerca(pruebaRed.volumenM3, porId.A.volumenTuberiaM3 + porId.B.volumenTuberiaM3);
+cerca(pruebaRed.duracionMin, Math.min(60, Math.max(15, pruebaRed.volumenM3 * 214)));
 
 console.log('calc-memoria-red-gas.test.js: OK');

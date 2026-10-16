@@ -1,6 +1,6 @@
 import { TABLA_TUBERIA_RED_GAS, P_ATMOSFERICA_PA, limitesDS66 } from './pipe-network.js';
 import { calcularRedGas, COMPOSICION_POR_DEFECTO, TABLA_VI_DS66, GAS_TABLA_VI_POR_DEFECTO, buscarGasTablaVI } from './calc-red-gas.js';
-import { calcularRedMemoria } from './calc-memoria-red-gas.js';
+import { calcularRedMemoria, pruebaHermeticidadRed } from './calc-memoria-red-gas.js';
 import { cilindrosPorVaporizacion, cilindrosPorConsumoDiario, calcularEstanqueGLP } from './calc-almacenamiento-glp.js';
 import { calcularCombustionGLP, calcularCombustionGN } from './calc-combustion.js';
 import { propiedadesGN } from './gas-gn.js';
@@ -386,6 +386,15 @@ function tilePresion(valorPa, etiqueta, clave, variante) {
 // de D.S. 66 en baja; 10 % de la presión inicial absoluta en media), la
 // velocidad es la real al final del tramo, las propiedades del gas salen
 // de la composición y en GLP se advierte si la línea condensa.
+// Prueba de hermeticidad (D.S. 66 f.11, 2026-10-16): la duración y, si
+// manda un tope del decreto (15 min / 1 h), lo que daba la fórmula.
+function textoPruebaHermeticidad(p) {
+  const minutos = `${formatearFijo(p.duracionMin, 1)} min`;
+  if (p.ajuste === 'minimo') return `${minutos} — mínimo del D.S. 66 (la fórmula da ${formatearFijo(p.formulaMin, 1)} min)`;
+  if (p.ajuste === 'maximo') return `${minutos} — máximo del D.S. 66 (la fórmula da ${formatearFijo(p.formulaMin, 1)} min)`;
+  return minutos;
+}
+
 function renderResultadosRedGas(r) {
   const variante = r.tuberiaAdecuada ? 'ok' : 'alerta';
   const mediaPresion = r.presionFinalPa !== null;
@@ -434,6 +443,10 @@ function renderResultadosRedGas(r) {
     grupo(null, kpis, 'kpis'),
     grupo('Detalle del cálculo', detalle),
     grupo('Propiedades del gas', propiedades),
+    grupo('Prueba de hermeticidad (D.S. 66 f.11)', [
+      tile(`${formatearFijo(r.pruebaHermeticidad.duracionMin, 1)} min`, 'Duración de la prueba (volumen × 214, entre 15 min y 1 h)', 'secundario'),
+      `<div class="resultados-nota">${textoPruebaHermeticidad(r.pruebaHermeticidad)}, para ${formatearFijo(r.volumenTuberiaM3, 4)} m³ de tubería en este tramo.</div>`,
+    ]),
   ].join('');
 }
 
@@ -1644,6 +1657,14 @@ function renderAvisoCondensacion(resultado) {
     : '';
 }
 
+function renderPruebaHermeticidad(resultado) {
+  const p = pruebaHermeticidadRed(resultado);
+  const texto = `Prueba de hermeticidad (D.S. 66 f.11): volumen de la red ${formatearFijo(p.volumenM3, 4)} m³ → ${textoPruebaHermeticidad(p)}.`;
+  document.getElementById('memoria-prueba-hermeticidad').textContent = texto;
+  document.getElementById('informe-prueba-hermeticidad').textContent =
+    `Prueba de hermeticidad (D.S. 66 f.11, tiempo = volumen × 214, entre 15 min y 1 h): volumen de la red ${formatearInforme(p.volumenM3)} m³ → ${textoPruebaHermeticidad(p)}.`;
+}
+
 function recalcularMemoria() {
   const contenedorError = document.getElementById('memoria-error');
   let resultado;
@@ -1658,6 +1679,7 @@ function recalcularMemoria() {
   ultimoResultadoMemoria = resultado;
   renderAvisoCondensacion(resultado);
   renderTablaMemoria(resultado);
+  renderPruebaHermeticidad(resultado);
   renderArbolMemoria(resultado);
   renderArtefactos();
   renderInformeImpresion(resultado);
@@ -1692,6 +1714,7 @@ function recalcularMemoriaLigero() {
   ultimoResultadoMemoria = resultado;
   renderAvisoCondensacion(resultado);
   actualizarCeldasCalculadas(resultado);
+  renderPruebaHermeticidad(resultado);
   tramosMemoria.forEach((t) => {
     document.querySelectorAll(`#memoria-tabla-cuerpo .mem-padre option[value="${t.id}"]`).forEach((opcion) => {
       opcion.textContent = t.nombre;

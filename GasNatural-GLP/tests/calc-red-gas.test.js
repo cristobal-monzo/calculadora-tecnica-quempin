@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { calcularRedGas, TABLA_VI_DS66, buscarGasTablaVI, propiedadesRedGas } from '../js/calc-red-gas.js';
+import { calcularRedGas, TABLA_VI_DS66, buscarGasTablaVI, propiedadesRedGas, duracionPruebaHermeticidad } from '../js/calc-red-gas.js';
 import { P_ATMOSFERICA_PA } from '../js/pipe-network.js';
 
 function cerca(actual, esperado, tolerancia = 1e-6) {
@@ -173,5 +173,19 @@ assert.ok(gnSube.perdidaPresionTotalPa < gnSube.perdidaPresionRequeridaPa);
 cerca(conAltura('GLP', -15).variacionPresionAlturaPa, -glpSube.variacionPresionAlturaPa);
 const mpSube = conAltura('GN', 30, { regimenPresion: '>10 kPa', presionInicialPa: 50000 });
 cerca(mpSube.presionFinalPa, 50000 - mpSube.perdidaPresionTotalPa);
+
+// --- Prueba de hermeticidad, D.S. 66 f.11: volumen [m³] · 214 [min], entre 15 min y 1 h ---
+const ph = (v) => duracionPruebaHermeticidad(v);
+cerca(ph(0.1).formulaMin, 21.4);
+cerca(ph(0.1).duracionMin, 21.4);
+assert.equal(ph(0.1).ajuste, null);
+cerca(ph(0.01).formulaMin, 2.14);
+cerca(ph(0.01).duracionMin, 15); // al menos 15 min
+assert.equal(ph(0.01).ajuste, 'minimo');
+cerca(ph(0.5).duracionMin, 60); // 107 min -> máximo de una hora
+assert.equal(ph(0.5).ajuste, 'maximo');
+cerca(ph(0.2).duracionMin, 42.8);
+assert.equal(ph(0.2).ajuste, null);
+cerca(glp.pruebaHermeticidad.volumenM3, glp.volumenTuberiaM3);
 
 console.log('calc-red-gas.test.js: OK');

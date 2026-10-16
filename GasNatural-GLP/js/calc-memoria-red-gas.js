@@ -17,7 +17,14 @@
 // propia presionInicialPa como input manual (mismo criterio que
 // Hidrogeno, ver el spec) — perdidaAcumuladaPa solo suma para reportar.
 
-import { calcularRedGas } from './calc-red-gas.js';
+import { calcularRedGas, duracionPruebaHermeticidad } from './calc-red-gas.js';
+
+// Prueba de hermeticidad de TODA la red (D.S. 66 f.11, 2026-10-16): el
+// volumen es la suma del de cada tramo — la duración de un tramo suelto
+// está en el resultado de cada uno (pruebaHermeticidad).
+export function pruebaHermeticidadRed(calculados) {
+  return duracionPruebaHermeticidad(calculados.reduce((suma, t) => suma + t.volumenTuberiaM3, 0));
+}
 
 function calcularTramoIndividual(tramo, gas, { gasTablaVI, composicion } = {}) {
   const resultado = calcularRedGas({ ...tramo, gas, gasTablaVI, composicion });

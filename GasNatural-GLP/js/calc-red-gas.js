@@ -101,6 +101,23 @@ export function velocidadDS66({ caudalM3H, temperaturaK, presionFinalAbsBar, dia
   return 1.25 * caudalM3H * temperaturaK / (presionFinalAbsBar * diametroMm ** 2);
 }
 
+// D.S. 66, prueba de hermeticidad, letra e) y f.11 (2026-10-16, a pedido
+// del usuario): la duración depende del volumen de la red o del tramo a
+// inspeccionar,
+//   Tiempo de prueba [min] = Volumen de la tubería [m³] · 214
+// y "en todo caso" debe ser de al menos 15 min y como máximo 1 hora.
+// `ajuste` dice si manda uno de esos topes ('minimo' / 'maximo') o la
+// fórmula (null).
+export const PRUEBA_HERMETICIDAD_MIN_MIN = 15;
+export const PRUEBA_HERMETICIDAD_MAX_MIN = 60;
+export function duracionPruebaHermeticidad(volumenM3) {
+  const formulaMin = volumenM3 * 214;
+  const duracionMin = Math.min(PRUEBA_HERMETICIDAD_MAX_MIN, Math.max(PRUEBA_HERMETICIDAD_MIN_MIN, formulaMin));
+  const ajuste = formulaMin < PRUEBA_HERMETICIDAD_MIN_MIN ? 'minimo'
+    : formulaMin > PRUEBA_HERMETICIDAD_MAX_MIN ? 'maximo' : null;
+  return { volumenM3, formulaMin, duracionMin, ajuste };
+}
+
 export function calcularRedGas(inputs) {
   const {
     gas, gasTablaVI, composicion, regimenPresion, material, pulgadas, potenciaKw, longitudM, presionInicialPa,
@@ -204,7 +221,8 @@ export function calcularRedGas(inputs) {
     tuberia, diametroMm, caudalObjetivoM3H, caudalRealM3H, perdidaPresionRequeridaPa, presionFinalPa,
     desnivelM, variacionPresionAlturaPa: variacionAlturaPa, perdidaPresionTotalPa,
     alturaObligatoriaDS66: Math.abs(desnivelM) > DESNIVEL_OBLIGATORIO_M,
-    velocidadMS, volumenTuberiaM3, perdidaAdmisiblePa: perdidaAdmisiblePaValor, tuberiaAdecuada,
+    velocidadMS, volumenTuberiaM3, pruebaHermeticidad: duracionPruebaHermeticidad(volumenTuberiaM3),
+    perdidaAdmisiblePa: perdidaAdmisiblePaValor, tuberiaAdecuada,
     z, densidadRelativa: propiedades.densidadRelativa, pcsVolumetricoMJm3: propiedades.pcsVolumetricoMJm3,
     gasTablaVI: propiedades.gasTablaVI, nombreTablaVI: propiedades.nombreTablaVI,
     // D.S. 66 Tabla IX cubre de 3/8" a 4": fuera de ese rango el K de la

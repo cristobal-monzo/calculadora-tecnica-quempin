@@ -525,6 +525,26 @@ por DI^5, porque "equivalía a un diámetro 5-10 % menor" — es posible que
 ese `d5` del Excel fuera justamente la Tabla X. Revisar contra la tabla
 antes de dar por cerrado ese cambio.
 
+## Duración de la prueba de hermeticidad, D.S. 66 f.11 (`calc-red-gas.js`/`calc-memoria-red-gas.js`/`ui.js`/`index.html`, 2026-10-16, a pedido del usuario)
+
+Texto del decreto (letra e, provisto por el usuario): "La duración de la
+prueba depende del volumen de la red o del tramo de ésta a inspeccionar
+... Tiempo de prueba (minuto) = Volumen de la tubería (m3) * 214 (f.11).
+En todo caso, éste deberá ser de al menos quince (15) minutos, con un
+máximo de una (1) hora."
+
+- `duracionPruebaHermeticidad(volumenM3)` → `{ volumenM3, formulaMin,
+  duracionMin, ajuste }`; `ajuste` = `'minimo'`/`'maximo'` si manda un
+  tope (15 min / 60 min), `null` si manda la fórmula. Volumen = área
+  interior × longitud (el `volumenTuberiaM3` que ya existía).
+- **Red de Gas**: grupo "Prueba de hermeticidad (D.S. 66 f.11)" con la
+  duración del tramo; la nota dice si se aplicó el mínimo o el máximo y
+  cuánto daba la fórmula.
+- **Memoria**: `pruebaHermeticidadRed()` suma el volumen de TODOS los
+  tramos (la red completa); línea bajo la tabla de tramos y otra en el
+  informe, bajo la leyenda de la sección 4.
+- Tests en `calc-red-gas.test.js` y `calc-memoria-red-gas.test.js`.
+
 ## Fix de ids de tramo/artefacto repetidos en la Memoria de Cálculo (`ui.js`, 2026-09-24, a pedido del usuario)
 
 Mismo bug y mismo fix que `Hidrogeno` (ver su `CLAUDE.md`):
