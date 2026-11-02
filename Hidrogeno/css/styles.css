@@ -437,12 +437,11 @@ td { font-variant-numeric: tabular-nums; }
 @media screen and (max-width: 600px), screen and (pointer: coarse) {
   .campo input, .campo select, .seccion-avanzada textarea,
   .artefacto-fila input, #memoria-tabla input, #memoria-tabla select,
-  .select-unidad-inline, .selector-gas-activo select { font-size: 16px; }
+  .select-unidad-inline { font-size: 16px; }
   .campo input, .campo select, .artefacto-fila input { min-height: 44px; }
   .btn { min-height: 44px; padding: 10px 16px; font-size: 13.5px; justify-content: center; text-align: center; }
   .mem-eliminar, .af-eliminar { min-width: 44px; min-height: 44px; font-size: 16px; }
   .select-unidad-inline { min-height: 36px; padding: 4px 4px 4px 8px; }
-  .segmentado span { padding: 8px 14px; }
   .viz-theme-toggle, #selector-gas { min-height: 40px; }
   summary { padding: 8px 0; }
 }

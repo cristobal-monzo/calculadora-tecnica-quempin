@@ -189,7 +189,6 @@ input[aria-invalid="true"] {
 }
 
 /* Campos cortos (conteos: codos/tees/válvulas) — caben 3 por fila. */
-.fila-campos.compacta { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
 
 /* --- Agrupación conceptual de campos dentro de un formulario largo
    (auditoría UX 2026-09-03, ver CLAUDE.md maestro) — separa un formulario
@@ -524,7 +523,7 @@ td { font-variant-numeric: tabular-nums; }
 @media screen and (max-width: 600px), screen and (pointer: coarse) {
   .campo input, .campo select, .seccion-avanzada textarea,
   .artefacto-fila input, #memoria-tabla input, #memoria-tabla select,
-  .select-unidad-inline, .selector-gas-activo select { font-size: 16px; }
+  .select-unidad-inline { font-size: 16px; }
   .campo input, .campo select, .artefacto-fila input { min-height: 44px; }
   .btn { min-height: 44px; padding: 10px 16px; font-size: 13.5px; justify-content: center; text-align: center; }
   .mem-eliminar, .af-eliminar { min-width: 44px; min-height: 44px; font-size: 16px; }
@@ -552,7 +551,6 @@ td { font-variant-numeric: tabular-nums; }
      horizontal (Red de Gas de GN/GLP). */
   .campo-ancho { grid-column: 1 / -1; }
   /* Codos / Tee / Válvulas: 3 por fila también en el teléfono (antes 2 + 1). */
-  .fila-campos.compacta { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 10px; }
   .subseccion { padding: 2px 12px 6px; }
   .seccion-avanzada { padding: 12px; }
   .artefacto-fila { grid-template-columns: minmax(0, 1fr) 84px 44px; }
