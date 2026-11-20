@@ -4,7 +4,7 @@ Ver primero el maestro: [`../CLAUDE.md`](../CLAUDE.md) (marca, hosting, estructu
 
 | Si vas a tocar… | Lee antes |
 |---|---|
-| Una fórmula o constante: rugosidad, Haaland, Z (NIST), ASME B31.12 (Hf, F, T, E), velocidad, flujo sónico, reseteo de pérdida | [docs/formulas.md](docs/formulas.md), con cada discrepancia del Excel y su porqué |
+| Una fórmula o constante: rugosidad, Haaland, Z (NIST), ASME B31.12 (Hf, F, T, E), velocidad, flujo sónico, reseteo de pérdida, prueba de hermeticidad (IP-10, tubería + estanque) | [docs/formulas.md](docs/formulas.md), con cada discrepancia del Excel y su porqué |
 | La pantalla: unidades, diámetro manual, decimales, formato, pestañas, teléfono, diagrama unifilar | [docs/interfaz.md](docs/interfaz.md) |
 | El informe de Memoria de Cálculo: membrete, firma, una sola hoja, criterios | [docs/informe.md](docs/informe.md) |
 

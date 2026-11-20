@@ -262,6 +262,13 @@
         </table>
       </div>
 
+      <h3 class="seccion-titulo no-imprimir">Prueba de hermeticidad <span class="info-norma" tabindex="0" role="img" aria-label="Fuente" title="ASME B31.12-2008, Parte IP (tubería industrial), capítulo IP-10. El D.S. 13/2022 no fija duración: su art. 43 remite a NFPA 2 §7.1.6.4.&#10;• Duración: al menos 10 min, revisando todas las uniones (IP-10.6.2(b)(1)).&#10;• Hidrostática: ≥ 1,5 × presión de diseño (IP-10.7.2). Si la temperatura de diseño supera la de prueba, sube a 1,5·P·ST/S (eq. 24).&#10;• Neumática: 1,1 × presión de diseño; se sube por etapas y se baja a la de diseño para buscar fugas (IP-10.8.4 y 10.8.5).&#10;• Alivio: prueba + el menor entre 345 kPa y 10 % (IP-10.8.2).&#10;• Gas de prueba: aire o gas no inflamable ni tóxico; nunca H₂ (IP-10.8.3).&#10;• Volumen probado = tubería + estanque. El estanque parte con el valor de la pestaña Almacenamiento; se puede cambiar.&#10;• Tubería y estanque juntos: si la presión de prueba de la tubería supera la del estanque, se prueban a la del estanque, con aprobación del dueño y si es ≥ 77 % de la de la tubería (IP-10.7.3).&#10;• Presión de diseño = la mayor presión de los tramos.&#10;• D.S. 66 f.11 (volumen × 214, entre 15 min y 1 h) es solo referencia QUEMPIN: es para GN y GLP.">ⓘ</span></h3>
+      <div class="campo campo-estanque-prueba no-imprimir">
+        <label for="mem-volumen-estanque">Volumen del estanque [m³]</label>
+        <input id="mem-volumen-estanque" type="text" inputmode="decimal">
+      </div>
+      <div id="memoria-prueba-hermeticidad" class="no-imprimir"></div>
+
       <details class="seccion-avanzada no-imprimir">
         <summary>Datos del informe</summary>
         <form id="form-memoria-proyecto" class="fila-campos" autocomplete="off">
@@ -405,6 +412,7 @@
           <tbody id="memoria-tabla-impresion-cuerpo"></tbody>
         </table>
         <p class="informe-leyenda" id="informe-leyenda-tramos"></p>
+        <p class="informe-leyenda" id="informe-prueba-hermeticidad"></p>
 
         <h3 class="informe-eyebrow"><span class="informe-num">5</span>Verificación de criterios de diseño</h3>
         <table class="informe-verificacion">

@@ -377,3 +377,27 @@ sobre 1,8 bar **absolutos** y no sobre 0,8 manométricos (con contraprueba
 de que el x manométrico sería 2,25× mayor), los estados `advertencia` /
 `critico` / `no-aplica` end-to-end, y que `velocidadErosionMS` siga
 devolviendo sus valores baselineados en todos esos escenarios.
+
+## Prueba de hermeticidad (`prueba-hermeticidad.js`, Memoria de Cálculo, 2026-11-19, a pedido del usuario)
+
+**Fuente:** ASME B31.12-2008, Parte IP (tubería industrial), capítulo IP-10. Copia en
+`Documentación/Referencias/3 Normas y técnica/ASME B31.12 - Hydrogen pipelines.pdf` (su texto sale cifrado: cada letra es un
+carácter privado U+F0xx en orden inverso, a = U+F0BF, A = U+F0DF, 0 = U+F0F0). El D.S. 13/2022 (instalaciones de hidrógeno) no
+fija duración: su art. 43 remite a NFPA 2 (2020) §7.1.6.4, que no está en Referencias. El usuario eligió la Parte IP y no la PL
+(gasoductos: 1,5 × MAOP durante 2 h, PL-3.10.2).
+
+| Dato | Valor | Cláusula |
+|---|---|---|
+| Duración | al menos 10 min, revisando todas las uniones | IP-10.6.2(b)(1) |
+| Hidrostática | ≥ 1,5 × presión de diseño (eq. 24, 1,5·P·ST/S, no se modela) | IP-10.7.2 |
+| Neumática | 1,1 × presión de diseño; se baja a la de diseño para buscar fugas | IP-10.8.4 y 10.8.5 |
+| Alivio | prueba + el menor entre 345 kPa y 10 % de la prueba | IP-10.8.2 |
+| Fluido | aire o gas no inflamable ni tóxico; nunca H₂ | IP-10.8.3 |
+| Tubería con estanque | se prueban juntos a la presión del estanque si es ≥ 77 % de la de la tubería y el dueño aprueba | IP-10.7.3 |
+
+- **Presión de diseño** = la mayor presión de los tramos: la Memoria no tiene un campo propio.
+- **Volumen probado = tubería + estanque** (pedido del usuario). Tubería = Σ π/4·DI²·L de los tramos. Estanque = el cajetín de la
+  Memoria (`proyecto.volumenEstanqueM3`, viaja con el proyecto exportado); vacío = el de la pestaña Almacenamiento (`alm-volumen`).
+- **Referencia D.S. 66 f.11** (volumen × 214 min, entre 15 min y 1 h): misma fórmula que `GasNatural-GLP/js/calc-red-gas.js`,
+  copiada. Es para GN y GLP: se muestra como referencia QUEMPIN, «no exigida para H₂».
+- B31.12 no da una fórmula de tiempo por volumen: PL-3.10.7(b) solo pide tener en cuenta el volumen «con criterio».

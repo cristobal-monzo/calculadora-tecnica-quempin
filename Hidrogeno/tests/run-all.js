@@ -10,5 +10,6 @@ await import('./calc-flujo.test.js');
 await import('./calc-almacenamiento.test.js');
 await import('./calc-memoria.test.js');
 await import('./storage.test.js');
+await import('./prueba-hermeticidad.test.js');
 
 console.log('\nTodos los tests de regresión pasaron.');

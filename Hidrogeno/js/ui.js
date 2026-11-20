@@ -1,6 +1,7 @@
 import { calcularFlujo } from './calc-flujo.js';
 import { calcularAlmacenamiento, formatearHoras } from './calc-almacenamiento.js';
 import { calcularRed } from './calc-memoria.js';
+import { pruebaHermeticidadRed } from './prueba-hermeticidad.js';
 import { TABLA_TUBERIA, TABLA_FACTOR_DISENO_F } from './gas-h2.js';
 import { guardar, cargar, exportarJSON, importarJSON } from './storage.js';
 import { initSelectorGas } from '../../assets/gas-switcher.js';
@@ -1160,6 +1161,86 @@ function renderInformeImpresion(resultado) {
   document.getElementById('informe-firma-run').textContent = proyecto.runInstalador;
 }
 
+// Prueba de hermeticidad de toda la red (2026-11-19, a pedido del usuario):
+// ASME B31.12 IP-10 + referencia D.S. 66 f.11. Fuentes en el ⓘ del
+// index.html y en js/prueba-hermeticidad.js. Las presiones usan la unidad
+// de la columna Presión de la tabla de tramos.
+function textoReferenciaDS66(r) {
+  const minutos = `${formatearNumero(r.duracionMin)} min`;
+  if (r.ajuste === 'minimo') return `${minutos} (mínimo; la fórmula da ${formatearNumero(r.formulaMin)} min)`;
+  if (r.ajuste === 'maximo') return `${minutos} (máximo; la fórmula da ${formatearNumero(r.formulaMin)} min)`;
+  return minutos;
+}
+
+// Volumen del estanque para la prueba: el que el usuario escribió en la
+// Memoria (se guarda con el proyecto) o, si no escribió nada, el de la
+// pestaña Almacenamiento.
+function volumenEstanquePrueba() {
+  const propio = proyecto?.volumenEstanqueM3;
+  if (propio !== null && propio !== undefined) return propio;
+  return numeroFlexible(document.getElementById('alm-volumen').value);
+}
+
+function renderPruebaHermeticidad(resultado) {
+  const p = pruebaHermeticidadRed(resultado, { volumenEstanqueM3: volumenEstanquePrueba() });
+  const campoEstanque = document.getElementById('mem-volumen-estanque');
+  if (document.activeElement !== campoEstanque) {
+    // numeros.js formatea la caja (coma decimal); se le pasa el número sin formato.
+    campoEstanque.value = String(Math.round(p.volumenEstanqueM3 * 1e4) / 1e4);
+  }
+  const unidad = document.getElementById('memoria-presion-unidad').value;
+  const presion = (bar) => `${formatearPresionBonita(aPa(bar, 'bar'), unidad)} ${unidad}`;
+  const formatearVolumen = (v) => new Intl.NumberFormat('es-CL', { maximumSignificantDigits: 3 }).format(v);
+  const volumen = formatearVolumen(p.volumenM3);
+  const litros = formatearNumero(p.volumenM3 * 1000);
+  document.getElementById('memoria-prueba-hermeticidad').innerHTML = grupo(null, [
+    tile(`${p.duracionMinimaMin} min`, 'Duración mínima, revisando todas las uniones (IP-10.6.2)', 'kpi'),
+    tile(presion(p.hidrostaticaBarG), 'Presión prueba hidrostática, mínimo (1,5 × diseño, IP-10.7.2)'),
+    tile(presion(p.neumaticaBarG), 'Presión prueba neumática (1,1 × diseño, IP-10.8.4)'),
+    tile(presion(p.alivioMaxBarG), 'Alivio en prueba neumática, calibración máx. (IP-10.8.2)', 'secundario'),
+    tile('Agua, aire o N₂', 'Fluido de prueba — nunca H₂ (IP-10.8.3)', 'secundario'),
+    tile(`${volumen} m³`, `Volumen probado (${litros} L): tubería ${formatearVolumen(p.volumenTuberiaM3)} m³ + estanque ${formatearVolumen(p.volumenEstanqueM3)} m³`),
+    tile(textoReferenciaDS66(p.ds66), 'Referencia D.S. 66 f.11 (volumen × 214) — no exigida para H₂', 'secundario'),
+    `<div class="resultados-nota">Presión de diseño tomada: ${presion(p.presionDisenoBarG)} (la mayor de los tramos).</div>`,
+  ]);
+  document.getElementById('informe-prueba-hermeticidad').textContent =
+    `Prueba de hermeticidad (ASME B31.12 IP-10): al menos ${p.duracionMinimaMin} min revisando todas las uniones; `
+    + `hidrostática ≥ ${presion(p.hidrostaticaBarG)} o neumática ${presion(p.neumaticaBarG)} con aire o N₂, nunca H₂ `
+    + `(presión de diseño ${presion(p.presionDisenoBarG)}). Volumen probado ${volumen} m³ (tubería ${formatearVolumen(p.volumenTuberiaM3)} + estanque ${formatearVolumen(p.volumenEstanqueM3)}); referencia D.S. 66 f.11: ${textoReferenciaDS66(p.ds66)}.`;
+}
+
+// Cajetín del estanque en la Memoria: vacío = vuelve a tomar el de
+// Almacenamiento. Si cambia Almacenamiento y el usuario no escribió uno
+// propio, la prueba se actualiza.
+function initEstanquePrueba() {
+  const campo = document.getElementById('mem-volumen-estanque');
+  const actualizar = () => { if (ultimoResultadoMemoria) renderPruebaHermeticidad(ultimoResultadoMemoria); };
+  campo.addEventListener('input', () => {
+    const bruto = campo.value.trim();
+    proyecto.volumenEstanqueM3 = bruto === '' ? null : numeroFlexible(bruto);
+    guardar('memoria-proyecto', proyecto);
+    actualizar();
+  });
+  campo.addEventListener('blur', actualizar);
+  document.getElementById('alm-volumen').addEventListener('input', actualizar);
+}
+
+// ⓘ de la prueba: en el teléfono no hay hover, así que al tocarlo muestra
+// u oculta su texto (el mismo del title) debajo del título.
+function initInfoNorma() {
+  document.querySelectorAll('.info-norma').forEach((icono) => {
+    const nota = document.createElement('div');
+    nota.className = 'resultados-nota info-norma-texto';
+    nota.hidden = true;
+    nota.style.whiteSpace = 'pre-line';
+    nota.textContent = icono.title;
+    icono.closest('h3').after(nota);
+    const alternar = () => { nota.hidden = !nota.hidden; };
+    icono.addEventListener('click', alternar);
+    icono.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } });
+  });
+}
+
 function recalcularMemoria() {
   let resultado;
   try {
@@ -1174,6 +1255,7 @@ function recalcularMemoria() {
   renderArbol(resultado);
   renderArtefactos();
   renderInformeImpresion(resultado);
+  renderPruebaHermeticidad(resultado);
   guardar('memoria', tramos);
   guardar('memoria-proyecto', proyecto);
 }
@@ -1220,6 +1302,7 @@ function recalcularMemoriaLigero() {
   });
   renderArbol(resultado);
   renderInformeImpresion(resultado);
+  renderPruebaHermeticidad(resultado);
   guardar('memoria', tramos);
   guardar('memoria-proyecto', proyecto);
 }
@@ -1505,5 +1588,7 @@ initValidacionNumerica();
 initTeoriaFlujo();
 initAlmacenamiento();
 initMemoria();
+initInfoNorma();
+initEstanquePrueba();
 initSelectorGas({ actualId: 'hidrogeno', profundidad: 1 });
 initResumenMovil();

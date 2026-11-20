@@ -41,7 +41,10 @@ function calcularTramoIndividual(tramo) {
     velocidad: velocidadFlujoMS, sumaCoeficientesLocales: 0,
   });
 
-  return { ...tramo, densidadKgM3, velocidadFlujoMS, perdidaParcialMbar };
+  // Volumen interior del tramo, para la prueba de hermeticidad (2026-11-19).
+  const volumenTuberiaM3 = areaM2 * tramo.longitudM;
+
+  return { ...tramo, densidadKgM3, velocidadFlujoMS, perdidaParcialMbar, volumenTuberiaM3 };
 }
 
 export function calcularRed(tramos) {

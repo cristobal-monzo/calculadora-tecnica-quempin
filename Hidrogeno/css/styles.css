@@ -376,6 +376,11 @@ td { font-variant-numeric: tabular-nums; }
 .artefacto-fila input:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
 #memoria-artefacto-agregar { margin-top: 4px; }
 .artefactos-total { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+/* Prueba de hermeticidad (2026-11-19): la fuente va en el ⓘ, no en un párrafo. */
+.info-norma { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; font-size: 15px; font-weight: 400; color: var(--text-secondary); cursor: help; border-radius: 50%; }
+.info-norma:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+#memoria-prueba-hermeticidad .resultados-nota { grid-column: 1 / -1; }
+.campo-estanque-prueba { max-width: 240px; }
 
 /* ======================================================================
    Uso desde el teléfono (auditoría móvil 2026-09-25, ver CLAUDE.md del
