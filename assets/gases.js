@@ -19,10 +19,9 @@ export const GASES = [
     ruta: 'Hidrogeno/',
     disponible: true,
     normas: 'ASME B31.12 · NFPA 2',
-    desc: 'Tubería y flujo (ASME B31.12), almacenamiento (PV=ZnRT) y memoria de cálculo de redes ramificadas.',
+    desc: 'Estanque (PV=ZnRT) y tubería (ASME B31.12) en una sola pantalla, prueba de hermeticidad y memoria de cálculo de redes ramificadas.',
     herramientas: [
-      { id: 'flujo', nombre: 'Tubería y Flujo' },
-      { id: 'almacenamiento', nombre: 'Almacenamiento' },
+      { id: 'flujo', nombre: 'Estanque y tubería' },
       { id: 'memoria', nombre: 'Memoria de Cálculo' },
     ],
   },

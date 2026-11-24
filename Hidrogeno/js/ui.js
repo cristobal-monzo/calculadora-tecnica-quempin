@@ -1,7 +1,7 @@
 import { calcularFlujo } from './calc-flujo.js';
 import { calcularAlmacenamiento, formatearHoras } from './calc-almacenamiento.js';
 import { calcularRed } from './calc-memoria.js';
-import { pruebaHermeticidadRed } from './prueba-hermeticidad.js';
+import { pruebaHermeticidadRed, pruebaHermeticidadIP, volumenTuberiaM3 } from './prueba-hermeticidad.js';
 import { TABLA_TUBERIA, TABLA_FACTOR_DISENO_F } from './gas-h2.js';
 import { guardar, cargar, exportarJSON, importarJSON } from './storage.js';
 import { initSelectorGas } from '../../assets/gas-switcher.js';
@@ -76,15 +76,20 @@ function escapeHtml(texto) {
   return String(texto).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// La pestaña activa vive en el hash de la URL (#flujo, #almacenamiento,
-// #memoria — el data-tab de cada botón, 2026-09-24): recargar la página ya
-// no devuelve siempre a la primera pestaña, y el hub puede enlazar directo
-// a una herramienta. replaceState en vez de asignar location.hash para no
-// llenar el historial con un paso por cada clic de pestaña.
+// La pestaña activa vive en el hash de la URL (#flujo, #memoria — el
+// data-tab de cada botón, 2026-09-24): recargar la página ya no devuelve
+// siempre a la primera pestaña, y el hub puede enlazar directo a una
+// herramienta. replaceState en vez de asignar location.hash para no llenar
+// el historial con un paso por cada clic de pestaña.
+// Desde 2026-11-24 Almacenamiento vive en la pestaña #flujo («Estanque y
+// tubería»): un enlace o marcador viejo a #almacenamiento lleva ahí.
+const ALIAS_PESTANA = { almacenamiento: 'flujo' };
+
 function initTabs() {
   const botones = Array.from(document.querySelectorAll('.tab'));
   const paneles = document.querySelectorAll('.tab-panel');
-  function activar(nombre) {
+  function activar(pedido) {
+    const nombre = ALIAS_PESTANA[pedido] ?? pedido;
     const boton = botones.find((b) => b.dataset.tab === nombre);
     if (!boton) return;
     botones.forEach((b) => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
@@ -369,7 +374,7 @@ function poblarSelectTuberia(select) {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Pestaña 1 — Tubería y Flujo                                            */
+/* Pestaña «Estanque y tubería» — parte tubería                          */
 /* ---------------------------------------------------------------------- */
 
 // Unidad de flujo normalizado/H₂ elegida — vive fuera del <form> (el
@@ -455,12 +460,28 @@ function tilesChequeoSonico(c) {
   ]);
 }
 
-// Orden y etiquetas (2026-09-02, a pedido del usuario): los resultados de
-// mayor relevancia para la decisión de dimensionamiento van primero
-// (presión/adecuación, caudales, velocidades, pérdida de carga); los
-// factores de verificación de la fórmula (Hf, T, Z, Reynolds, fricción) y
-// la densidad se agrupan aparte, al final, bajo su propio subtítulo.
-function renderResultadosFlujo(r) {
+// Bloque de resultados con la misma marca (1, 2, 3) que su sección del
+// formulario (2026-11-24, maqueta «A·1» elegida por el usuario): el
+// resultado de lo que se acaba de cambiar se encuentra en el mismo orden y
+// con el mismo número. `marca` = '1' | '2' | '3' | 'prueba'.
+function bloqueResultados(marca, titulo, contenido) {
+  const simbolo = marca === 'prueba' ? '✓' : marca;
+  return `<section class="bloque-resultados"><h3 class="bloque-titulo"><span class="marca marca-${marca}" aria-hidden="true">${simbolo}</span>${titulo}</h3>${contenido.join('')}</section>`;
+}
+
+// «Factores de verificación» va plegado: se recuerda si el usuario lo abrió,
+// porque el bloque se redibuja en cada tecla.
+let factoresAbiertos = false;
+
+// Orden (2026-11-24): KPI arriba (los lee también el resumen del teléfono),
+// luego 1 Estanque, 2 Tubería, 3 Consumo (datos comunes) y la prueba de
+// hermeticidad, que usa la instalación completa. Dentro de Tubería sigue
+// el orden de 2026-09-02: caudal y velocidad, erosión, flujo sónico y, al
+// final, los factores de la fórmula.
+// Ya no se muestra «Consumo del quemador» de Almacenamiento: repetía el
+// flujo másico y el normalizado de la tubería (solo cambia el PCI de cada
+// hoja del Excel, 119 960 vs 120 000 kJ/kg).
+function renderResultadosInstalacion(r, a, prueba, presionDisenoBarG) {
   // API RP 14E en el MISMO estado del gas (2026-09-25): velocidad de flujo
   // y velocidad erosional, ambas a la presión mínima de la línea — ver
   // calc-flujo.js. Antes se comparaba la de flujo a la presión de operación
@@ -470,31 +491,70 @@ function renderResultadosFlujo(r) {
     ? ['<div class="resultados-nota">La presión mínima ingresada supera la de operación: no puede ser la mínima de esta línea. La erosión se verificó a la presión de operación.</div>']
     : [];
   const varianteAdecuada = r.tuberiaAdecuada ? 'ok' : 'alerta';
+  const formatearVolumen = (v) => new Intl.NumberFormat('es-CL', { maximumSignificantDigits: 3 }).format(v);
+  const ds66 = prueba.ds66;
+  const textoDs66 = ds66.ajuste === 'minimo' ? ` (mínimo; la fórmula da ${formatearNumero(ds66.formulaMin)})`
+    : ds66.ajuste === 'maximo' ? ` (máximo; la fórmula da ${formatearNumero(ds66.formulaMin)})` : '';
+
   document.getElementById('resultados-flujo').innerHTML = [
     grupo(null, [
+      tile(formatearHoras(a.autonomiaHoras), 'Autonomía hasta la presión residual (hh:mm:ss)', 'kpi'),
       tilePresion(r.presionMaxDisenoBar, 'bar', 'Presión máxima diseño (PL-3.7.1)', 'presion-max-diseno', unidadesTilesPresionFlujo, `kpi ${varianteAdecuada}`),
       tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar tubería de mayor espesor o menor diámetro', 'Tubería adecuada', `kpi ${varianteAdecuada}`),
     ], 'kpis'),
-    grupo('Caudal y velocidad', [
-      tileConUnidad(formatearNumero(r.flujoVolNormalizado), 'Flujo volum. Norm.', 'flujo-unidad-normalizado', OPCIONES_UNIDAD_NORMALIZADO, unidadNormalizadoFlujo),
-      tileConUnidad(formatearNumero(r.flujoVolH2), 'Flujo volum. de H₂', 'flujo-unidad-h2', OPCIONES_UNIDAD_H2, unidadH2Flujo),
-      tile(`${formatearNumero(r.flujoMasicoKgH)} kg/h`, 'Flujo másico de H₂'),
-      tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo (presión de operación)'),
-      tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdidas de carga', 'perdida-carga', unidadesTilesPresionFlujo),
+
+    bloqueResultados('1', 'Estanque', [
+      grupo(null, [
+        tile(`${formatearNumero(a.masaAlmacenadaKg)} kg`, 'Masa de H₂ almacenada (PV=ZnRT)'),
+        tile(`${formatearNumero(a.masaUtilizableKg)} kg`, 'Masa utilizable (sobre la presión residual)'),
+        tile(`${formatearNumero(a.volumenNormalizadoNm3)} Nm³`, 'Volumen normalizado'),
+        tile(a.tiempoLlenadoHoras === null ? '—' : formatearHoras(a.tiempoLlenadoHoras), 'Tiempo de llenado desde la presión residual (hh:mm:ss)'),
+        tileConUnidad(formatearNumero(a.caudalReferenciaM3H), 'Caudal real de llenado (a la presión del estanque)', 'alm-unidad-caudal', OPCIONES_UNIDAD_CAUDAL_ALM, unidadCaudalAlm, 'secundario'),
+        tile(`${formatearNumero(a.velocidadReferenciaMS)} m/s`, `Velocidad de llenado en línea Ø¼" (DI ${formatearNumero(a.diametroCapilarMm)} mm)`, 'secundario'),
+        tile(formatearZ(a.zAlmacenamiento), 'Factor de compresibilidad Z en el estanque', 'secundario'),
+        tile(`${formatearNumero(a.densidadRealKgM3)} kg/m³`, 'Densidad real en el estanque', 'secundario'),
+      ]),
     ]),
-    grupo(`Velocidad de erosión — API RP 14E, a la presión mínima (${formatearNumero(r.presionErosionBarG)} barG)`, [
-      tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad erosión (I-3.4.5)'),
-      tile(`${formatearNumero(r.velocidadFlujoErosionMS)} m/s`, 'Velocidad de flujo a la presión mínima', cercaDeErosion ? 'alerta' : ''),
-      ...notaPresionMinima,
+
+    bloqueResultados('2', 'Tubería', [
+      grupo(null, [
+        tileConUnidad(formatearNumero(r.flujoVolH2), 'Flujo volum. de H₂ en la línea', 'flujo-unidad-h2', OPCIONES_UNIDAD_H2, unidadH2Flujo),
+        tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo (presión de operación)'),
+        tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdidas de carga', 'perdida-carga', unidadesTilesPresionFlujo),
+      ]),
+      grupo(`Velocidad de erosión — API RP 14E, a la presión mínima (${formatearNumero(r.presionErosionBarG)} barG)`, [
+        tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad erosión (I-3.4.5)'),
+        tile(`${formatearNumero(r.velocidadFlujoErosionMS)} m/s`, 'Velocidad de flujo a la presión mínima', cercaDeErosion ? 'alerta' : ''),
+        ...notaPresionMinima,
+      ]),
+      tilesChequeoSonico(r.chequeoSonico),
+      `<details class="detalle-factores"${factoresAbiertos ? ' open' : ''}><summary>Factores de verificación</summary>${grupo(null, [
+        tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad real en la línea', 'secundario'),
+        tile(formatearNumero(r.factorHfAplicado), 'Factor Hf aplicado (Tabla IX-5A, fragilización por H₂)', 'secundario'),
+        tile(formatearNumero(r.factorTAplicado), 'Factor T aplicado (Tabla PL-3.7.1(b)(8), derating por temperatura)', 'secundario'),
+        tile(formatearZ(r.zDiseno), 'Factor Z (compresibilidad, correlación NIST)', 'secundario'),
+        tile(formatearNumero(r.reynolds), 'Número de Reynolds', 'secundario'),
+        tile(formatearNumero(r.factorFriccion), 'Factor de fricción (Haaland)', 'secundario'),
+      ])}</details>`,
     ]),
-    tilesChequeoSonico(r.chequeoSonico),
-    grupo('Factores de verificación', [
-      tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad real', 'secundario'),
-      tile(formatearNumero(r.factorHfAplicado), 'Factor Hf aplicado (Tabla IX-5A, fragilización por H₂)', 'secundario'),
-      tile(formatearNumero(r.factorTAplicado), 'Factor T aplicado (Tabla PL-3.7.1(b)(8), derating por temperatura)', 'secundario'),
-      tile(formatearZ(r.zDiseno), 'Factor Z (compresibilidad, correlación NIST)', 'secundario'),
-      tile(formatearNumero(r.reynolds), 'Número de Reynolds', 'secundario'),
-      tile(formatearNumero(r.factorFriccion), 'Factor de fricción (Haaland)', 'secundario'),
+
+    bloqueResultados('3', 'Consumo (datos comunes)', [
+      grupo(null, [
+        tile(`${formatearNumero(r.flujoMasicoKgH)} kg/h`, 'Flujo másico de H₂'),
+        tileConUnidad(formatearNumero(r.flujoVolNormalizado), 'Flujo volum. Norm.', 'flujo-unidad-normalizado', OPCIONES_UNIDAD_NORMALIZADO, unidadNormalizadoFlujo),
+      ]),
+    ]),
+
+    bloqueResultados('prueba', 'Prueba de hermeticidad — ASME B31.12 IP-10', [
+      grupo(null, [
+        tile(`${prueba.duracionMinimaMin} min`, 'Duración mínima, revisando todas las uniones (IP-10.6.2)'),
+        tile(`${formatearVolumen(prueba.volumenM3)} m³`, `Volumen probado: tubería ${formatearVolumen(prueba.volumenTuberiaM3)} + estanque ${formatearVolumen(prueba.volumenEstanqueM3)} m³`),
+        tilePresion(prueba.hidrostaticaBarG, 'bar', 'Prueba hidrostática, mínimo (1,5 × diseño, IP-10.7.2)', 'prueba-hidrostatica', unidadesTilesPresionFlujo),
+        tilePresion(prueba.neumaticaBarG, 'bar', 'Prueba neumática, aire o N₂ — nunca H₂ (1,1 × diseño, IP-10.8.4)', 'prueba-neumatica', unidadesTilesPresionFlujo),
+        tilePresion(prueba.alivioMaxBarG, 'bar', 'Alivio en prueba neumática, calibración máx. (IP-10.8.2)', 'prueba-alivio', unidadesTilesPresionFlujo, 'secundario'),
+        tile(`${formatearNumero(ds66.duracionMin)} min${textoDs66}`, 'Referencia D.S. 66 f.11 (volumen × 214) — no exigida para H₂', 'secundario'),
+        `<div class="resultados-nota">Presión de diseño tomada: la de la línea (${formatearNumero(presionDisenoBarG)} barG). Fuentes en el ⓘ de la Memoria de Cálculo.</div>`,
+      ]),
     ]),
   ].join('');
 }
@@ -507,23 +567,57 @@ function renderTablaTuberia() {
     `<thead><tr><th>Nominal</th><th>DE [mm]</th><th>DI [mm]</th><th>Espesor [mm]</th><th>S mín. [MPa]</th><th>Rugosidad [mm]</th></tr></thead><tbody>${filas}</tbody>`;
 }
 
-function initTeoriaFlujo() {
+/* ---------------------------------------------------------------------- */
+/* Almacenamiento (desde 2026-11-24 en la misma pestaña que la tubería)   */
+/* ---------------------------------------------------------------------- */
+
+const OPCIONES_UNIDAD_CAUDAL_ALM = ['[m³/h]', '[L/min]'];
+let unidadCaudalAlm = '[m³/h]';
+
+// Potencia y temperatura son los «Datos comunes» de la pestaña: los mismos
+// cajetines que la tubería (flujo-potencia, flujo-temperatura). Antes el
+// estanque tenía los suyos (alm-potencia, alm-temperatura).
+function leerAlmacenamientoForm() {
+  const num = (id) => numeroFlexible(document.getElementById(id).value);
+  return {
+    potenciaKw: num('flujo-potencia'),
+    temperaturaC: num('flujo-temperatura'),
+    presionBarAbs: leerPresion('alm-presion', 'alm-presion-unidad', 'bar'),
+    volumenM3: num('alm-volumen'),
+    presionResidualBarAbs: leerPresion('alm-presion-residual', 'alm-presion-residual-unidad', 'bar'),
+    caudalLlenadoNm3H: num('alm-caudal-llenado'),
+    unidadCaudalReferencia: unidadCaudalAlm,
+  };
+}
+
+// Pestaña «Estanque y tubería» (2026-11-24): un formulario, dos motores sin
+// cambios (calcularFlujo, calcularAlmacenamiento) y la prueba de
+// hermeticidad con el volumen de esta línea más el del estanque. Lo
+// guardado sigue en dos claves, 'flujo' (campos flujo-*) y
+// 'almacenamiento' (campos alm-*), así se conservan los datos de antes.
+function initInstalacion() {
   const form = document.getElementById('form-flujo');
   const select = document.getElementById('flujo-tuberia');
   poblarSelectTuberia(select);
   poblarSelectFactorDiseno(document.getElementById('flujo-factor-diseno'));
   renderTablaTuberia();
 
-  const guardados = cargar('flujo', null);
-  if (guardados) {
-    Object.entries(guardados).forEach(([id, valor]) => {
-      const el = document.getElementById(id);
-      if (el) el.value = valor;
-    });
-    unidadNormalizadoFlujo = guardados['flujo-unidad-normalizado'] ?? unidadNormalizadoFlujo;
-    unidadH2Flujo = guardados['flujo-unidad-h2'] ?? unidadH2Flujo;
+  const aplicar = (guardados) => Object.entries(guardados).forEach(([id, valor]) => {
+    const el = document.getElementById(id);
+    if (el && form.contains(el)) el.value = valor;
+  });
+  const guardadosFlujo = cargar('flujo', null);
+  if (guardadosFlujo) {
+    aplicar(guardadosFlujo);
+    unidadNormalizadoFlujo = guardadosFlujo['flujo-unidad-normalizado'] ?? unidadNormalizadoFlujo;
+    unidadH2Flujo = guardadosFlujo['flujo-unidad-h2'] ?? unidadH2Flujo;
   } else {
     select.value = '0.5';
+  }
+  const guardadosAlm = cargar('almacenamiento', null);
+  if (guardadosAlm) {
+    aplicar(guardadosAlm);
+    unidadCaudalAlm = guardadosAlm['alm-unidad-caudal'] ?? unidadCaudalAlm;
   }
 
   function actualizarVisibilidadTuberiaManual() {
@@ -534,105 +628,47 @@ function initTeoriaFlujo() {
 
   initSelectorUnidadCampo('flujo-presion', 'flujo-presion-unidad');
   initSelectorUnidadCampo('flujo-presion-min', 'flujo-presion-min-unidad');
-  initTilesPresion('resultados-flujo', unidadesTilesPresionFlujo, 'unidades-tiles-presion-flujo');
-
-  function recalcular() {
-    const inputs = leerFlujoForm();
-    const resultado = calcularFlujo(inputs);
-    renderResultadosFlujo(resultado);
-    guardar('flujo', Object.assign(
-      Object.fromEntries(Array.from(form.querySelectorAll('input, select')).map((el) => [el.id, el.value])),
-      { 'flujo-unidad-normalizado': unidadNormalizadoFlujo, 'flujo-unidad-h2': unidadH2Flujo }
-    ));
-  }
-
-  // Los selectores de unidad de flujo viven en los tiles de resultado (se
-  // regeneran en cada render), fuera del <form> — se cablean aparte por
-  // delegación en el contenedor de resultados en vez de sumarse a
-  // `form.querySelectorAll('input, select')`.
-  document.getElementById('resultados-flujo').addEventListener('input', (evento) => {
-    if (evento.target.id === 'flujo-unidad-normalizado') {
-      unidadNormalizadoFlujo = evento.target.value;
-      recalcular();
-    } else if (evento.target.id === 'flujo-unidad-h2') {
-      unidadH2Flujo = evento.target.value;
-      recalcular();
-    }
-  });
-
-  form.addEventListener('input', recalcular);
-  recalcular();
-}
-
-/* ---------------------------------------------------------------------- */
-/* Pestaña 2 — Almacenamiento                                             */
-/* ---------------------------------------------------------------------- */
-
-const OPCIONES_UNIDAD_CAUDAL_ALM = ['[m³/h]', '[L/min]'];
-let unidadCaudalAlm = '[m³/h]';
-
-function leerAlmacenamientoForm() {
-  const num = (id) => numeroFlexible(document.getElementById(id).value);
-  return {
-    potenciaKw: num('alm-potencia'),
-    temperaturaC: num('alm-temperatura'),
-    presionBarAbs: leerPresion('alm-presion', 'alm-presion-unidad', 'bar'),
-    volumenM3: num('alm-volumen'),
-    presionResidualBarAbs: leerPresion('alm-presion-residual', 'alm-presion-residual-unidad', 'bar'),
-    caudalLlenadoNm3H: num('alm-caudal-llenado'),
-    unidadCaudalReferencia: unidadCaudalAlm,
-  };
-}
-
-function renderResultadosAlmacenamiento(r) {
-  document.getElementById('resultados-almacenamiento').innerHTML = [
-    grupo(null, [
-      tile(`${formatearNumero(r.masaAlmacenadaKg)} kg`, 'Masa de H₂ almacenada (PV=ZnRT)', 'kpi'),
-      tile(formatearHoras(r.autonomiaHoras), 'Autonomía hasta la presión residual (hh:mm:ss)', 'kpi'),
-    ], 'kpis'),
-    grupo('Detalle del cálculo', [
-      tile(formatearZ(r.zAlmacenamiento), 'Factor de compresibilidad Z', 'secundario'),
-      tile(`${formatearNumero(r.densidadRealKgM3)} kg/m³`, 'Densidad real en el estanque', 'secundario'),
-      tile(`${formatearNumero(r.masaUtilizableKg)} kg`, 'Masa utilizable (sobre la presión residual)', 'secundario'),
-      tile(`${formatearNumero(r.volumenNormalizadoNm3)} Nm³`, 'Volumen normalizado', 'secundario'),
-      tile(`${formatearNumero(r.consumoKgH)} kg/h`, 'Consumo del quemador', 'secundario'),
-      tile(`${formatearNumero(r.consumoNm3H)} Nm³/h`, 'Consumo del quemador (normalizado)', 'secundario'),
-      tileConUnidad(formatearNumero(r.caudalReferenciaM3H), 'Caudal real de llenado (a la presión del estanque)', 'alm-unidad-caudal', OPCIONES_UNIDAD_CAUDAL_ALM, unidadCaudalAlm, 'secundario'),
-      tile(`${formatearNumero(r.velocidadReferenciaMS)} m/s`, `Velocidad de llenado en línea Ø¼" (DI ${formatearNumero(r.diametroCapilarMm)} mm)`, 'secundario'),
-      tile(r.tiempoLlenadoHoras === null ? '—' : formatearHoras(r.tiempoLlenadoHoras), 'Tiempo de llenado desde la presión residual (hh:mm:ss)', 'secundario'),
-    ]),
-  ].join('');
-}
-
-function initAlmacenamiento() {
-  const form = document.getElementById('form-almacenamiento');
-  const guardados = cargar('almacenamiento', null);
-  if (guardados) {
-    Object.entries(guardados).forEach(([id, valor]) => {
-      const el = document.getElementById(id);
-      if (el) el.value = valor;
-    });
-    unidadCaudalAlm = guardados['alm-unidad-caudal'] ?? unidadCaudalAlm;
-  }
-
   initSelectorUnidadCampo('alm-presion', 'alm-presion-unidad');
   initSelectorUnidadCampo('alm-presion-residual', 'alm-presion-residual-unidad');
+  initTilesPresion('resultados-flujo', unidadesTilesPresionFlujo, 'unidades-tiles-presion-flujo');
+
+  const camposConPrefijo = (prefijo) => Object.fromEntries(
+    Array.from(form.querySelectorAll('input, select')).filter((el) => el.id.startsWith(prefijo)).map((el) => [el.id, el.value])
+  );
 
   function recalcular() {
-    const resultado = calcularAlmacenamiento(leerAlmacenamientoForm());
-    renderResultadosAlmacenamiento(resultado);
-    guardar('almacenamiento', Object.assign(
-      Object.fromEntries(Array.from(form.querySelectorAll('input, select')).map((el) => [el.id, el.value])),
-      { 'alm-unidad-caudal': unidadCaudalAlm }
-    ));
+    const entradasFlujo = leerFlujoForm();
+    const flujo = calcularFlujo(entradasFlujo);
+    const almacenamiento = calcularAlmacenamiento(leerAlmacenamientoForm());
+    const volumenEstanqueM3 = numeroFlexible(document.getElementById('alm-volumen').value);
+    const volumenLineaM3 = volumenTuberiaM3({ diametroInteriorMm: flujo.tuberia.diMm, longitudM: entradasFlujo.largoM });
+    const prueba = {
+      ...pruebaHermeticidadIP({ presionDisenoBarG: entradasFlujo.presionBarG, volumenM3: volumenLineaM3 + Math.max(0, volumenEstanqueM3) }),
+      volumenTuberiaM3: volumenLineaM3,
+      volumenEstanqueM3: Math.max(0, volumenEstanqueM3),
+    };
+    renderResultadosInstalacion(flujo, almacenamiento, prueba, entradasFlujo.presionBarG);
+    guardar('flujo', Object.assign(camposConPrefijo('flujo-'),
+      { 'flujo-unidad-normalizado': unidadNormalizadoFlujo, 'flujo-unidad-h2': unidadH2Flujo }));
+    guardar('almacenamiento', Object.assign(camposConPrefijo('alm-'), { 'alm-unidad-caudal': unidadCaudalAlm }));
   }
 
-  document.getElementById('resultados-almacenamiento').addEventListener('input', (evento) => {
-    if (evento.target.id === 'alm-unidad-caudal') {
-      unidadCaudalAlm = evento.target.value;
-      recalcular();
-    }
+  // Los selectores de unidad de flujo y de caudal de llenado viven en los
+  // tiles de resultado (se regeneran en cada render), fuera del <form> — se
+  // cablean por delegación en el contenedor de resultados.
+  const resultados = document.getElementById('resultados-flujo');
+  resultados.addEventListener('input', (evento) => {
+    const id = evento.target.id;
+    if (id === 'flujo-unidad-normalizado') unidadNormalizadoFlujo = evento.target.value;
+    else if (id === 'flujo-unidad-h2') unidadH2Flujo = evento.target.value;
+    else if (id === 'alm-unidad-caudal') unidadCaudalAlm = evento.target.value;
+    else return;
+    recalcular();
   });
+  // 'toggle' no burbujea: se escucha en captura.
+  resultados.addEventListener('toggle', (evento) => {
+    if (evento.target.matches?.('.detalle-factores')) factoresAbiertos = evento.target.open;
+  }, true);
 
   form.addEventListener('input', recalcular);
   recalcular();
@@ -1585,8 +1621,7 @@ function initMemoria() {
 
 initTabs();
 initValidacionNumerica();
-initTeoriaFlujo();
-initAlmacenamiento();
+initInstalacion();
 initMemoria();
 initInfoNorma();
 initEstanquePrueba();

@@ -178,6 +178,39 @@ input[aria-invalid="true"] {
 }
 .seccion-titulo-nota { font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--text-muted); }
 
+/* --- Pestaña «Estanque y tubería» (2026-11-24, maqueta «A·1»): cada
+   sección del formulario lleva un número (1 Estanque, 2 Tubería, 3 Datos
+   comunes) y su bloque de resultados lleva el mismo. Colores solo de la
+   marca y de los tokens de texto (el manual no define una paleta para
+   esto): 1 naranja tinta, 2 negro/texto, 3 gris secundario, prueba verde
+   de estado. La cifra va en el color de la tarjeta, así se invierte sola
+   en tema oscuro. Solo en Hidrogeno/. --- */
+.seccion-titulo:has(.marca), .bloque-titulo { display: flex; align-items: center; gap: 8px; }
+.marca {
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  width: 22px; height: 22px; border-radius: 6px;
+  font-size: 12px; font-weight: 900; letter-spacing: 0; color: var(--surface-card);
+}
+.marca-1 { background: var(--brand-orange-ink); }
+.marca-2 { background: var(--text-primary); }
+.marca-3 { background: var(--text-secondary); }
+.marca-prueba { background: var(--estado-ok); }
+.bloque-resultados {
+  display: flex; flex-direction: column; gap: 12px;
+  padding-top: 16px; border-top: 1px solid var(--border-hairline);
+}
+.bloque-titulo {
+  margin: 0; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-primary);
+}
+.detalle-factores > summary {
+  cursor: pointer; font-size: 12.5px; font-weight: 700; color: var(--text-secondary);
+  padding: 8px 0; min-height: 28px;
+}
+.detalle-factores[open] > summary { margin-bottom: 8px; }
+/* Tres KPI (autonomía, presión máx. de diseño, tubería adecuada) en una fila. */
+#resultados-flujo > .grupo-resultados.kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+
 /* --- Resultados: una columna de grupos, cada grupo con su propia grilla
    auto-fit (ver grupo() en ui.js) — así los 2 KPI ocupan todo el ancho en
    vez de dejar columnas vacías de una grilla común. --- */

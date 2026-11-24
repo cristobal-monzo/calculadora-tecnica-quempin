@@ -465,3 +465,24 @@ artefactos (`a<N>`) y por la vía de "Importar proyecto".
 Verificado en navegador (borrar intermedio + recargar + agregar, importar
 con ids salteados, y localStorage con ids ya repetidos). Mismo fix en
 `GasNatural-GLP/js/ui.js`.
+
+## Estanque y tubería en una sola pestaña (`index.html`/`css/styles.css`/`ui.js`, 2026-11-24, a pedido del usuario)
+
+El usuario eligió la maqueta «A·1» entre varias rondas (lienzo de maquetas en claude.ai). «Tubería y Flujo» y «Almacenamiento»
+pasan a ser una pestaña, «Estanque y tubería»:
+
+- **Formulario en 3 secciones numeradas:** 1 Estanque, 2 Tubería, 3 Datos comunes (al final, a pedido del usuario). Potencia y
+  temperatura se escriben una vez (`flujo-potencia`, `flujo-temperatura`) y alimentan a `calcularFlujo` y a
+  `calcularAlmacenamiento`. Desaparecen `alm-potencia` y `alm-temperatura`.
+- **Resultados con la misma marca:** KPI arriba (autonomía, presión máx. de diseño, tubería adecuada; el resumen del teléfono lee
+  este grupo), luego bloques 1 Estanque, 2 Tubería (factores de verificación plegados, se recuerda si se abrieron), 3 Consumo y
+  la prueba de hermeticidad (IP-10), con el volumen de esta línea + el estanque y la presión de la línea como presión de diseño.
+- **Sale «Consumo del quemador»** de Almacenamiento: repetía el flujo másico y el normalizado (solo difiere el PCI de cada hoja).
+- **Colores de las marcas:** solo tokens de marca y texto (`--brand-orange-ink`, `--text-primary`, `--text-secondary`,
+  `--estado-ok`); la cifra usa `--surface-card`, así se invierte en tema oscuro. Extrapolación conservadora: el manual no define
+  colores para esto. Solo en `Hidrogeno/`.
+- **Compatibilidad:** se conservan el id de pestaña `flujo` (hub y marcadores), los ids de los campos y las claves de
+  `localStorage` (`flujo`, `almacenamiento`); `ALIAS_PESTANA` lleva `#almacenamiento` a `#flujo`. `assets/gases.js` lista 2
+  herramientas.
+- La columna de resultados es más larga que el formulario, así que `position: sticky` no actúa (ver «Layout de calculadora» en
+  `css/styles.css`).

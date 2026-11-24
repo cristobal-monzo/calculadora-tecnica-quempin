@@ -18,7 +18,7 @@
       <span class="viz-logo"><img src="../assets/isotipo.png" alt="" width="42" height="42"><span class="viz-wordmark">QUEMP<span class="in">IN</span></span></span>
       <div class="viz-titleblock">
         <h1>Calculadora de Hidrógeno</h1>
-        <p>Dimensionamiento de tuberías, almacenamiento y memoria de cálculo — ASME B31.12 / NFPA 2</p>
+        <p>Estanque, tubería y memoria de cálculo — ASME B31.12 / NFPA 2</p>
       </div>
       <label for="selector-gas" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Cambiar de calculadora</label>
       <select id="selector-gas"></select>
@@ -29,202 +29,175 @@
   <div class="barra-pestanas">
     <div class="barra-pestanas-interior">
       <nav class="tabs" role="tablist">
-        <button class="tab active" id="tab-flujo" role="tab" aria-selected="true" aria-controls="panel-flujo" data-tab="flujo">Tubería y Flujo</button>
-        <button class="tab" id="tab-almacenamiento" role="tab" aria-selected="false" aria-controls="panel-almacenamiento" data-tab="almacenamiento">Almacenamiento</button>
+        <button class="tab active" id="tab-flujo" role="tab" aria-selected="true" aria-controls="panel-flujo" data-tab="flujo">Estanque y tubería</button>
         <button class="tab" id="tab-memoria" role="tab" aria-selected="false" aria-controls="panel-memoria" data-tab="memoria">Memoria de Cálculo</button>
       </nav>
     </div>
   </div>
 
   <main>
+    <!-- Estanque y tubería en una sola pestaña (2026-11-24, a pedido del usuario: maqueta «A·1»).
+         Antes eran «Tubería y Flujo» y «Almacenamiento». Conserva el id «flujo» (enlaces del hub y datos
+         guardados); #almacenamiento lleva aquí (ver initTabs). Los ids de los campos no cambian. -->
     <section class="tab-panel active" id="panel-flujo" role="tabpanel" aria-labelledby="tab-flujo" data-panel="flujo">
       <div class="calc-layout">
-      <form id="form-flujo" class="calc-entradas" autocomplete="off">
-        <div class="seccion">
-          <h3 class="seccion-titulo">Condiciones de operación</h3>
-          <div class="fila-campos">
-            <div class="campo">
-              <label for="flujo-presion">Presión manométrica</label>
-              <div class="campo-con-unidad">
-                <input id="flujo-presion" type="text" inputmode="decimal" value="0.8" required>
-                <select id="flujo-presion-unidad" class="select-unidad" aria-label="Unidad de presión manométrica">
-                  <option value="Pa">Pa</option>
-                  <option value="kPa">kPa</option>
-                  <option value="mbar">mbar</option>
-                  <option value="bar" selected>bar</option>
-                  <option value="MPa">MPa</option>
-                  <option value="psi">psi</option>
-                </select>
-              </div>
-            </div>
-            <div class="campo">
-              <label for="flujo-presion-min" title="Presión más baja de la línea (p. ej. al final del tramo o aguas abajo de un regulador). La velocidad de erosión se verifica ahí, donde la velocidad del gas es mayor.">Presión manométrica mínima de la línea</label>
-              <div class="campo-con-unidad">
-                <input id="flujo-presion-min" type="text" inputmode="decimal" value="0.8" required>
-                <select id="flujo-presion-min-unidad" class="select-unidad" aria-label="Unidad de presión manométrica mínima">
-                  <option value="Pa">Pa</option>
-                  <option value="kPa">kPa</option>
-                  <option value="mbar">mbar</option>
-                  <option value="bar" selected>bar</option>
-                  <option value="MPa">MPa</option>
-                  <option value="psi">psi</option>
-                </select>
-              </div>
-            </div>
-            <div class="campo">
-              <label for="flujo-temperatura">Temperatura [°C]</label>
-              <input id="flujo-temperatura" type="text" inputmode="decimal" value="20" required>
-            </div>
-            <div class="campo">
-              <label for="flujo-potencia">Potencia combustión [kW]</label>
-              <input id="flujo-potencia" type="text" inputmode="decimal" value="60" required>
-            </div>
-            <div class="campo">
-              <label for="flujo-largo">Largo de la línea [m]</label>
-              <input id="flujo-largo" type="text" inputmode="decimal" value="20" required>
-            </div>
-          </div>
-        </div>
-
-        <div class="seccion">
-          <h3 class="seccion-titulo">Tubería y diseño normativo</h3>
-          <div class="fila-campos">
-            <div class="campo">
-              <label for="flujo-tuberia">Tubería utilizada</label>
-              <select id="flujo-tuberia" required></select>
-            </div>
-            <div class="campo">
-              <label for="flujo-factor-diseno">Factor de diseño F (ASME B31.12)</label>
-              <select id="flujo-factor-diseno" required></select>
-            </div>
-          </div>
-
-          <fieldset class="subseccion" id="campo-flujo-tuberia-manual" style="display:none;">
-            <legend>Tubería manual</legend>
+        <form id="form-flujo" class="calc-entradas" autocomplete="off">
+          <div class="seccion">
+            <h3 class="seccion-titulo"><span class="marca marca-1" aria-hidden="true">1</span>Estanque</h3>
             <div class="fila-campos">
               <div class="campo">
-                <label for="flujo-tuberia-manual-di">Diámetro interior [mm]</label>
-                <input id="flujo-tuberia-manual-di" type="text" inputmode="decimal" value="10.3" required>
+                <label for="alm-presion">Presión de almacenamiento [abs]</label>
+                <div class="campo-con-unidad">
+                  <input id="alm-presion" type="text" inputmode="decimal" value="200" required>
+                  <select id="alm-presion-unidad" class="select-unidad" aria-label="Unidad de presión de almacenamiento">
+                    <option value="Pa">Pa</option>
+                    <option value="kPa">kPa</option>
+                    <option value="mbar">mbar</option>
+                    <option value="bar" selected>bar</option>
+                    <option value="MPa">MPa</option>
+                    <option value="psi">psi</option>
+                  </select>
+                </div>
               </div>
               <div class="campo">
-                <label for="flujo-tuberia-manual-espesor">Espesor de pared [mm]</label>
-                <input id="flujo-tuberia-manual-espesor" type="text" inputmode="decimal" value="1.2" required>
+                <label for="alm-volumen">Volumen del estanque [m³]</label>
+                <input id="alm-volumen" type="text" inputmode="decimal" value="0.19" required>
               </div>
               <div class="campo">
-                <label for="flujo-tuberia-manual-limite">Límite elástico [MPa]</label>
-                <input id="flujo-tuberia-manual-limite" type="text" inputmode="decimal" value="170" required>
+                <label for="alm-presion-residual" title="Bajo esta presión el regulador ya no entrega: el H₂ que queda no cuenta para la autonomía.">Presión residual mínima [abs]</label>
+                <div class="campo-con-unidad">
+                  <input id="alm-presion-residual" type="text" inputmode="decimal" value="10" required>
+                  <select id="alm-presion-residual-unidad" class="select-unidad" aria-label="Unidad de presión residual mínima">
+                    <option value="Pa">Pa</option>
+                    <option value="kPa">kPa</option>
+                    <option value="mbar">mbar</option>
+                    <option value="bar" selected>bar</option>
+                    <option value="MPa">MPa</option>
+                    <option value="psi">psi</option>
+                  </select>
+                </div>
               </div>
               <div class="campo">
-                <label for="flujo-tuberia-manual-rugosidad">Rugosidad [mm]</label>
-                <input id="flujo-tuberia-manual-rugosidad" type="text" inputmode="decimal" value="0.002" required>
+                <label for="alm-caudal-llenado">Caudal de llenado [Nm³/h]</label>
+                <input id="alm-caudal-llenado" type="text" inputmode="decimal" value="4" required>
               </div>
             </div>
-          </fieldset>
+          </div>
 
-          <fieldset class="subseccion">
-            <legend>Accesorios (pérdidas locales)</legend>
-            <div class="fila-campos compacta">
+          <div class="seccion">
+            <h3 class="seccion-titulo"><span class="marca marca-2" aria-hidden="true">2</span>Tubería</h3>
+            <div class="fila-campos">
               <div class="campo">
-                <label for="flujo-codos">Codos</label>
-                <input id="flujo-codos" type="number" step="1" min="0" value="0">
+                <label for="flujo-presion">Presión manométrica de la línea</label>
+                <div class="campo-con-unidad">
+                  <input id="flujo-presion" type="text" inputmode="decimal" value="0.8" required>
+                  <select id="flujo-presion-unidad" class="select-unidad" aria-label="Unidad de presión manométrica de la línea">
+                    <option value="Pa">Pa</option>
+                    <option value="kPa">kPa</option>
+                    <option value="mbar">mbar</option>
+                    <option value="bar" selected>bar</option>
+                    <option value="MPa">MPa</option>
+                    <option value="psi">psi</option>
+                  </select>
+                </div>
               </div>
               <div class="campo">
-                <label for="flujo-tees">Tee</label>
-                <input id="flujo-tees" type="number" step="1" min="0" value="0">
+                <label for="flujo-presion-min" title="Presión más baja de la línea (p. ej. al final del tramo o aguas abajo de un regulador). La velocidad de erosión se verifica ahí, donde la velocidad del gas es mayor.">Presión manométrica mínima de la línea</label>
+                <div class="campo-con-unidad">
+                  <input id="flujo-presion-min" type="text" inputmode="decimal" value="0.8" required>
+                  <select id="flujo-presion-min-unidad" class="select-unidad" aria-label="Unidad de presión manométrica mínima">
+                    <option value="Pa">Pa</option>
+                    <option value="kPa">kPa</option>
+                    <option value="mbar">mbar</option>
+                    <option value="bar" selected>bar</option>
+                    <option value="MPa">MPa</option>
+                    <option value="psi">psi</option>
+                  </select>
+                </div>
               </div>
               <div class="campo">
-                <label for="flujo-valvulas">Válvulas</label>
-                <input id="flujo-valvulas" type="number" step="1" min="0" value="0">
+                <label for="flujo-largo">Largo de la línea [m]</label>
+                <input id="flujo-largo" type="text" inputmode="decimal" value="20" required>
+              </div>
+              <div class="campo">
+                <label for="flujo-tuberia">Tubería utilizada</label>
+                <select id="flujo-tuberia" required></select>
+              </div>
+              <div class="campo">
+                <label for="flujo-factor-diseno">Factor de diseño F (ASME B31.12)</label>
+                <select id="flujo-factor-diseno" required></select>
               </div>
             </div>
-          </fieldset>
-        </div>
-      </form>
 
-      <div class="calc-resultados">
-        <div class="resultados-encabezado">
-          <h2>Resultados</h2>
-          <span class="en-vivo">Se actualizan al escribir</span>
+            <fieldset class="subseccion" id="campo-flujo-tuberia-manual" style="display:none;">
+              <legend>Tubería manual</legend>
+              <div class="fila-campos">
+                <div class="campo">
+                  <label for="flujo-tuberia-manual-di">Diámetro interior [mm]</label>
+                  <input id="flujo-tuberia-manual-di" type="text" inputmode="decimal" value="10.3" required>
+                </div>
+                <div class="campo">
+                  <label for="flujo-tuberia-manual-espesor">Espesor de pared [mm]</label>
+                  <input id="flujo-tuberia-manual-espesor" type="text" inputmode="decimal" value="1.2" required>
+                </div>
+                <div class="campo">
+                  <label for="flujo-tuberia-manual-limite">Límite elástico [MPa]</label>
+                  <input id="flujo-tuberia-manual-limite" type="text" inputmode="decimal" value="170" required>
+                </div>
+                <div class="campo">
+                  <label for="flujo-tuberia-manual-rugosidad">Rugosidad [mm]</label>
+                  <input id="flujo-tuberia-manual-rugosidad" type="text" inputmode="decimal" value="0.002" required>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="subseccion">
+              <legend>Accesorios (pérdidas locales)</legend>
+              <div class="fila-campos compacta">
+                <div class="campo">
+                  <label for="flujo-codos">Codos</label>
+                  <input id="flujo-codos" type="number" step="1" min="0" value="0">
+                </div>
+                <div class="campo">
+                  <label for="flujo-tees">Tee</label>
+                  <input id="flujo-tees" type="number" step="1" min="0" value="0">
+                </div>
+                <div class="campo">
+                  <label for="flujo-valvulas">Válvulas</label>
+                  <input id="flujo-valvulas" type="number" step="1" min="0" value="0">
+                </div>
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="seccion">
+            <h3 class="seccion-titulo"><span class="marca marca-3" aria-hidden="true">3</span>Datos comunes <span class="info-norma" tabindex="0" role="img" aria-label="Para qué sirven" title="Se usan en el estanque (autonomía) y en la tubería (caudal). Antes se escribían dos veces.">ⓘ</span></h3>
+            <div class="fila-campos">
+              <div class="campo">
+                <label for="flujo-potencia">Potencia de consumo [kW]</label>
+                <input id="flujo-potencia" type="text" inputmode="decimal" value="60" required>
+              </div>
+              <div class="campo">
+                <label for="flujo-temperatura">Temperatura [°C]</label>
+                <input id="flujo-temperatura" type="text" inputmode="decimal" value="20" required>
+              </div>
+            </div>
+          </div>
+        </form>
+
+        <div class="calc-resultados">
+          <div class="resultados-encabezado">
+            <h2>Resultados</h2>
+            <span class="en-vivo">Se actualizan al escribir</span>
+          </div>
+          <div class="resultados" id="resultados-flujo" aria-live="polite"></div>
         </div>
-        <div class="resultados" id="resultados-flujo" aria-live="polite"></div>
-      </div>
       </div>
 
       <details class="no-imprimir">
         <summary>Tabla de tubería (referencia)</summary>
         <table id="tabla-tuberia-flujo"></table>
       </details>
-    </section>
-
-    <section class="tab-panel" id="panel-almacenamiento" role="tabpanel" aria-labelledby="tab-almacenamiento" data-panel="almacenamiento">
-      <div class="calc-layout">
-      <form id="form-almacenamiento" class="calc-entradas" autocomplete="off">
-        <div class="seccion">
-          <h3 class="seccion-titulo">Estanque y consumo</h3>
-          <div class="fila-campos">
-            <div class="campo">
-              <label for="alm-potencia">Potencia de consumo [kW]</label>
-              <input id="alm-potencia" type="text" inputmode="decimal" value="60" required>
-            </div>
-            <div class="campo">
-              <label for="alm-temperatura">Temperatura [°C]</label>
-              <input id="alm-temperatura" type="text" inputmode="decimal" value="20" required>
-            </div>
-            <div class="campo">
-              <label for="alm-presion">Presión de almacenamiento [abs]</label>
-              <div class="campo-con-unidad">
-                <input id="alm-presion" type="text" inputmode="decimal" value="200" required>
-                <select id="alm-presion-unidad" class="select-unidad" aria-label="Unidad de presión de almacenamiento">
-                  <option value="Pa">Pa</option>
-                  <option value="kPa">kPa</option>
-                  <option value="mbar">mbar</option>
-                  <option value="bar" selected>bar</option>
-                  <option value="MPa">MPa</option>
-                  <option value="psi">psi</option>
-                </select>
-              </div>
-            </div>
-            <div class="campo">
-              <label for="alm-volumen">Volumen del estanque [m³]</label>
-              <input id="alm-volumen" type="text" inputmode="decimal" value="0.19" required>
-            </div>
-          </div>
-        </div>
-        <!-- Agregados 2026-09-25: antes eran supuestos fijos dentro de las
-             fórmulas del Excel (vaciado hasta 0 bar, llenado a 4 Nm³/h). -->
-        <div class="seccion">
-          <h3 class="seccion-titulo">Vaciado y llenado</h3>
-          <div class="fila-campos">
-            <div class="campo">
-              <label for="alm-presion-residual" title="Bajo esta presión el regulador ya no entrega: el H₂ que queda no cuenta para la autonomía.">Presión residual mínima [abs]</label>
-              <div class="campo-con-unidad">
-                <input id="alm-presion-residual" type="text" inputmode="decimal" value="10" required>
-                <select id="alm-presion-residual-unidad" class="select-unidad" aria-label="Unidad de presión residual mínima">
-                  <option value="Pa">Pa</option>
-                  <option value="kPa">kPa</option>
-                  <option value="mbar">mbar</option>
-                  <option value="bar" selected>bar</option>
-                  <option value="MPa">MPa</option>
-                  <option value="psi">psi</option>
-                </select>
-              </div>
-            </div>
-            <div class="campo">
-              <label for="alm-caudal-llenado">Caudal de llenado [Nm³/h]</label>
-              <input id="alm-caudal-llenado" type="text" inputmode="decimal" value="4" required>
-            </div>
-          </div>
-        </div>
-      </form>
-
-      <div class="calc-resultados">
-        <div class="resultados-encabezado">
-          <h2>Resultados</h2>
-          <span class="en-vivo">Se actualizan al escribir</span>
-        </div>
-        <div class="resultados" id="resultados-almacenamiento" aria-live="polite"></div>
-      </div>
-      </div>
     </section>
 
     <section class="tab-panel" id="panel-memoria" role="tabpanel" aria-labelledby="tab-memoria" data-panel="memoria">
