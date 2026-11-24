@@ -203,6 +203,41 @@ input[aria-invalid="true"] {
 }
 .seccion-titulo-nota { font-weight: 400; text-transform: none; letter-spacing: normal; color: var(--text-muted); }
 
+/* --- Pestaña «Almacenamiento y tubería» (2026-11-24, mismo patrón «A·1»
+   que Hidrogeno): cada sección del formulario lleva un número y su bloque
+   de resultados lleva el mismo. Con Gas Natural no hay almacenamiento y la
+   tubería pasa a ser la 1 (ui.js, numeroSeccion). Colores solo de la marca
+   y de los tokens de texto (el manual no define una paleta para esto):
+   almacenamiento naranja tinta, tubería negro/texto, datos comunes gris,
+   prueba verde de estado. La cifra va en el color de la tarjeta, así se
+   invierte sola en tema oscuro. --- */
+.seccion-titulo:has(.marca), .bloque-resultados-titulo { display: flex; align-items: center; gap: 8px; }
+.marca {
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  width: 22px; height: 22px; border-radius: 6px;
+  font-size: 12px; font-weight: 900; letter-spacing: 0; color: var(--surface-card);
+}
+.marca-1 { background: var(--brand-orange-ink); }
+.marca-2 { background: var(--text-primary); }
+.marca-3 { background: var(--text-secondary); }
+.marca-prueba { background: var(--estado-ok); }
+.bloque-resultados {
+  display: flex; flex-direction: column; gap: 12px;
+  padding-top: 16px; border-top: 1px solid var(--border-hairline);
+}
+.bloque-resultados-titulo {
+  margin: 0; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-primary);
+}
+/* Gas según D.S. 66 (Tabla VI y composición) dentro de la sección Tubería. */
+.subbloque-gas { margin-top: 14px; }
+.nota-sin-almacenamiento { margin: 0 0 4px; font-size: 13px; color: var(--text-secondary); }
+.info-norma { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; font-size: 15px; font-weight: 400; color: var(--text-secondary); cursor: help; border-radius: 50%; }
+.info-norma:focus-visible { outline: 2px solid var(--brand-orange); outline-offset: 1px; }
+.info-norma-texto { margin: -6px 0 12px; }
+/* Hasta tres KPI (tubería adecuada, pérdida de presión, condensación con GLP) en una fila. */
+#resultados-red-gas > .grupo-resultados.kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+
 /* --- Resultados: una columna de grupos, cada grupo con su propia grilla
    auto-fit (ver grupo() en ui.js) — así los 2 KPI ocupan todo el ancho en
    vez de dejar columnas vacías de una grilla común. --- */
@@ -444,25 +479,6 @@ td { font-variant-numeric: tabular-nums; }
    regla .seccion + .seccion no alcanza a separar el primer bloque del form. */
 .seccion + form > .seccion:first-child { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-hairline); }
 
-/* --- Calculadora independiente dentro de una misma pestaña (Almacenamiento
-   GLP: cilindros por vaporización / por consumo diario / estanque son 3
-   cálculos que no se retroalimentan) — a diferencia de .seccion, con
-   frontera propia para que sus inputs y su resultado se perciban como una
-   unidad y no se confundan con el bloque vecino. Por dentro usa el mismo
-   .calc-layout de 2 columnas que el resto de las pestañas. --- */
-.bloque-calculo {
-  border: 1px solid var(--gridline); border-radius: 12px; padding: 18px 20px 20px; margin-bottom: 18px;
-}
-.bloque-titulo { font-size: 14.5px; font-weight: 900; color: var(--text-primary); margin: 0 0 16px; }
-.bloque-calculo .calc-resultados { position: static; }
-
-.aviso-gas {
-  background: var(--surface-card); border: 1px dashed var(--baseline); border-radius: 10px;
-  padding: 16px; color: var(--text-secondary); font-size: 13.5px; line-height: 1.5;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px;
-}
-.aviso-gas p { margin: 0; flex: 1 1 320px; }
-
 /* ======================================================================
    Uso desde el teléfono (auditoría móvil 2026-09-25, ver CLAUDE.md del
    módulo). Bloque común a los tres módulos — mantener igual en
@@ -620,9 +636,6 @@ td { font-variant-numeric: tabular-nums; }
   /* Tarjeta de tramo: con diámetro manual el <select> de material se oculta
      (ui.js) y la celda quedaba como una etiqueta "Material" sin nada debajo. */
   #memoria-tabla .mem-celda-material:has(> select[style*="none"]) { display: none; }
-}
-@media screen and (max-width: 600px) {
-  .bloque-calculo { padding: 14px 14px 16px; }
 }
 
 /* --- Impresión (Memoria de Cálculo) --- */

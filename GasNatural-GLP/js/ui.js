@@ -78,10 +78,16 @@ function formatearPresionFija(valorPa, unidad) {
 // #combustion, #quemador, #memoria — el data-tab de cada botón,
 // 2026-09-24, mismo patrón que Hidrogeno): recargar ya no devuelve siempre
 // a la primera pestaña, y el hub puede enlazar directo a una herramienta.
+// Desde 2026-11-24 Almacenamiento vive en la pestaña #red-gas
+// («Almacenamiento y tubería»): un enlace o marcador viejo a
+// #almacenamiento lleva ahí.
+const ALIAS_PESTANA = { almacenamiento: 'red-gas' };
+
 function initTabs() {
   const botones = Array.from(document.querySelectorAll('.tab'));
   const paneles = document.querySelectorAll('.tab-panel');
-  function activar(nombre) {
+  function activar(pedido) {
+    const nombre = ALIAS_PESTANA[pedido] ?? pedido;
     const boton = botones.find((b) => b.dataset.tab === nombre);
     if (!boton) return;
     botones.forEach((b) => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
@@ -255,10 +261,34 @@ function grupo(titulo, tiles, clase = '') {
   return `<div class="grupo-resultados${clase ? ` ${clase}` : ''}">${subtitulo}${tiles.join('')}</div>`;
 }
 
-// Encabezado "Resultados" de la columna derecha dentro de un
-// .bloque-calculo de Almacenamiento (el resto de las pestañas lo trae
-// fijo en index.html).
-const ENCABEZADO_RESULTADOS = '<div class="resultados-encabezado"><h2>Resultado</h2></div>';
+// Bloque de resultados con la misma marca que su sección del formulario
+// (2026-11-24, mismo patrón «A·1» que Hidrogeno). `clave` = 'alm' | 'tub' |
+// 'com' | 'prueba'; el número sale de numeroSeccion() (con GN no hay
+// almacenamiento y la tubería pasa a ser la 1).
+const CLASE_MARCA = { alm: 'marca-1', tub: 'marca-2', com: 'marca-3', prueba: 'marca-prueba' };
+function numeroSeccion(clave) {
+  const orden = combustible === 'GLP' ? ['alm', 'tub', 'com'] : ['tub', 'com'];
+  return clave === 'prueba' ? '✓' : String(orden.indexOf(clave) + 1);
+}
+function bloqueResultados(clave, titulo, contenido) {
+  return `<section class="bloque-resultados"><h3 class="bloque-resultados-titulo"><span class="marca ${CLASE_MARCA[clave]}" aria-hidden="true">${numeroSeccion(clave)}</span>${titulo}</h3>${contenido.join('')}</section>`;
+}
+
+// ⓘ de los títulos: en el teléfono no hay hover, así que al tocarlo muestra
+// u oculta su texto (el mismo del title) debajo del título. Igual que en
+// Hidrogeno/js/ui.js.
+function initInfoNorma() {
+  document.querySelectorAll('.info-norma').forEach((icono) => {
+    const nota = document.createElement('div');
+    nota.className = 'resultados-nota info-norma-texto';
+    nota.hidden = true;
+    nota.textContent = icono.title;
+    icono.closest('h3').after(nota);
+    const alternar = () => { nota.hidden = !nota.hidden; };
+    icono.addEventListener('click', alternar);
+    icono.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } });
+  });
+}
 
 /* --- Selectores de unidad de presión, uno independiente por campo/resultado --- */
 
@@ -324,7 +354,7 @@ function initSelectorCombustible() {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Pestaña 1 — Red de Gas                                                 */
+/* Pestaña «Almacenamiento y tubería» (antes Red de Gas + Almacenamiento) */
 /* ---------------------------------------------------------------------- */
 
 function formatearPulgadas(valor) {
@@ -395,14 +425,58 @@ function textoPruebaHermeticidad(p) {
   return minutos;
 }
 
-function renderResultadosRedGas(r) {
+// Almacenamiento GLP (desde 2026-11-24 en esta pestaña): los tres cálculos
+// de antes, sin cambios. La potencia es el dato común (rg-potencia).
+function calcularAlmacenamiento() {
+  const num = (id) => numeroFlexible(document.getElementById(id).value);
+  return {
+    cilindrosVap: cilindrosPorVaporizacion({ potenciaTotalKw: num('rg-potencia'), razonVaporizacionKw: num('cv-razon') }),
+    diario: cilindrosPorConsumoDiario({
+      nCalefont: Number(document.getElementById('cd-calefont').value),
+      nCocinas: Number(document.getElementById('cd-cocinas').value),
+      nEstufas: Number(document.getElementById('cd-estufas').value),
+      nivel: document.getElementById('cd-nivel').value,
+      temperaturaC: Number(document.getElementById('cd-temperatura').value),
+      pesoCilindroKg: Number(document.getElementById('cd-peso-cilindro').value),
+    }),
+    estanque: calcularEstanqueGLP({
+      diametroM: num('es-diametro'), alturaM: num('es-altura'), capacidadLitros: num('es-capacidad'),
+      pctButano: num('es-pct-butano'), pctPropano: num('es-pct-propano'),
+    }),
+  };
+}
+
+// `r` = resultado de calcularRedGas, o un Error si no se pudo calcular.
+// `alm` = resultado de calcularAlmacenamiento(), o null con Gas Natural.
+function renderResultadosRedGas(r, alm) {
+  const bloqueAlmacenamiento = alm ? bloqueResultados('alm', 'Almacenamiento GLP', [
+    grupo('Cilindros — por razón de vaporización', [
+      tile(alm.cilindrosVap, 'N° de cilindros necesarios'),
+    ]),
+    grupo('Cilindros — por consumo diario', [
+      tile(alm.diario.nCilindros, 'N° de cilindros necesarios'),
+      tile(`${formatearFijo(alm.diario.consumoDiarioKwh, 2)} kWh`, 'Consumo diario estimado'),
+    ]),
+    grupo('Estanque GLP', [
+      tile(`${formatearFijo(alm.estanque.qKw, 2)} kW`, 'Capacidad de vaporización'),
+      tile(`${formatearFijo(alm.estanque.capacidadRealLitros, 0)} L`, 'Capacidad real (80%)'),
+      tile(`${formatearFijo(alm.estanque.superficieM2, 3)} m²`, 'Superficie', 'secundario'),
+      tile(`${formatearFijo(alm.estanque.pciKjKg, 0)} kJ/kg`, 'PCI del GLP (según composición)', 'secundario'),
+      tile(`${formatearFijo(alm.estanque.qKgH, 2)} kg/h`, 'Capacidad de vaporización (másica)', 'secundario'),
+      tile(`${formatearFijo(alm.estanque.qMcalH, 2)} Mcal/h`, 'Capacidad de vaporización (Mcal/h)', 'secundario'),
+    ]),
+  ]) : '';
+
+  if (r instanceof Error) {
+    document.getElementById('resultados-red-gas').innerHTML = tile(escapeHtml(r.message), 'Error', 'alerta') + bloqueAlmacenamiento;
+    return;
+  }
+
   const variante = r.tuberiaAdecuada ? 'ok' : 'alerta';
   const mediaPresion = r.presionFinalPa !== null;
   const detalle = [
-    tile(`${formatearFijo(r.caudalObjetivoM3H, 3)} m³S/h`, 'Caudal objetivo (15 °C, 101,3 kPa)', 'secundario'),
     tile(`${formatearFijo(r.caudalRealM3H, 3)} m³/h`, 'Caudal real al final del tramo', 'secundario'),
     tile(`${formatearFijo(r.velocidadMS, 2)} m/s`, 'Velocidad de flujo (D.S. 66 f.5, final del tramo)', 'secundario'),
-    tile(`${formatearFijo(r.volumenTuberiaM3, 4)} m³`, 'Volumen de la tubería', 'secundario'),
     tilePresion(r.perdidaAdmisiblePa, mediaPresion ? 'Pérdida admisible (10 % de P inicial abs.)' : 'Pérdida de presión admisible (D.S. 66)', 'perdida-admisible', 'secundario'),
   ];
   if (mediaPresion) {
@@ -441,11 +515,22 @@ function renderResultadosRedGas(r) {
   }
   document.getElementById('resultados-red-gas').innerHTML = [
     grupo(null, kpis, 'kpis'),
-    grupo('Detalle del cálculo', detalle),
-    grupo('Propiedades del gas', propiedades),
-    grupo('Prueba de hermeticidad (D.S. 66 f.11)', [
-      tile(`${formatearFijo(r.pruebaHermeticidad.duracionMin, 1)} min`, 'Duración de la prueba (volumen × 214, entre 15 min y 1 h)', 'secundario'),
-      `<div class="resultados-nota">${textoPruebaHermeticidad(r.pruebaHermeticidad)}, para ${formatearFijo(r.volumenTuberiaM3, 4)} m³ de tubería en este tramo.</div>`,
+    bloqueAlmacenamiento,
+    bloqueResultados('tub', 'Tubería', [
+      grupo(null, detalle),
+      grupo('Propiedades del gas', propiedades),
+    ]),
+    bloqueResultados('com', 'Consumo (datos comunes)', [
+      grupo(null, [
+        tile(`${formatearFijo(r.caudalObjetivoM3H, 3)} m³S/h`, 'Caudal objetivo (15 °C, 101,3 kPa)'),
+      ]),
+    ]),
+    bloqueResultados('prueba', 'Prueba de hermeticidad — D.S. 66 f.11', [
+      grupo(null, [
+        tile(`${formatearFijo(r.pruebaHermeticidad.duracionMin, 1)} min`, 'Duración de la prueba (volumen × 214, entre 15 min y 1 h)'),
+        tile(`${formatearFijo(r.volumenTuberiaM3, 4)} m³`, 'Volumen de la tubería de este tramo'),
+        `<div class="resultados-nota">${textoPruebaHermeticidad(r.pruebaHermeticidad)}.</div>`,
+      ]),
     ]),
   ].join('');
 }
@@ -467,6 +552,24 @@ function initRedGas() {
     });
   } else {
     selectDiametro.value = '0.75';
+  }
+  // Almacenamiento GLP (misma clave que la pestaña de antes). Su
+  // «cv-potencia» ya no existe: la potencia es rg-potencia, el dato común.
+  const seccionAlmacenamiento = document.getElementById('seccion-almacenamiento-glp');
+  const guardadosAlm = cargar('almacenamiento-glp', null);
+  if (guardadosAlm) {
+    Object.entries(guardadosAlm).forEach(([id, valor]) => {
+      const el = document.getElementById(id);
+      if (el && seccionAlmacenamiento.contains(el)) el.value = valor;
+    });
+  }
+  // Con Gas Natural no hay almacenamiento: se oculta la sección y las
+  // marcas pasan a 1 Tubería, 2 Datos comunes.
+  function mostrarSegunCombustible() {
+    const esGLP = combustible === 'GLP';
+    seccionAlmacenamiento.hidden = !esGLP;
+    document.getElementById('nota-sin-almacenamiento').hidden = esGLP;
+    form.querySelectorAll('.marca[data-marca]').forEach((m) => { m.textContent = numeroSeccion(m.dataset.marca); });
   }
 
   // Diámetro manual (2026-09-02, a pedido del usuario): "Material de
@@ -530,15 +633,19 @@ function initRedGas() {
   }
 
   function recalcular() {
+    let resultado;
     try {
-      const resultado = calcularRedGas(leerRedGasForm());
-      renderResultadosRedGas(resultado);
+      resultado = calcularRedGas(leerRedGasForm());
     } catch (error) {
-      document.getElementById('resultados-red-gas').innerHTML = tile(error.message, 'Error', 'alerta');
+      resultado = error;
     }
+    renderResultadosRedGas(resultado, combustible === 'GLP' ? calcularAlmacenamiento() : null);
     const campos = Array.from(form.querySelectorAll('input, select'));
     guardar('red-gas', Object.fromEntries(
-      campos.filter((el) => !contenedorComposicion.contains(el)).map((el) => [el.id, el.value])
+      campos.filter((el) => !contenedorComposicion.contains(el) && !seccionAlmacenamiento.contains(el)).map((el) => [el.id, el.value])
+    ));
+    guardar('almacenamiento-glp', Object.fromEntries(
+      campos.filter((el) => seccionAlmacenamiento.contains(el)).map((el) => [el.id, el.value])
     ));
     guardar(`red-gas-composicion-${combustible}`, Object.fromEntries(
       campos.filter((el) => contenedorComposicion.contains(el)).map((el) => [el.id, el.value])
@@ -546,154 +653,10 @@ function initRedGas() {
   }
 
   renderComposicion();
+  mostrarSegunCombustible();
   form.addEventListener('input', recalcular);
-  alCambiarCombustible(() => { renderComposicion(); recalcular(); });
+  alCambiarCombustible(() => { renderComposicion(); mostrarSegunCombustible(); recalcular(); });
   recalcular();
-}
-
-/* ---------------------------------------------------------------------- */
-/* Pestaña 2 — Almacenamiento (solo GLP)                                  */
-/* ---------------------------------------------------------------------- */
-
-function marcadoAlmacenamientoGLP() {
-  return `
-    <section class="bloque-calculo">
-      <h3 class="bloque-titulo">Cilindros — por razón de vaporización</h3>
-      <div class="calc-layout">
-      <form id="form-cilindros-vap" class="fila-campos calc-entradas" autocomplete="off">
-        <div class="campo"><label for="cv-potencia">Potencia total [kW]</label><input id="cv-potencia" type="text" inputmode="decimal" value="90" required></div>
-        <div class="campo"><label for="cv-razon">Razón de vaporización [kW/cilindro]</label><input id="cv-razon" type="text" inputmode="decimal" value="30" required></div>
-      </form>
-      <div class="calc-resultados">${ENCABEZADO_RESULTADOS}<div class="resultados" id="resultados-cilindros-vap"></div></div>
-      </div>
-    </section>
-
-    <section class="bloque-calculo">
-      <h3 class="bloque-titulo">Cilindros — por consumo diario</h3>
-      <div class="calc-layout">
-      <form id="form-cilindros-diario" class="fila-campos calc-entradas" autocomplete="off">
-        <div class="campo"><label for="cd-calefont">N° calefonts</label><input id="cd-calefont" type="number" step="1" value="1" required></div>
-        <div class="campo"><label for="cd-cocinas">N° cocinas</label><input id="cd-cocinas" type="number" step="1" value="3" required></div>
-        <div class="campo"><label for="cd-estufas">N° estufas</label><input id="cd-estufas" type="number" step="1" value="0" required></div>
-        <div class="campo"><label for="cd-nivel">Nivel de consumo</label>
-          <select id="cd-nivel"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select>
-        </div>
-        <div class="campo"><label for="cd-temperatura">Temperatura ambiente [°C]</label>
-          <select id="cd-temperatura">
-            <option value="10">10</option><option value="5" selected>5</option><option value="0">0</option>
-            <option value="-5">-5</option><option value="-10">-10</option><option value="-15">-15</option><option value="-20">-20</option>
-          </select>
-        </div>
-        <div class="campo"><label for="cd-peso-cilindro">Tipo de cilindro</label>
-          <select id="cd-peso-cilindro"><option value="15">15 kg</option><option value="45" selected>45 kg</option></select>
-        </div>
-      </form>
-      <div class="calc-resultados">${ENCABEZADO_RESULTADOS}<div class="resultados" id="resultados-cilindros-diario"></div></div>
-      </div>
-    </section>
-
-    <section class="bloque-calculo">
-      <h3 class="bloque-titulo">Estanque GLP</h3>
-      <div class="calc-layout">
-      <form id="form-estanque" class="calc-entradas" autocomplete="off">
-        <div class="seccion">
-          <h4 class="seccion-titulo">Dimensiones</h4>
-          <div class="fila-campos">
-            <div class="campo"><label for="es-diametro">Diámetro [m]</label><input id="es-diametro" type="text" inputmode="decimal" value="0.76" required></div>
-            <div class="campo"><label for="es-altura">Altura [m]</label><input id="es-altura" type="text" inputmode="decimal" value="1.36" required></div>
-            <div class="campo"><label for="es-capacidad">Capacidad nominal [L]</label><input id="es-capacidad" type="text" inputmode="decimal" value="500" required></div>
-          </div>
-        </div>
-        <div class="seccion">
-          ${marcadoComposicionGLP({ prefijo: 'es', nivel: 'h4' })}
-        </div>
-      </form>
-      <div class="calc-resultados">${ENCABEZADO_RESULTADOS}<div class="resultados" id="resultados-estanque"></div></div>
-      </div>
-    </section>
-  `;
-}
-
-function initAlmacenamiento() {
-  const contenedor = document.getElementById('almacenamiento-contenido');
-
-  function render() {
-    if (combustible !== 'GLP') {
-      contenedor.innerHTML = `<div class="aviso-gas"><p>El almacenamiento en cilindros/estanque es específico de GLP — no aplica a Gas Natural (suministro por red continua).</p><button type="button" class="btn btn-primario" id="aviso-cambiar-glp">Cambiar a GLP</button></div>`;
-      document.getElementById('aviso-cambiar-glp').addEventListener('click', () => establecerCombustible('GLP'));
-      return;
-    }
-    contenedor.innerHTML = marcadoAlmacenamientoGLP();
-
-    const guardados = cargar('almacenamiento-glp', null);
-    if (guardados) {
-      Object.entries(guardados).forEach(([id, valor]) => {
-        const el = document.getElementById(id);
-        if (el) el.value = valor;
-      });
-    }
-
-    function guardarEstado() {
-      const campos = ['cv-potencia', 'cv-razon', 'cd-calefont', 'cd-cocinas', 'cd-estufas', 'cd-nivel', 'cd-temperatura', 'cd-peso-cilindro', 'es-diametro', 'es-altura', 'es-capacidad', 'es-pct-butano', 'es-pct-propano'];
-      guardar('almacenamiento-glp', Object.fromEntries(campos.map((id) => [id, document.getElementById(id).value])));
-    }
-
-    function recalcularVap() {
-      const potenciaTotalKw = numeroFlexible(document.getElementById('cv-potencia').value);
-      const razonVaporizacionKw = numeroFlexible(document.getElementById('cv-razon').value);
-      const n = cilindrosPorVaporizacion({ potenciaTotalKw, razonVaporizacionKw });
-      document.getElementById('resultados-cilindros-vap').innerHTML = grupo(null, [tile(n, 'N° de cilindros necesarios', 'kpi')], 'kpis');
-      guardarEstado();
-    }
-
-    function recalcularDiario() {
-      const resultado = cilindrosPorConsumoDiario({
-        nCalefont: Number(document.getElementById('cd-calefont').value),
-        nCocinas: Number(document.getElementById('cd-cocinas').value),
-        nEstufas: Number(document.getElementById('cd-estufas').value),
-        nivel: document.getElementById('cd-nivel').value,
-        temperaturaC: Number(document.getElementById('cd-temperatura').value),
-        pesoCilindroKg: Number(document.getElementById('cd-peso-cilindro').value),
-      });
-      document.getElementById('resultados-cilindros-diario').innerHTML = grupo(null, [
-        tile(resultado.nCilindros, 'N° de cilindros necesarios', 'kpi'),
-        tile(`${formatearFijo(resultado.consumoDiarioKwh, 2)} kWh`, 'Consumo diario estimado'),
-      ], 'kpis');
-      guardarEstado();
-    }
-
-    function recalcularEstanque() {
-      const resultado = calcularEstanqueGLP({
-        diametroM: numeroFlexible(document.getElementById('es-diametro').value),
-        alturaM: numeroFlexible(document.getElementById('es-altura').value),
-        capacidadLitros: numeroFlexible(document.getElementById('es-capacidad').value),
-        ...leerComposicion('es'),
-      });
-      document.getElementById('resultados-estanque').innerHTML = [
-        grupo(null, [
-          tile(`${formatearFijo(resultado.qKw, 2)} kW`, 'Capacidad de vaporización', 'kpi'),
-          tile(`${formatearFijo(resultado.capacidadRealLitros, 0)} L`, 'Capacidad real (80%)'),
-        ], 'kpis'),
-        grupo('Detalle del cálculo', [
-          tile(`${formatearFijo(resultado.superficieM2, 3)} m²`, 'Superficie', 'secundario'),
-          tile(`${formatearFijo(resultado.pciKjKg, 0)} kJ/kg`, 'PCI del GLP (según composición)', 'secundario'),
-          tile(`${formatearFijo(resultado.qKgH, 2)} kg/h`, 'Capacidad de vaporización (másica)', 'secundario'),
-          tile(`${formatearFijo(resultado.qMcalH, 2)} Mcal/h`, 'Capacidad de vaporización (Mcal/h)', 'secundario'),
-        ]),
-      ].join('');
-      guardarEstado();
-    }
-
-    document.getElementById('form-cilindros-vap').addEventListener('input', recalcularVap);
-    document.getElementById('form-cilindros-diario').addEventListener('input', recalcularDiario);
-    document.getElementById('form-estanque').addEventListener('input', recalcularEstanque);
-    recalcularVap();
-    recalcularDiario();
-    recalcularEstanque();
-  }
-
-  alCambiarCombustible(render);
-  render();
 }
 
 /* ---------------------------------------------------------------------- */
@@ -2031,7 +1994,7 @@ initTabs();
 initValidacionNumerica();
 initSelectorCombustible();
 initRedGas();
-initAlmacenamiento();
+initInfoNorma();
 initCombustion();
 initQuemador();
 initMemoria();

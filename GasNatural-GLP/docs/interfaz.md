@@ -231,3 +231,21 @@ elementos, así que borrar un tramo intermedio + recargar + agregar
 repetía un id y editar una fila pisaba a la otra. Ahora parten de
 `maxSufijoId()`, y `repararIdsDuplicados()` corrige al cargar/importar los
 ids ya repetidos que hayan quedado guardados.
+
+## Almacenamiento y tubería en una sola pestaña (`index.html`/`css/styles.css`/`ui.js`, 2026-11-24, a pedido del usuario)
+
+Mismo patrón «A·1» que `Hidrogeno/` (ver su `docs/interfaz.md`). «Red de Gas» y «Almacenamiento» pasan a ser una pestaña,
+«Almacenamiento y tubería». Decisiones del usuario (2026-11-24):
+
+- **Datos comunes = solo la potencia** (`rg-potencia`): da el caudal de la red y alimenta `cilindrosPorVaporizacion`. Desaparece
+  `cv-potencia`. Las temperaturas siguen separadas: la de la red es la del gas; la de cilindros, la ambiente de la tabla.
+- **Prueba de hermeticidad: solo la tubería** (D.S. 66 f.11 habla del volumen de la red o del tramo; el estanque se rige por
+  otra norma).
+- **Con Gas Natural** se oculta la sección de almacenamiento (una línea dice que es solo para GLP) y las marcas pasan a
+  1 Tubería, 2 Datos comunes (`numeroSeccion()`).
+
+Formulario: 1 Almacenamiento GLP (tres subsecciones: cilindros por vaporización, por consumo diario, estanque), 2 Tubería (con
+«Gas según D.S. 66» dentro), 3 Datos comunes. Resultados: KPI de la red arriba (los lee el resumen del teléfono), bloques
+1 Almacenamiento GLP, 2 Tubería (detalle y propiedades del gas), 3 Consumo (caudal objetivo) y la prueba. Lo guardado sigue en
+`red-gas` (sin los campos de almacenamiento) y `almacenamiento-glp`. Se borraron los estilos `.bloque-calculo`, `.bloque-titulo`
+y `.aviso-gas`, que solo usaba la pestaña de antes.

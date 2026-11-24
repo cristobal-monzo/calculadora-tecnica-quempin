@@ -32,10 +32,9 @@ export const GASES = [
     ruta: 'GasNatural-GLP/',
     disponible: true,
     normas: 'D.S. N°66',
-    desc: 'Red de gas, cilindros y estanque GLP, combustión y quemador atmosférico — un selector alterna entre GLP y GN.',
+    desc: 'Almacenamiento GLP (cilindros y estanque) y tubería en una sola pantalla, combustión y quemador atmosférico — un selector alterna entre GLP y GN.',
     herramientas: [
-      { id: 'red-gas', nombre: 'Red de Gas' },
-      { id: 'almacenamiento', nombre: 'Almacenamiento GLP' },
+      { id: 'red-gas', nombre: 'Almacenamiento y tubería' },
       { id: 'combustion', nombre: 'Combustión' },
       { id: 'quemador', nombre: 'Quemador Atmosférico' },
       { id: 'memoria', nombre: 'Memoria de Cálculo' },

@@ -29,13 +29,12 @@
   <div class="barra-pestanas">
     <div class="barra-pestanas-interior">
       <nav class="tabs" role="tablist">
-        <button class="tab active" id="tab-red-gas" role="tab" aria-selected="true" aria-controls="panel-red-gas" data-tab="red-gas">Red de Gas</button>
-        <button class="tab" id="tab-almacenamiento" role="tab" aria-selected="false" aria-controls="panel-almacenamiento" data-tab="almacenamiento">Almacenamiento</button>
+        <button class="tab active" id="tab-red-gas" role="tab" aria-selected="true" aria-controls="panel-red-gas" data-tab="red-gas">Almacenamiento y tubería</button>
         <button class="tab" id="tab-combustion" role="tab" aria-selected="false" aria-controls="panel-combustion" data-tab="combustion">Combustión</button>
         <button class="tab" id="tab-quemador" role="tab" aria-selected="false" aria-controls="panel-quemador" data-tab="quemador">Quemador Atmosférico</button>
         <button class="tab" id="tab-memoria" role="tab" aria-selected="false" aria-controls="panel-memoria" data-tab="memoria">Memoria de Cálculo</button>
       </nav>
-      <!-- Combustible: afecta a las 5 pestañas, por eso vive en la barra de
+      <!-- Combustible: afecta a las 4 pestañas, por eso vive en la barra de
            pestañas (fija al hacer scroll) y no dentro de una de ellas. -->
       <div class="selector-combustible" role="radiogroup" aria-labelledby="etiqueta-combustible">
         <span class="selector-combustible-etiqueta" id="etiqueta-combustible">Combustible</span>
@@ -49,11 +48,56 @@
 
   <main>
 
+    <!-- Almacenamiento y tubería en una sola pestaña (2026-11-24, a pedido del usuario: mismo patrón «A·1» que
+         Hidrogeno). Antes eran «Red de Gas» y «Almacenamiento». Conserva el id «red-gas» (hub y datos guardados);
+         #almacenamiento lleva aquí (ver initTabs). Con Gas Natural la sección de almacenamiento se oculta. Los
+         números de las marcas los pone numerarSecciones() en ui.js (1-2-3 con GLP, 1-2 con GN). -->
     <section class="tab-panel active" id="panel-red-gas" role="tabpanel" aria-labelledby="tab-red-gas" data-panel="red-gas">
       <div class="calc-layout">
       <form id="form-red-gas" class="calc-entradas" autocomplete="off">
+        <div class="seccion" id="seccion-almacenamiento-glp">
+          <h3 class="seccion-titulo"><span class="marca marca-1" data-marca="alm" aria-hidden="true">1</span>Almacenamiento GLP</h3>
+          <fieldset class="subseccion">
+            <legend>Cilindros — por razón de vaporización</legend>
+            <div class="fila-campos">
+              <div class="campo"><label for="cv-razon">Razón de vaporización [kW/cilindro]</label><input id="cv-razon" type="text" inputmode="decimal" value="30" required></div>
+            </div>
+          </fieldset>
+          <fieldset class="subseccion">
+            <legend>Cilindros — por consumo diario</legend>
+            <div class="fila-campos">
+              <div class="campo"><label for="cd-calefont">N° calefonts</label><input id="cd-calefont" type="number" step="1" value="1" required></div>
+              <div class="campo"><label for="cd-cocinas">N° cocinas</label><input id="cd-cocinas" type="number" step="1" value="3" required></div>
+              <div class="campo"><label for="cd-estufas">N° estufas</label><input id="cd-estufas" type="number" step="1" value="0" required></div>
+              <div class="campo"><label for="cd-nivel">Nivel de consumo</label>
+                <select id="cd-nivel"><option value="bajo">Bajo</option><option value="medio">Medio</option><option value="alto">Alto</option></select>
+              </div>
+              <div class="campo"><label for="cd-temperatura">Temperatura ambiente [°C]</label>
+                <select id="cd-temperatura">
+                  <option value="10">10</option><option value="5" selected>5</option><option value="0">0</option>
+                  <option value="-5">-5</option><option value="-10">-10</option><option value="-15">-15</option><option value="-20">-20</option>
+                </select>
+              </div>
+              <div class="campo"><label for="cd-peso-cilindro">Tipo de cilindro</label>
+                <select id="cd-peso-cilindro"><option value="15">15 kg</option><option value="45" selected>45 kg</option></select>
+              </div>
+            </div>
+          </fieldset>
+          <fieldset class="subseccion">
+            <legend>Estanque GLP</legend>
+            <div class="fila-campos">
+              <div class="campo"><label for="es-diametro">Diámetro [m]</label><input id="es-diametro" type="text" inputmode="decimal" value="0.76" required></div>
+              <div class="campo"><label for="es-altura">Altura [m]</label><input id="es-altura" type="text" inputmode="decimal" value="1.36" required></div>
+              <div class="campo"><label for="es-capacidad">Capacidad nominal [L]</label><input id="es-capacidad" type="text" inputmode="decimal" value="500" required></div>
+              <div class="campo"><label for="es-pct-butano">% Butano (molar)</label><input id="es-pct-butano" type="text" inputmode="decimal" value="0.3"></div>
+              <div class="campo"><label for="es-pct-propano">% Propano (molar)</label><input id="es-pct-propano" type="text" inputmode="decimal" value="0.7"></div>
+            </div>
+          </fieldset>
+        </div>
+        <p class="nota-sin-almacenamiento" id="nota-sin-almacenamiento" hidden>El almacenamiento en cilindros o estanque es solo para GLP: el Gas Natural llega por red.</p>
+
         <div class="seccion">
-          <h3 class="seccion-titulo">Configuración de tubería</h3>
+          <h3 class="seccion-titulo"><span class="marca marca-2" data-marca="tub" aria-hidden="true">2</span>Tubería</h3>
           <div class="fila-campos">
             <div class="campo campo-ancho">
               <label for="rg-regimen">Régimen de presión</label>
@@ -91,16 +135,6 @@
               <label for="rg-diametro-manual-k" style="margin-top:6px;">Factor K (rugosidad, solo baja presión)</label>
               <input id="rg-diametro-manual-k" type="text" inputmode="decimal" value="1800" required>
             </div>
-          </div>
-        </div>
-
-        <div class="seccion">
-          <h3 class="seccion-titulo">Condiciones de operación</h3>
-          <div class="fila-campos">
-            <div class="campo">
-              <label for="rg-potencia">Potencia objetivo [kW]</label>
-              <input id="rg-potencia" type="text" inputmode="decimal" value="30" required>
-            </div>
             <div class="campo">
               <label for="rg-longitud">Longitud de la línea [m]</label>
               <input id="rg-longitud" type="text" inputmode="decimal" value="10" required>
@@ -119,7 +153,7 @@
               </div>
             </div>
             <div class="campo">
-              <label for="rg-temperatura">Temperatura [°C]</label>
+              <label for="rg-temperatura">Temperatura del gas [°C]</label>
               <input id="rg-temperatura" type="text" inputmode="decimal" value="15" required>
             </div>
             <div class="campo">
@@ -127,12 +161,22 @@
               <input id="rg-desnivel" type="text" inputmode="decimal" value="0">
             </div>
           </div>
+
+          <!-- Gas de la red (2026-09-25): tipo de gas y región de la Tabla VI
+               del D.S. 66 (d, PCS, viscosidad) y, en GLP, su composición real
+               para verificar condensación — ver marcadoGasRed() en ui.js. -->
+          <div class="subbloque-gas" id="red-gas-campos-composicion"></div>
         </div>
 
-        <!-- Gas de la red (2026-09-25): tipo de gas y región de la Tabla VI
-             del D.S. 66 (d, PCS, viscosidad) y, en GLP, su composición real
-             para verificar condensación — ver marcadoGasRed() en ui.js. -->
-        <div class="seccion" id="red-gas-campos-composicion"></div>
+        <div class="seccion">
+          <h3 class="seccion-titulo"><span class="marca marca-3" data-marca="com" aria-hidden="true">3</span>Datos comunes <span class="info-norma" tabindex="0" role="img" aria-label="Para qué sirve" title="La potencia da el caudal de la tubería y, con GLP, los cilindros por razón de vaporización. Antes se escribía dos veces.">ⓘ</span></h3>
+          <div class="fila-campos">
+            <div class="campo">
+              <label for="rg-potencia">Potencia [kW]</label>
+              <input id="rg-potencia" type="text" inputmode="decimal" value="30" required>
+            </div>
+          </div>
+        </div>
       </form>
       <div class="calc-resultados">
         <div class="resultados-encabezado">
@@ -142,10 +186,6 @@
         <div class="resultados" id="resultados-red-gas" aria-live="polite"></div>
       </div>
       </div>
-    </section>
-
-    <section class="tab-panel" id="panel-almacenamiento" role="tabpanel" aria-labelledby="tab-almacenamiento" data-panel="almacenamiento">
-      <div id="almacenamiento-contenido"></div>
     </section>
 
     <section class="tab-panel" id="panel-combustion" role="tabpanel" aria-labelledby="tab-combustion" data-panel="combustion">
