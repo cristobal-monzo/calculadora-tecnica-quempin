@@ -47,6 +47,8 @@ numérico.
 Revisar / No cumple, un chip por chequeo) donde hay chequeos, KPI arriba y el detalle en `.bloques-resultados` (filas «etiqueta …
 valor», dos columnas: `bloque-principal` a la izquierda, `bloque-ancho` a todo el ancho). El CSS y el JS van entre comentarios
 `=== … INICIO/FIN ===` y son **idénticos** en los tres: cópialos enteros. Detalle en `Hidrogeno/docs/interfaz.md`.
+Formulario y resultados **bajan juntos** al desplazar la página: sin `position: sticky` en `.calc-resultados` (pedido del
+usuario, 2026-11-25; antes los resultados quedaban fijos y bajaban por separado).
 
 **Teléfono**: el bloque CSS «Uso desde el teléfono» y `centrarPestana()` e `initResumenMovil()` son idénticos en los tres. Bajo
 960 px, barra de KPI fija al pie (lee el grupo `kpis`: un resultado que deba verse ahí va en ese grupo); cajetines de 16 px (Safari de
@@ -71,3 +73,7 @@ puerto, con copias de días distintos) y caché del navegador. `curl -s <url>/js
 Las tablas de gases y tuberías se versionan como código (`js/gas-<gas>.js`). **Toda fórmula y constante cita su celda de origen en el
 Excel fuente** y tiene una prueba de regresión contra el valor cacheado; `OtrosGases/`, sin Excel, cita su fuente publicada (NIST WebBook,
 49 CFR, ASME) y compara contra NIST. Sin CI: antes de publicar un cambio de motor, corre a mano `node <Modulo>/tests/run-all.js`.
+
+**Sintaxis de `ui.js`**: las pruebas no cargan `ui.js`, y `node --check <ruta>` dio OK con un `ui.js` roto (2026-11-25: H₂ no
+cargaba por un salto de línea dentro de una cadena). Revisa cada `.js` tocado con
+`node --input-type=module --check < <archivo>` y abre la página en el navegador antes de publicar.

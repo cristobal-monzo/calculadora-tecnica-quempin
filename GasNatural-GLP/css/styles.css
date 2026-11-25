@@ -101,16 +101,14 @@ main {
 /* --- Layout de calculadora: entradas | resultados. En escritorio los
    resultados quedan al lado de los campos que los producen (antes había
    que bajar hasta el final del formulario para ver el efecto de cada
-   cambio). `position: sticky` solo tiene efecto cuando la columna de
-   resultados es más corta que la de entradas — si es más larga, se
-   comporta como estática. --- */
+   cambio). Sin `position: sticky` desde el 2026-11-25 (pedido del
+   usuario): formulario y resultados bajan juntos al desplazar la página. --- */
 .calc-layout { display: grid; gap: 32px; }
 @media (min-width: 960px) {
   .calc-layout {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
     gap: 0 48px; align-items: start;
   }
-  .calc-resultados { position: sticky; top: calc(var(--alto-barra-pestanas) + 16px); }
 }
 .resultados-encabezado {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;

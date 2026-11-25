@@ -484,7 +484,7 @@ pasan a ser una pestaña, «Estanque y tubería»:
 - **Compatibilidad:** se conservan el id de pestaña `flujo` (hub y marcadores), los ids de los campos y las claves de
   `localStorage` (`flujo`, `almacenamiento`); `ALIAS_PESTANA` lleva `#almacenamiento` a `#flujo`. `assets/gases.js` lista 2
   herramientas.
-- La columna de resultados es más larga que el formulario, así que `position: sticky` no actúa (ver «Layout de calculadora» en
+- (Hasta el 2026-11-25.) La columna de resultados era más larga que el formulario, así que `position: sticky` no actuaba (ver «Layout de calculadora» en
   `css/styles.css`).
 
 - **2026-11-25, a pedido del usuario: la tubería primero.** Orden en las dos calculadoras: 1 Tubería, 2 Estanque, 3 Datos comunes,
@@ -535,3 +535,5 @@ La columna de resultados medía ~1 800 px contra ~860 del formulario; ahora ~1 0
   - Otros gases Tubería: espesor (descarta), fase (líquido descarta), erosión y caída de presión. KPI: presión de diseño,
     velocidad y pérdida de carga.
   - Sin franja (no hay chequeos de cumplimiento): GN-GLP Combustión, Otros gases Propiedades y Almacenamiento.
+- **Sin `position: sticky`** (mismo día, a pedido del usuario: «que la sección de relleno y los resultados bajen juntos»):
+  con los resultados más cortos, el sticky empezó a actuar y los resultados bajaban por separado. Quitado en los 4 módulos.

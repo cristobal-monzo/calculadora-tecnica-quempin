@@ -523,10 +523,7 @@ function veredictoInstalacion(r, cercaDeErosion) {
         : c.estado === 'no-aplica' ? 'Caída de presión: no aplica' : `${sonico.etiqueta}${caida}`,
       nota: sonico.nota,
     },
-  ], 'Tres chequeos de la tubería:
-• Espesor: la presión máx. de diseño (ASME B31.12 PL-3.7.1) supera la de operación.
-• Erosión (API RP 14E): aviso si la velocidad a la presión mínima pasa el 80 % de la de erosión.
-• Caída de presión / flujo sónico: screening simplificado de gas ideal; no reemplaza API RP 14E ni los datos del fabricante de válvulas y reguladores.');
+  ], 'Tres chequeos de la tubería:\n• Espesor: la presión máx. de diseño (ASME B31.12 PL-3.7.1) supera la de operación.\n• Erosión (API RP 14E): aviso si la velocidad a la presión mínima pasa el 80 % de la de erosión.\n• Caída de presión / flujo sónico: screening simplificado de gas ideal; no reemplaza API RP 14E ni los datos del fabricante de válvulas y reguladores.');
 }
 
 
