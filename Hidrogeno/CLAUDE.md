@@ -19,7 +19,7 @@ analizado celda por celda el 2026-09-01 — hojas `Cálculo`, `Sheet3`, `MC`,
 
 | Pestaña | Hoja Excel | Motor |
 |---|---|---|
-| Estanque y tubería (`#flujo`; antes «Tubería y Flujo» + «Almacenamiento», unidas el 2026-11-24) | `Cálculo` y `Sheet3` | `js/calc-flujo.js` y `js/calc-almacenamiento.js`, sin cambios |
+| Tubería y estanque (`#flujo`; antes «Tubería y Flujo» + «Almacenamiento», unidas el 2026-11-24) | `Cálculo` y `Sheet3` | `js/calc-flujo.js` y `js/calc-almacenamiento.js`, sin cambios |
 | Memoria de Cálculo | `MC` (reimplementada como red de fórmulas vivas — en el Excel es una tabla de valores pegados a mano) | `js/calc-memoria.js` |
 
 Compartido entre las tres: `js/physics.js` (funciones puras de mecánica de
@@ -40,7 +40,7 @@ NIST, ver más abajo—, Tabla Hf de ASME B31.12).
 - **El informe siempre entra en una sola hoja A4**, también medido desde el ancho de un teléfono.
 - **`reseteaAcumulada`** no viene del Excel: modela un regulador, y reinicia la pérdida acumulada de ese tramo.
 - **`TABLA_TUBERIA` no se amplió**: no se pudo confirmar contra ninguna norma qué serie es. Por eso existe el diámetro manual.
-- **Estanque y tubería es una sola pestaña** (maqueta «A·1», 2026-11-24): secciones 1 Estanque, 2 Tubería, 3 Datos comunes
+- **Tubería y estanque es una sola pestaña** (maqueta «A·1», 2026-11-24): secciones 1 Tubería, 2 Estanque, 3 Datos comunes (tubería primero desde 2026-11-25)
   (potencia y temperatura, que alimentan a los dos motores) y resultados con la misma marca. Ids de campos y claves guardadas
   (`flujo`, `almacenamiento`) no cambiaron; `#almacenamiento` lleva a `#flujo`. Detalle en [docs/interfaz.md](docs/interfaz.md).
 - **El rojo de estado crítico** (`#c62828`) es una extrapolación: el manual de marca no define un rojo.

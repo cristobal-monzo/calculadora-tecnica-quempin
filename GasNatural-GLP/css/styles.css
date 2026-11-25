@@ -205,10 +205,11 @@ input[aria-invalid="true"] {
 
 /* --- Pestaña «Almacenamiento y tubería» (2026-11-24, mismo patrón «A·1»
    que Hidrogeno): cada sección del formulario lleva un número y su bloque
-   de resultados lleva el mismo. Con Gas Natural no hay almacenamiento y la
-   tubería pasa a ser la 1 (ui.js, numeroSeccion). Colores solo de la marca
+   de resultados lleva el mismo: 1 Tubería, 2 Almacenamiento, 3 Datos
+   comunes (la tubería primero desde 2026-11-25). Con Gas Natural no hay
+   almacenamiento y los datos comunes pasan a ser la 2 (ui.js, numeroSeccion). Colores solo de la marca
    y de los tokens de texto (el manual no define una paleta para esto):
-   almacenamiento naranja tinta, tubería negro/texto, datos comunes gris,
+   tubería naranja tinta, almacenamiento negro/texto, datos comunes gris,
    prueba verde de estado. La cifra va en el color de la tarjeta, así se
    invierte sola en tema oscuro. --- */
 .seccion-titulo:has(.marca), .bloque-resultados-titulo { display: flex; align-items: center; gap: 8px; }

@@ -19,9 +19,9 @@ export const GASES = [
     ruta: 'Hidrogeno/',
     disponible: true,
     normas: 'ASME B31.12 · NFPA 2',
-    desc: 'Estanque (PV=ZnRT) y tubería (ASME B31.12) en una sola pantalla, prueba de hermeticidad y memoria de cálculo de redes ramificadas.',
+    desc: 'Tubería (ASME B31.12) y estanque (PV=ZnRT) en una sola pantalla, prueba de hermeticidad y memoria de cálculo de redes ramificadas.',
     herramientas: [
-      { id: 'flujo', nombre: 'Estanque y tubería' },
+      { id: 'flujo', nombre: 'Tubería y estanque' },
       { id: 'memoria', nombre: 'Memoria de Cálculo' },
     ],
   },
@@ -32,9 +32,9 @@ export const GASES = [
     ruta: 'GasNatural-GLP/',
     disponible: true,
     normas: 'D.S. N°66',
-    desc: 'Almacenamiento GLP (cilindros y estanque) y tubería en una sola pantalla, combustión y quemador atmosférico — un selector alterna entre GLP y GN.',
+    desc: 'Tubería y almacenamiento GLP (cilindros y estanque) en una sola pantalla, combustión y quemador atmosférico — un selector alterna entre GLP y GN.',
     herramientas: [
-      { id: 'red-gas', nombre: 'Almacenamiento y tubería' },
+      { id: 'red-gas', nombre: 'Tubería y almacenamiento' },
       { id: 'combustion', nombre: 'Combustión' },
       { id: 'quemador', nombre: 'Quemador Atmosférico' },
       { id: 'memoria', nombre: 'Memoria de Cálculo' },

@@ -249,3 +249,7 @@ Formulario: 1 Almacenamiento GLP (tres subsecciones: cilindros por vaporización
 1 Almacenamiento GLP, 2 Tubería (detalle y propiedades del gas), 3 Consumo (caudal objetivo) y la prueba. Lo guardado sigue en
 `red-gas` (sin los campos de almacenamiento) y `almacenamiento-glp`. Se borraron los estilos `.bloque-calculo`, `.bloque-titulo`
 y `.aviso-gas`, que solo usaba la pestaña de antes.
+
+- **2026-11-25, a pedido del usuario: la tubería primero.** Orden en las dos calculadoras: 1 Tubería, 2 Almacenamiento GLP (con GN se oculta y Datos comunes pasa a ser la 2), 3 Datos comunes,
+  en el formulario y en los resultados. Los colores van por posición (1 naranja tinta, 2 negro/texto, 3 gris).
+  La pestaña pasa a llamarse «Tubería y almacenamiento», en el mismo orden.

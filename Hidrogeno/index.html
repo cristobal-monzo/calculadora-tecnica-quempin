@@ -18,7 +18,7 @@
       <span class="viz-logo"><img src="../assets/isotipo.png" alt="" width="42" height="42"><span class="viz-wordmark">QUEMP<span class="in">IN</span></span></span>
       <div class="viz-titleblock">
         <h1>Calculadora de Hidrógeno</h1>
-        <p>Estanque, tubería y memoria de cálculo — ASME B31.12 / NFPA 2</p>
+        <p>Tubería, estanque y memoria de cálculo — ASME B31.12 / NFPA 2</p>
       </div>
       <label for="selector-gas" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Cambiar de calculadora</label>
       <select id="selector-gas"></select>
@@ -29,63 +29,21 @@
   <div class="barra-pestanas">
     <div class="barra-pestanas-interior">
       <nav class="tabs" role="tablist">
-        <button class="tab active" id="tab-flujo" role="tab" aria-selected="true" aria-controls="panel-flujo" data-tab="flujo">Estanque y tubería</button>
+        <button class="tab active" id="tab-flujo" role="tab" aria-selected="true" aria-controls="panel-flujo" data-tab="flujo">Tubería y estanque</button>
         <button class="tab" id="tab-memoria" role="tab" aria-selected="false" aria-controls="panel-memoria" data-tab="memoria">Memoria de Cálculo</button>
       </nav>
     </div>
   </div>
 
   <main>
-    <!-- Estanque y tubería en una sola pestaña (2026-11-24, a pedido del usuario: maqueta «A·1»).
+    <!-- Tubería y estanque en una sola pestaña (2026-11-24, a pedido del usuario: maqueta «A·1»).
          Antes eran «Tubería y Flujo» y «Almacenamiento». Conserva el id «flujo» (enlaces del hub y datos
          guardados); #almacenamiento lleva aquí (ver initTabs). Los ids de los campos no cambian. -->
     <section class="tab-panel active" id="panel-flujo" role="tabpanel" aria-labelledby="tab-flujo" data-panel="flujo">
       <div class="calc-layout">
         <form id="form-flujo" class="calc-entradas" autocomplete="off">
           <div class="seccion">
-            <h3 class="seccion-titulo"><span class="marca marca-1" aria-hidden="true">1</span>Estanque</h3>
-            <div class="fila-campos">
-              <div class="campo">
-                <label for="alm-presion">Presión de almacenamiento [abs]</label>
-                <div class="campo-con-unidad">
-                  <input id="alm-presion" type="text" inputmode="decimal" value="200" required>
-                  <select id="alm-presion-unidad" class="select-unidad" aria-label="Unidad de presión de almacenamiento">
-                    <option value="Pa">Pa</option>
-                    <option value="kPa">kPa</option>
-                    <option value="mbar">mbar</option>
-                    <option value="bar" selected>bar</option>
-                    <option value="MPa">MPa</option>
-                    <option value="psi">psi</option>
-                  </select>
-                </div>
-              </div>
-              <div class="campo">
-                <label for="alm-volumen">Volumen del estanque [m³]</label>
-                <input id="alm-volumen" type="text" inputmode="decimal" value="0.19" required>
-              </div>
-              <div class="campo">
-                <label for="alm-presion-residual" title="Bajo esta presión el regulador ya no entrega: el H₂ que queda no cuenta para la autonomía.">Presión residual mínima [abs]</label>
-                <div class="campo-con-unidad">
-                  <input id="alm-presion-residual" type="text" inputmode="decimal" value="10" required>
-                  <select id="alm-presion-residual-unidad" class="select-unidad" aria-label="Unidad de presión residual mínima">
-                    <option value="Pa">Pa</option>
-                    <option value="kPa">kPa</option>
-                    <option value="mbar">mbar</option>
-                    <option value="bar" selected>bar</option>
-                    <option value="MPa">MPa</option>
-                    <option value="psi">psi</option>
-                  </select>
-                </div>
-              </div>
-              <div class="campo">
-                <label for="alm-caudal-llenado">Caudal de llenado [Nm³/h]</label>
-                <input id="alm-caudal-llenado" type="text" inputmode="decimal" value="4" required>
-              </div>
-            </div>
-          </div>
-
-          <div class="seccion">
-            <h3 class="seccion-titulo"><span class="marca marca-2" aria-hidden="true">2</span>Tubería</h3>
+            <h3 class="seccion-titulo"><span class="marca marca-1" aria-hidden="true">1</span>Tubería</h3>
             <div class="fila-campos">
               <div class="campo">
                 <label for="flujo-presion">Presión manométrica de la línea</label>
@@ -168,6 +126,48 @@
                 </div>
               </div>
             </fieldset>
+          </div>
+
+          <div class="seccion">
+            <h3 class="seccion-titulo"><span class="marca marca-2" aria-hidden="true">2</span>Estanque</h3>
+            <div class="fila-campos">
+              <div class="campo">
+                <label for="alm-presion">Presión de almacenamiento [abs]</label>
+                <div class="campo-con-unidad">
+                  <input id="alm-presion" type="text" inputmode="decimal" value="200" required>
+                  <select id="alm-presion-unidad" class="select-unidad" aria-label="Unidad de presión de almacenamiento">
+                    <option value="Pa">Pa</option>
+                    <option value="kPa">kPa</option>
+                    <option value="mbar">mbar</option>
+                    <option value="bar" selected>bar</option>
+                    <option value="MPa">MPa</option>
+                    <option value="psi">psi</option>
+                  </select>
+                </div>
+              </div>
+              <div class="campo">
+                <label for="alm-volumen">Volumen del estanque [m³]</label>
+                <input id="alm-volumen" type="text" inputmode="decimal" value="0.19" required>
+              </div>
+              <div class="campo">
+                <label for="alm-presion-residual" title="Bajo esta presión el regulador ya no entrega: el H₂ que queda no cuenta para la autonomía.">Presión residual mínima [abs]</label>
+                <div class="campo-con-unidad">
+                  <input id="alm-presion-residual" type="text" inputmode="decimal" value="10" required>
+                  <select id="alm-presion-residual-unidad" class="select-unidad" aria-label="Unidad de presión residual mínima">
+                    <option value="Pa">Pa</option>
+                    <option value="kPa">kPa</option>
+                    <option value="mbar">mbar</option>
+                    <option value="bar" selected>bar</option>
+                    <option value="MPa">MPa</option>
+                    <option value="psi">psi</option>
+                  </select>
+                </div>
+              </div>
+              <div class="campo">
+                <label for="alm-caudal-llenado">Caudal de llenado [Nm³/h]</label>
+                <input id="alm-caudal-llenado" type="text" inputmode="decimal" value="4" required>
+              </div>
+            </div>
           </div>
 
           <div class="seccion">

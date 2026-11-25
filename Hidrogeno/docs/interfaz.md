@@ -486,3 +486,7 @@ pasan a ser una pestaña, «Estanque y tubería»:
   herramientas.
 - La columna de resultados es más larga que el formulario, así que `position: sticky` no actúa (ver «Layout de calculadora» en
   `css/styles.css`).
+
+- **2026-11-25, a pedido del usuario: la tubería primero.** Orden en las dos calculadoras: 1 Tubería, 2 Estanque, 3 Datos comunes,
+  en el formulario y en los resultados. Los colores van por posición (1 naranja tinta, 2 negro/texto, 3 gris).
+  La pestaña pasa a llamarse «Tubería y estanque», en el mismo orden.

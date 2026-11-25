@@ -79,7 +79,7 @@ function formatearPresionFija(valorPa, unidad) {
 // 2026-09-24, mismo patrón que Hidrogeno): recargar ya no devuelve siempre
 // a la primera pestaña, y el hub puede enlazar directo a una herramienta.
 // Desde 2026-11-24 Almacenamiento vive en la pestaña #red-gas
-// («Almacenamiento y tubería»): un enlace o marcador viejo a
+// («Tubería y almacenamiento»): un enlace o marcador viejo a
 // #almacenamiento lleva ahí.
 const ALIAS_PESTANA = { almacenamiento: 'red-gas' };
 
@@ -264,10 +264,11 @@ function grupo(titulo, tiles, clase = '') {
 // Bloque de resultados con la misma marca que su sección del formulario
 // (2026-11-24, mismo patrón «A·1» que Hidrogeno). `clave` = 'alm' | 'tub' |
 // 'com' | 'prueba'; el número sale de numeroSeccion() (con GN no hay
-// almacenamiento y la tubería pasa a ser la 1).
-const CLASE_MARCA = { alm: 'marca-1', tub: 'marca-2', com: 'marca-3', prueba: 'marca-prueba' };
+// almacenamiento y los datos comunes pasan a ser la 2).
+const CLASE_MARCA = { tub: 'marca-1', alm: 'marca-2', com: 'marca-3', prueba: 'marca-prueba' };
 function numeroSeccion(clave) {
-  const orden = combustible === 'GLP' ? ['alm', 'tub', 'com'] : ['tub', 'com'];
+  // La tubería primero (2026-11-25, a pedido del usuario).
+  const orden = combustible === 'GLP' ? ['tub', 'alm', 'com'] : ['tub', 'com'];
   return clave === 'prueba' ? '✓' : String(orden.indexOf(clave) + 1);
 }
 function bloqueResultados(clave, titulo, contenido) {
@@ -354,7 +355,7 @@ function initSelectorCombustible() {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Pestaña «Almacenamiento y tubería» (antes Red de Gas + Almacenamiento) */
+/* Pestaña «Tubería y almacenamiento» (antes Red de Gas + Almacenamiento) */
 /* ---------------------------------------------------------------------- */
 
 function formatearPulgadas(valor) {
@@ -515,11 +516,11 @@ function renderResultadosRedGas(r, alm) {
   }
   document.getElementById('resultados-red-gas').innerHTML = [
     grupo(null, kpis, 'kpis'),
-    bloqueAlmacenamiento,
     bloqueResultados('tub', 'Tubería', [
       grupo(null, detalle),
       grupo('Propiedades del gas', propiedades),
     ]),
+    bloqueAlmacenamiento,
     bloqueResultados('com', 'Consumo (datos comunes)', [
       grupo(null, [
         tile(`${formatearFijo(r.caudalObjetivoM3H, 3)} m³S/h`, 'Caudal objetivo (15 °C, 101,3 kPa)'),
@@ -563,8 +564,8 @@ function initRedGas() {
       if (el && seccionAlmacenamiento.contains(el)) el.value = valor;
     });
   }
-  // Con Gas Natural no hay almacenamiento: se oculta la sección y las
-  // marcas pasan a 1 Tubería, 2 Datos comunes.
+  // Con Gas Natural no hay almacenamiento: se oculta la sección y los
+  // datos comunes pasan a ser la 2.
   function mostrarSegunCombustible() {
     const esGLP = combustible === 'GLP';
     seccionAlmacenamiento.hidden = !esGLP;

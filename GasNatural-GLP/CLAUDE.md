@@ -26,7 +26,7 @@ publican. Diseño completo en
 
 | Pestaña | Hoja Excel | Motor |
 |---|---|---|
-| Almacenamiento y tubería (`#red-gas`; antes «Red de Gas» + «Almacenamiento», unidas el 2026-11-24) | `Bases de Cálculo` (red y cilindros) + `Estanque GLP` | `js/pipe-network.js` + `js/calc-red-gas.js` y `js/calc-almacenamiento-glp.js`, sin cambios |
+| Tubería y almacenamiento (`#red-gas`; antes «Red de Gas» + «Almacenamiento», unidas el 2026-11-24) | `Bases de Cálculo` (red y cilindros) + `Estanque GLP` | `js/pipe-network.js` + `js/calc-red-gas.js` y `js/calc-almacenamiento-glp.js`, sin cambios |
 | Combustión | `Combustión Gas` (columnas GLP/GN) | `js/combustion.js` + `js/calc-combustion.js` |
 | Quemador Atmosférico | `Quem. Atm.` + `Diseño Quemador Atmosférico` | `js/calc-quemador.js` |
 | Memoria de Cálculo | (sin hoja fuente — no existe en el Excel) | `js/calc-memoria-red-gas.js` |
@@ -44,8 +44,8 @@ densidad, fracciones de carbono/hidrógeno para combustión).
 - **El informe siempre entra en una sola hoja A4.**
 - **Límites del D.S. 66**: opcionales (`proyecto.incluirLimitesDS66`); un proyecto anterior sin el campo queda sin incluir.
 - **Prueba de hermeticidad** (D.S. 66 f.11): tiempo en minutos = volumen de la tubería (m³) × 214, con un mínimo de 15.
-- **Almacenamiento y tubería es una sola pestaña** (patrón «A·1» de Hidrogeno, 2026-11-24): 1 Almacenamiento GLP (oculto con
-  GN: la numeración pasa a 1 Tubería, 2 Datos comunes), 2 Tubería, 3 Datos comunes (solo la potencia: alimenta la red y los
+- **Tubería y almacenamiento es una sola pestaña** (patrón «A·1» de Hidrogeno, 2026-11-24): 1 Tubería, 2 Almacenamiento GLP
+  (oculto con GN: los datos comunes pasan a ser la 2), 3 Datos comunes (tubería primero desde 2026-11-25) (solo la potencia: alimenta la red y los
   cilindros por vaporización). La prueba de hermeticidad sigue siendo solo de la tubería. Ids, claves guardadas (`red-gas`,
   `almacenamiento-glp`) y `#almacenamiento` (alias) se conservan. Detalle en [docs/interfaz.md](docs/interfaz.md).
 - **No toda diferencia entre GLP y GN es un error**: lee § Discrepancias en `docs/formulas.md` antes de «corregir» una.

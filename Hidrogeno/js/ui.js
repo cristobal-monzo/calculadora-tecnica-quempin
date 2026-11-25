@@ -374,7 +374,7 @@ function poblarSelectTuberia(select) {
 }
 
 /* ---------------------------------------------------------------------- */
-/* Pestaña «Estanque y tubería» — parte tubería                          */
+/* Pestaña «Tubería y estanque» — parte tubería                          */
 /* ---------------------------------------------------------------------- */
 
 // Unidad de flujo normalizado/H₂ elegida — vive fuera del <form> (el
@@ -473,8 +473,9 @@ function bloqueResultados(marca, titulo, contenido) {
 // porque el bloque se redibuja en cada tecla.
 let factoresAbiertos = false;
 
-// Orden (2026-11-24): KPI arriba (los lee también el resumen del teléfono),
-// luego 1 Estanque, 2 Tubería, 3 Consumo (datos comunes) y la prueba de
+// Orden (2026-11-25, a pedido del usuario: la tubería primero): KPI arriba
+// (los lee también el resumen del teléfono), luego 1 Tubería, 2 Estanque,
+// 3 Consumo (datos comunes) y la prueba de
 // hermeticidad, que usa la instalación completa. Dentro de Tubería sigue
 // el orden de 2026-09-02: caudal y velocidad, erosión, flujo sónico y, al
 // final, los factores de la fórmula.
@@ -503,20 +504,7 @@ function renderResultadosInstalacion(r, a, prueba, presionDisenoBarG) {
       tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar tubería de mayor espesor o menor diámetro', 'Tubería adecuada', `kpi ${varianteAdecuada}`),
     ], 'kpis'),
 
-    bloqueResultados('1', 'Estanque', [
-      grupo(null, [
-        tile(`${formatearNumero(a.masaAlmacenadaKg)} kg`, 'Masa de H₂ almacenada (PV=ZnRT)'),
-        tile(`${formatearNumero(a.masaUtilizableKg)} kg`, 'Masa utilizable (sobre la presión residual)'),
-        tile(`${formatearNumero(a.volumenNormalizadoNm3)} Nm³`, 'Volumen normalizado'),
-        tile(a.tiempoLlenadoHoras === null ? '—' : formatearHoras(a.tiempoLlenadoHoras), 'Tiempo de llenado desde la presión residual (hh:mm:ss)'),
-        tileConUnidad(formatearNumero(a.caudalReferenciaM3H), 'Caudal real de llenado (a la presión del estanque)', 'alm-unidad-caudal', OPCIONES_UNIDAD_CAUDAL_ALM, unidadCaudalAlm, 'secundario'),
-        tile(`${formatearNumero(a.velocidadReferenciaMS)} m/s`, `Velocidad de llenado en línea Ø¼" (DI ${formatearNumero(a.diametroCapilarMm)} mm)`, 'secundario'),
-        tile(formatearZ(a.zAlmacenamiento), 'Factor de compresibilidad Z en el estanque', 'secundario'),
-        tile(`${formatearNumero(a.densidadRealKgM3)} kg/m³`, 'Densidad real en el estanque', 'secundario'),
-      ]),
-    ]),
-
-    bloqueResultados('2', 'Tubería', [
+    bloqueResultados('1', 'Tubería', [
       grupo(null, [
         tileConUnidad(formatearNumero(r.flujoVolH2), 'Flujo volum. de H₂ en la línea', 'flujo-unidad-h2', OPCIONES_UNIDAD_H2, unidadH2Flujo),
         tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo (presión de operación)'),
@@ -536,6 +524,19 @@ function renderResultadosInstalacion(r, a, prueba, presionDisenoBarG) {
         tile(formatearNumero(r.reynolds), 'Número de Reynolds', 'secundario'),
         tile(formatearNumero(r.factorFriccion), 'Factor de fricción (Haaland)', 'secundario'),
       ])}</details>`,
+    ]),
+
+    bloqueResultados('2', 'Estanque', [
+      grupo(null, [
+        tile(`${formatearNumero(a.masaAlmacenadaKg)} kg`, 'Masa de H₂ almacenada (PV=ZnRT)'),
+        tile(`${formatearNumero(a.masaUtilizableKg)} kg`, 'Masa utilizable (sobre la presión residual)'),
+        tile(`${formatearNumero(a.volumenNormalizadoNm3)} Nm³`, 'Volumen normalizado'),
+        tile(a.tiempoLlenadoHoras === null ? '—' : formatearHoras(a.tiempoLlenadoHoras), 'Tiempo de llenado desde la presión residual (hh:mm:ss)'),
+        tileConUnidad(formatearNumero(a.caudalReferenciaM3H), 'Caudal real de llenado (a la presión del estanque)', 'alm-unidad-caudal', OPCIONES_UNIDAD_CAUDAL_ALM, unidadCaudalAlm, 'secundario'),
+        tile(`${formatearNumero(a.velocidadReferenciaMS)} m/s`, `Velocidad de llenado en línea Ø¼" (DI ${formatearNumero(a.diametroCapilarMm)} mm)`, 'secundario'),
+        tile(formatearZ(a.zAlmacenamiento), 'Factor de compresibilidad Z en el estanque', 'secundario'),
+        tile(`${formatearNumero(a.densidadRealKgM3)} kg/m³`, 'Densidad real en el estanque', 'secundario'),
+      ]),
     ]),
 
     bloqueResultados('3', 'Consumo (datos comunes)', [
@@ -590,7 +591,7 @@ function leerAlmacenamientoForm() {
   };
 }
 
-// Pestaña «Estanque y tubería» (2026-11-24): un formulario, dos motores sin
+// Pestaña «Tubería y estanque» (2026-11-24): un formulario, dos motores sin
 // cambios (calcularFlujo, calcularAlmacenamiento) y la prueba de
 // hermeticidad con el volumen de esta línea más el del estanque. Lo
 // guardado sigue en dos claves, 'flujo' (campos flujo-*) y
