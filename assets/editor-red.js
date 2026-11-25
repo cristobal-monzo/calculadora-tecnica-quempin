@@ -11,7 +11,9 @@
    (zona de clic, botón «+» en el extremo, selección, foco con teclado, arrastre) se agrega aquí cada vez que
    el <svg> se redibuja (MutationObserver), porque el <svg> se reescribe en cada tecla.
 
-   - Clic (o Enter) en un tramo: se elige y el panel lo muestra. También al entrar a su fila de la tabla.
+   - Clic (o Enter) en un tramo: se abre la ventana flotante de edición junto al tramo. No desplaza nada: queda sobre el
+     contenido (en el teléfono, hoja que sube desde abajo). Se cierra con ✕, Esc o un clic fuera; se mueve por su barra.
+     Entrar a una fila de la tabla solo marca el tramo en el diagrama, sin abrir la ventana.
    - «+» en el extremo de un tramo: agrega un tramo que continúa desde él, con su presión, diámetro, material y
      temperatura (longitud y potencia quedan por defecto).
    - Arrastrar un tramo (mouse o lápiz) sobre otro: cambia «Continúa desde». Sobre un espacio vacío: red nueva.
@@ -36,13 +38,18 @@ export function initEditorRed({ svg, tbody, botonAgregar }) {
   envoltura.append(contenedor);
   const panel = document.createElement('aside');
   panel.className = 'editor-tramo';
+  panel.setAttribute('role', 'dialog');
   panel.setAttribute('aria-label', 'Editar tramo');
+  panel.hidden = true;
   envoltura.append(panel);
+  const ESTRECHO = window.matchMedia('(max-width: 959px)');
 
   svg.setAttribute('role', 'group');
   svg.setAttribute('aria-label', 'Diagrama de la red: elige un tramo para editarlo');
 
   let seleccionadoId = null;
+  let abierto = false;           // ventana flotante visible
+  let movidaAMano = false;       // la persona la arrastró: no se reubica sola hasta abrir otro tramo
   let filaPanel = null;          // <tr> que el panel refleja; si la tabla se redibuja, el panel se rearma
   let pendienteSync = false;
 
@@ -51,14 +58,58 @@ export function initEditorRed({ svg, tbody, botonAgregar }) {
 
   /* ---------------------------------------------------------------- selección */
 
-  function elegir(id, { enfocarPanel = false } = {}) {
+  function elegir(id, { enfocarPanel = false, abrir = true } = {}) {
+    const anterior = abierto ? seleccionadoId : null;
     seleccionadoId = filaDe(id) ? id : null;
+    abierto = Boolean(abrir && seleccionadoId);
+    if (seleccionadoId !== anterior) movidaAMano = false;
     decorarDiagrama();
     sincronizar(true);
     tbody.querySelectorAll('tr.fila-seleccionada').forEach((tr) => tr.classList.remove('fila-seleccionada'));
     filaDe(seleccionadoId)?.classList.add('fila-seleccionada');
+    if (abierto && !movidaAMano) posicionar();
     if (enfocarPanel) panel.querySelector('.editor-nombre input')?.focus({ preventScroll: true });
   }
+
+  function cerrar({ devolverFoco = false } = {}) {
+    if (!abierto) return;
+    const id = seleccionadoId;
+    abierto = false;
+    panel.hidden = true;
+    filaPanel = null;
+    if (devolverFoco) svg.querySelector(`g.arbol-tramo[data-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+  }
+
+  // Junto al tramo: a su derecha; si no cabe, a su izquierda; si tampoco, debajo. Siempre dentro de la pantalla.
+  function posicionar() {
+    if (panel.hidden || ESTRECHO.matches) { panel.style.left = ''; panel.style.top = ''; return; }
+    const g = svg.querySelector(`g.arbol-tramo[data-id="${CSS.escape(seleccionadoId)}"]`);
+    if (!g) return;
+    const t = (g.querySelector('.arbol-zona') ?? g).getBoundingClientRect();
+    const base = envoltura.getBoundingClientRect();
+    const ancho = panel.offsetWidth, alto = panel.offsetHeight, aire = 18;
+    let left = t.right - base.left + aire;
+    let top = t.top - base.top - 6;
+    if (base.left + left + ancho > window.innerWidth - 8) {
+      left = t.left - base.left - ancho - aire;
+      if (base.left + left < 8) {
+        left = Math.min(Math.max(t.left - base.left, 8 - base.left), window.innerWidth - 8 - ancho - base.left);
+        top = t.bottom - base.top + 8;
+      }
+    }
+    const sobra = base.top + top + alto - (window.innerHeight - 12);
+    if (sobra > 0) top = Math.max(top - sobra, 64 - base.top);
+    panel.style.left = `${Math.round(left)}px`;
+    panel.style.top = `${Math.round(top)}px`;
+  }
+  window.addEventListener('resize', () => { if (abierto && !movidaAMano) posicionar(); });
+  ESTRECHO.addEventListener('change', () => { movidaAMano = false; posicionar(); });
+
+  // Clic fuera de la ventana (y fuera de los tramos del diagrama): se cierra.
+  document.addEventListener('pointerdown', (evento) => {
+    if (!abierto || panel.contains(evento.target) || evento.target.closest?.('#memoria-arbol g.arbol-tramo')) return;
+    cerrar();
+  });
 
   /* ---------------------------------------------------------------- diagrama */
 
@@ -186,8 +237,8 @@ export function initEditorRed({ svg, tbody, botonAgregar }) {
       svg.querySelectorAll('.origen, .destino, .destino-invalido').forEach((el) => el.classList.remove('origen', 'destino', 'destino-invalido'));
       etiquetaArrastre.hidden = true;
       if (valor !== null) {
-        seleccionadoId = id;
         escribirEnFila(filaDe(id).querySelector('.mem-padre'), valor);
+        elegir(id, { abrir: abierto });
       }
       // El 'click' que sigue a soltar no debe elegir otro tramo.
       setTimeout(() => { arrastre = null; }, 0);
@@ -235,10 +286,10 @@ export function initEditorRed({ svg, tbody, botonAgregar }) {
     if (nombre) { nombre.focus({ preventScroll: true }); nombre.select(); }
   }
 
-  // Elegir un tramo al entrar a su fila de la tabla.
+  // Entrar a una fila de la tabla marca su tramo en el diagrama, sin abrir la ventana.
   tbody.addEventListener('focusin', (evento) => {
     const fila = evento.target.closest('tr[data-id]');
-    if (fila && fila.dataset.id !== seleccionadoId) elegir(fila.dataset.id);
+    if (fila && fila.dataset.id !== seleccionadoId) elegir(fila.dataset.id, { abrir: false });
   });
   // Lo escrito directo en la tabla también pasa al panel.
   tbody.addEventListener('input', () => programarSync());
@@ -253,42 +304,30 @@ export function initEditorRed({ svg, tbody, botonAgregar }) {
   function sincronizar(forzar) {
     const fila = filaDe(seleccionadoId);
     if (!fila) {
-      if (seleccionadoId && !tbody.querySelector('tr[data-id]')) seleccionadoId = null;
-      if (seleccionadoId) seleccionadoId = null;
-      filaPanel = null;
-      panelVacio();
+      seleccionadoId = null;
+      cerrar();
       decorarDiagrama();
       return;
     }
     tbody.querySelectorAll('tr.fila-seleccionada').forEach((tr) => { if (tr !== fila) tr.classList.remove('fila-seleccionada'); });
     fila.classList.add('fila-seleccionada');
+    panel.hidden = !abierto;
+    if (!abierto) return;
     if (forzar || fila !== filaPanel) armarPanel(fila);
     else actualizarPanel(fila);
   }
 
   /* ---------------------------------------------------------------- panel */
 
-  function panelVacio() {
-    const hayTramos = Boolean(tbody.querySelector('tr[data-id]'));
-    panel.classList.add('vacio');
-    panel.innerHTML = `<p class="editor-vacio-texto">${hayTramos ? 'Elige un tramo en el diagrama' : 'La red no tiene tramos'}</p>` +
-      '<button type="button" class="btn editor-agregar-suelto">+ Agregar tramo</button>';
-    panel.querySelector('.editor-agregar-suelto').addEventListener('click', () => {
-      const scroll = window.scrollY;
-      botonAgregar?.click();
-      const nueva = tbody.querySelector('tr[data-id]:last-child');
-      if (nueva) elegir(nueva.dataset.id);
-      window.scrollTo({ top: scroll });
-      panel.querySelector('.editor-nombre input')?.focus({ preventScroll: true });
-    });
-  }
-
   // Clave de cada control: "<celda>:<n° de control en la celda>". Igual en la fila y en el panel.
   function armarPanel(fila) {
     const claveFoco = document.activeElement && panel.contains(document.activeElement) ? document.activeElement.dataset.clave : null;
     filaPanel = fila;
-    panel.classList.remove('vacio');
-    panel.innerHTML = '';
+    panel.innerHTML = '<div class="editor-barra" title="Arrastra para mover la ventana">' +
+      '<span class="editor-barra-titulo">Editar tramo</span>' +
+      '<button type="button" class="editor-cerrar" aria-label="Cerrar">✕</button></div>';
+    const cuerpo = document.createElement('div');
+    cuerpo.className = 'editor-cuerpo';
 
     const celdas = [...fila.cells];
     const campos = document.createElement('div');
@@ -330,11 +369,10 @@ export function initEditorRed({ svg, tbody, botonAgregar }) {
       });
 
       if (originales[0].classList.contains('mem-nombre')) {
-        cabecera = document.createElement('div');
-        cabecera.className = 'editor-cabecera';
-        cabecera.innerHTML = '<label class="editor-nombre"><span class="editor-etiqueta">Tramo</span></label>' +
-          '<button type="button" class="editor-cerrar" aria-label="Cerrar el editor">✕</button>';
-        cabecera.querySelector('.editor-nombre').append(...copia.childNodes);
+        cabecera = document.createElement('label');
+        cabecera.className = 'editor-nombre';
+        cabecera.innerHTML = '<span class="editor-etiqueta">Nombre del tramo</span>';
+        cabecera.append(...copia.childNodes);
         return;
       }
       if (originales.length === 1 && originales[0].type === 'checkbox') {
@@ -357,20 +395,21 @@ export function initEditorRed({ svg, tbody, botonAgregar }) {
       campos.append(campo);
     });
 
-    if (cabecera) panel.append(cabecera);
+    if (cabecera) cuerpo.append(cabecera);
     if (interruptor) campos.append(interruptor);
-    panel.append(campos);
+    cuerpo.append(campos);
     if (tiles.childElementCount) {
       const titulo = document.createElement('div');
       titulo.className = 'editor-subtitulo';
       titulo.textContent = 'Resultado del tramo';
-      panel.append(titulo, tiles);
+      cuerpo.append(titulo, tiles);
     }
     const acciones = document.createElement('div');
     acciones.className = 'editor-acciones';
     acciones.innerHTML = '<button type="button" class="btn editor-seguir">+ Tramo a continuación</button>' +
       '<button type="button" class="btn editor-eliminar">Eliminar</button>';
-    panel.append(acciones);
+    cuerpo.append(acciones);
+    panel.append(cuerpo);
 
     window.QuempinNumeros && controlesDe(panel).forEach((c) => window.QuempinNumeros.preparar(c));
     actualizarPanel(fila, true);
@@ -424,25 +463,40 @@ export function initEditorRed({ svg, tbody, botonAgregar }) {
 
   panel.addEventListener('click', (evento) => {
     if (evento.target.closest('.editor-cerrar')) {
-      const id = seleccionadoId;
-      elegir(null);
-      svg.querySelector(`g.arbol-tramo[data-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+      cerrar({ devolverFoco: true });
     } else if (evento.target.closest('.editor-seguir')) {
       agregarTramo(seleccionadoId);
     } else if (evento.target.closest('.editor-eliminar')) {
-      // Tras eliminar, el panel pasa al tramo de origen (o al primero), no queda vacío.
+      // Tras eliminar, la ventana se cierra y queda marcado el tramo de origen.
       const origen = filaPanel?.querySelector('.mem-padre')?.value;
       filaPanel?.querySelector('.mem-eliminar')?.click();
-      elegir(filaDe(origen) ? origen : tbody.querySelector('tr[data-id]')?.dataset.id ?? null);
+      cerrar();
+      elegir(filaDe(origen) ? origen : null, { abrir: false });
     }
   });
 
   panel.addEventListener('keydown', (evento) => {
-    if (evento.key !== 'Escape' || !seleccionadoId) return;
-    const id = seleccionadoId;
-    svg.querySelector(`g.arbol-tramo[data-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+    if (evento.key !== 'Escape' || !abierto) return;
+    evento.preventDefault();
+    cerrar({ devolverFoco: true });
   });
 
-  // Al abrir, el primer tramo queda elegido: el panel se ve desde el inicio.
-  elegir(tbody.querySelector('tr[data-id]')?.dataset.id ?? null);
+  // Mover la ventana arrastrando su barra (escritorio).
+  panel.addEventListener('pointerdown', (evento) => {
+    const barra = evento.target.closest('.editor-barra');
+    if (!barra || evento.target.closest('button') || ESTRECHO.matches || evento.button !== 0) return;
+    evento.preventDefault();
+    const x0 = evento.clientX - panel.offsetLeft, y0 = evento.clientY - panel.offsetTop;
+    barra.setPointerCapture(evento.pointerId);
+    const mover = (e) => {
+      movidaAMano = true;
+      panel.style.left = `${e.clientX - x0}px`;
+      panel.style.top = `${e.clientY - y0}px`;
+    };
+    const soltar = () => { barra.removeEventListener('pointermove', mover); barra.removeEventListener('pointerup', soltar); };
+    barra.addEventListener('pointermove', mover);
+    barra.addEventListener('pointerup', soltar);
+  });
+
+  elegir(null, { abrir: false });
 }
