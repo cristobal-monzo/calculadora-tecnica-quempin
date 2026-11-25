@@ -30,6 +30,9 @@ lectura y **un** gas personalizado editable (se guarda en `localStorage`).
 | Almacenamiento | `js/calc-almacenamiento.js` | Masa y autonomía, en modo **licuado** o **comprimido** |
 | Memoria de Cálculo | `js/calc-memoria.js` (sobre `calc-flujo.js`) | Red ramificada de tramos + informe A4 imprimible (ver sección propia) |
 
+Resultados (2026-11-25, maqueta «A», igual que Hidrógeno): franja de veredicto en Tubería y Flujo (espesor, fase, erosión,
+caída de presión), KPI arriba y el detalle en filas en dos columnas (`bloques()`). Reglas en `../CLAUDE.md` § Patrón de UI.
+
 El gas activo se elige en la barra de pestañas (`#gas-activo`) y afecta a
 las cuatro — mismo criterio que el selector GLP/GN de `GasNatural-GLP`, pero
 como `<select>` (la lista crece) en vez de control segmentado.

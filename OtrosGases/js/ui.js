@@ -241,6 +241,54 @@ function grupo(titulo, tiles, clase = '') {
   return `<div class="grupo-resultados${clase ? ` ${clase}` : ''}">${subtitulo}${tiles.filter(Boolean).join('')}</div>`;
 }
 
+// Contenedor del detalle en tarjetas, en dos columnas (2026-11-25, maqueta
+// «A»). Cada grupo puede llevar 'bloque-principal' (columna izquierda) o
+// 'bloque-ancho' (todo el ancho) — ver css/styles.css.
+function bloques(grupos) {
+  return `<div class="bloques-resultados">${grupos.filter(Boolean).join('')}</div>`;
+}
+
+/* === Veredicto de resultados — INICIO ===
+   Mismo código en Hidrogeno, GasNatural-GLP y OtrosGases (sus estilos,
+   en el bloque «Resultados compactos con veredicto» de css/styles.css).
+   Franja de veredicto (2026-11-25, maqueta «A» elegida por el usuario):
+   dice de un vistazo si el cálculo cumple y por qué. `chequeos` = lista de
+   { estado: 'ok' | 'alerta' | 'critico', texto, nota?, descarta? }. «No
+   cumple» solo si un chequeo crítico `descarta` el diseño (una tubería que
+   no resiste, un fluido que condensa); los demás avisos piden «Revisar»,
+   porque exigen verificar, no descartan. `info` = texto del ⓘ. */
+let infoVeredictoAbierta = false;
+function veredicto(chequeos, info) {
+  const peor = ['critico', 'alerta'].find((e) => chequeos.some((ch) => ch.estado === e)) ?? 'ok';
+  const titulo = chequeos.some((ch) => ch.estado === 'critico' && ch.descarta) ? 'No cumple'
+    : peor === 'ok' ? 'Cumple' : 'Revisar';
+  const chips = chequeos.map((ch) => `<li class="veredicto-chip ${ch.estado}"${ch.nota ? ` title="${escapeAttr(ch.nota)}"` : ''}>${ch.texto}</li>`).join('');
+  return `<div class="veredicto ${peor}">
+    <div class="veredicto-titulo">${titulo} <span class="info-norma" tabindex="0" role="img" aria-label="Qué se revisa" title="${escapeAttr(info)}">ⓘ</span></div>
+    <ul class="veredicto-chips">${chips}</ul>
+    <div class="resultados-nota info-norma-texto"${infoVeredictoAbierta ? '' : ' hidden'}>${escapeHtml(info)}</div>
+  </div>`;
+}
+
+// ⓘ del veredicto: en el teléfono no hay hover, así que al tocarlo muestra
+// u oculta su texto. Delegado en el documento porque el veredicto se
+// redibuja en cada tecla; se recuerda si quedó abierto.
+function initInfoVeredicto() {
+  const alternar = (evento) => {
+    const icono = evento.target.closest?.('.veredicto .info-norma');
+    if (!icono) return;
+    if (evento.type === 'keydown') {
+      if (evento.key !== 'Enter' && evento.key !== ' ') return;
+      evento.preventDefault();
+    }
+    infoVeredictoAbierta = !infoVeredictoAbierta;
+    document.querySelectorAll('.veredicto .info-norma-texto').forEach((nota) => { nota.hidden = !infoVeredictoAbierta; });
+  };
+  document.addEventListener('click', alternar);
+  document.addEventListener('keydown', alternar);
+}
+/* === Veredicto de resultados — FIN === */
+
 // <select> de unidad de presión junto a su <input>: al cambiar la unidad
 // convierte el número mostrado para conservar la presión física.
 function initSelectorUnidadCampo(inputId, selectId) {
@@ -513,6 +561,7 @@ function renderResultadosGas() {
         ? tile('No condensa a 20 °C', `Su temperatura crítica es ${formatearNumero(tcC)} °C: sobre ella no existe líquido a ninguna presión`, 'kpi')
         : tilePresion(psat20 / 1e5, 'bar', 'Presión de vapor a 20 °C (abs) — sobre ella el gas condensa', 'psat-20', unidadesTilesGas, 'kpi'),
     ], 'kpis'),
+    '<div class="bloques-resultados">',
     grupo('Propiedades derivadas', [
       tile(formatearSignificativo(relativa), `Densidad relativa al aire — ${relativa > 1 ? 'más pesado: se acumula en zonas bajas' : 'más liviano que el aire'}`, 'secundario'),
       tile(formatearZ(normal.z), 'Factor Z a condiciones normales', 'secundario'),
@@ -523,8 +572,9 @@ function renderResultadosGas() {
     ]),
     grupoCurvaVapor(gas),
     gas.notas?.length
-      ? grupo('Seguridad y operación', [`<ul class="lista-resultados">${gas.notas.map((n) => `<li>${escapeHtml(n)}</li>`).join('')}</ul>`])
+      ? grupo('Seguridad y operación', [`<ul class="lista-resultados">${gas.notas.map((n) => `<li>${escapeHtml(n)}</li>`).join('')}</ul>`], 'bloque-ancho')
       : '',
+    '</div>',
   ].join('');
 }
 
@@ -714,46 +764,90 @@ const ESTADOS_SONICO = {
   },
 };
 
-function tilesChequeoSonico(c, gas) {
-  const { etiqueta, variante, nota } = ESTADOS_SONICO[c.estado];
+// Filas del screening dentro de «Caudal y velocidad» (2026-11-25, maqueta
+// «A», igual que Hidrógeno): el estado lo dice la franja de veredicto; la
+// nota solo aparece si el estado no es OK.
+function filasChequeoSonico(c, gas) {
+  const { variante, nota } = ESTADOS_SONICO[c.estado];
   const valor = (v, sufijo = '') => (v === null ? '—' : `${formatearNumero(v)}${sufijo}`);
-  return grupo(`Caída de presión / flujo sónico — ${escapeHtml(nombreCorto(gas))} (screening simplificado, no reemplaza API RP 14E)`, [
-    tile(etiqueta, 'Estado', `${variante} ancho`),
-    tile(valor(c.caidaPresionPorcentaje, ' %'), 'ΔP/P₁ (sobre presión absoluta)'),
-    tile(c.relacionPresion === null ? '—' : formatearRatio(c.relacionPresion), 'P₂/P₁'),
-    tile(formatearRatio(c.relacionPresionCritica), `Límite crítico aprox. P₂/P₁ (γ = ${formatearNumero(gas.gamma)})`, 'secundario'),
-    `<div class="resultados-nota">${nota(gas)}</div>`,
-  ]);
+  return [
+    tile(valor(c.caidaPresionPorcentaje, ' %'), 'Caída de presión ΔP/P₁ (límite 10 %)', c.estado === 'ok' ? '' : variante),
+    tile(`${c.relacionPresion === null ? '—' : formatearRatio(c.relacionPresion)} · ${formatearRatio(c.relacionPresionCritica)}`, `P₂/P₁ · límite crítico (γ = ${formatearNumero(gas.gamma)})`, 'secundario'),
+    ...(c.estado === 'ok' ? [] : [`<div class="resultados-nota">${nota(gas)}</div>`]),
+  ];
+}
+
+// Chip de la fase para la franja de veredicto. El detalle (temperatura de
+// condensación, presión de vapor, nota) sigue en el grupo «Fase del fluido».
+const CHIP_FASE = {
+  liquido: { estado: 'critico', texto: 'Líquido: los cálculos de gas no aplican', descarta: true },
+  'cerca-condensacion': { estado: 'alerta', texto: 'Gas cerca de condensar' },
+  supercritico: { estado: 'alerta', texto: 'Fluido supercrítico' },
+};
+function chipFase(fase) {
+  return CHIP_FASE[fase.estado] ?? { estado: 'ok', texto: 'Gas: sin riesgo de condensar' };
+}
+
+const INFO_VEREDICTO_FLUJO = 'Chequeos de la tubería:\n• Espesor: la presión máx. de diseño (Barlow) supera la de operación.\n• Fase: el fluido sigue siendo gas a esta presión y temperatura.\n• Erosión (API RP 14E, C = 100): aviso si la velocidad pasa el 80 % de la erosional.\n• Caída de presión / flujo sónico: screening simplificado de gas ideal; no reemplaza API RP 14E ni los datos del fabricante de válvulas y reguladores.';
+
+function chipTuberia(r) {
+  return r.tuberiaAdecuada
+    ? { estado: 'ok', texto: 'Tubería adecuada' }
+    : { estado: 'critico', texto: 'Tubería no adecuada: usar mayor espesor o menor diámetro', descarta: true };
 }
 
 function renderResultadosFlujo(r, entradas) {
   const { gas } = entradas;
   const nombre = escapeHtml(nombreCorto(gas));
   const varianteAdecuada = r.tuberiaAdecuada ? 'ok' : 'alerta';
-  const kpis = grupo(null, [
-    tilePresion(r.presionMaxDisenoBar, 'bar', 'Presión máxima de diseño (Barlow, manométrica)', 'presion-max-diseno', unidadesTilesPresionFlujo, `kpi ${varianteAdecuada}`),
-    tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar tubería de mayor espesor o menor diámetro', 'Tubería adecuada (operación ≤ máxima de diseño)', `kpi ${varianteAdecuada}`),
-  ], 'kpis');
+  const presionMax = tilePresion(r.presionMaxDisenoBar, 'bar', 'Presión máxima de diseño (Barlow, manométrica)', 'presion-max-diseno', unidadesTilesPresionFlujo, `kpi ${varianteAdecuada}`);
   const fase = grupoFase(r.fase, gas, entradas.temperaturaC, unidadesTilesPresionFlujo);
   const contenedor = document.getElementById('resultados-flujo');
 
+  // Con líquido en la línea los cálculos de gas no aplican: veredicto con
+  // espesor y fase, la presión de diseño y el detalle de la fase.
   if (!r.aplica) {
-    contenedor.innerHTML = [fase, kpis].join('');
+    contenedor.innerHTML = [
+      veredicto([chipTuberia(r), chipFase(r.fase)], INFO_VEREDICTO_FLUJO),
+      grupo(null, [presionMax], 'kpis'),
+      bloques([fase.replace('grupo-resultados', 'grupo-resultados bloque-ancho')]),
+    ].join('');
     return;
   }
   const cercaDeErosion = r.velocidadFlujoMS >= r.velocidadErosionalMS * 0.8;
+  const c = r.chequeoSonico;
+  const sonico = ESTADOS_SONICO[c.estado];
+  const caida = c.caidaPresionPorcentaje === null ? '' : `: ΔP ${formatearNumero(c.caidaPresionPorcentaje)} %`;
   contenedor.innerHTML = [
-    kpis,
+    veredicto([
+      chipTuberia(r),
+      chipFase(r.fase),
+      {
+        estado: cercaDeErosion ? 'alerta' : 'ok',
+        texto: `${r.velocidadFlujoMS > r.velocidadErosionalMS ? 'Supera la velocidad erosional'
+          : cercaDeErosion ? 'Cerca de la erosión' : 'Lejos de la erosión'}: ${formatearNumero(r.velocidadFlujoMS)} de ${formatearNumero(r.velocidadErosionalMS)} m/s`,
+      },
+      {
+        estado: sonico.variante,
+        texto: c.estado === 'ok' ? `Baja caída de presión${caida}`
+          : c.estado === 'no-aplica' ? 'Caída de presión: no aplica' : `${sonico.etiqueta}${caida}`,
+        nota: sonico.nota(gas),
+      },
+    ], INFO_VEREDICTO_FLUJO),
+    grupo(null, [
+      presionMax,
+      tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo', `kpi${cercaDeErosion ? ' alerta' : ''}`),
+      tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdida de carga (Darcy-Weisbach)', 'perdida-carga', unidadesTilesPresionFlujo, 'kpi'),
+    ], 'kpis'),
+    '<div class="bloques-resultados">',
     grupo('Caudal y velocidad', [
       tile(`${formatearNumero(r.flujoMasicoKgH)} kg/h`, `Flujo másico de ${nombre}`),
       tile(`${formatearNumero(r.caudalNormalNm3H)} Nm³/h`, 'Caudal normal (0 °C, 1 atm)'),
       tile(`${formatearNumero(r.caudalRealM3H)} m³/h`, 'Caudal real (a presión y temperatura de operación)'),
       tile(`${formatearNumero(r.velocidadErosionalMS)} m/s`, 'Velocidad erosional (API RP 14E, C = 100)'),
-      tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, cercaDeErosion ? 'Velocidad de flujo — sobre el 80 % de la erosional' : 'Velocidad de flujo', cercaDeErosion),
-      tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdida de carga (Darcy-Weisbach)', 'perdida-carga', unidadesTilesPresionFlujo),
-    ]),
+      ...filasChequeoSonico(c, gas),
+    ], 'bloque-principal'),
     fase,
-    tilesChequeoSonico(r.chequeoSonico, gas),
     grupo('Factores de verificación', [
       tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad real (Peng-Robinson)', 'secundario'),
       tile(formatearZ(r.z), 'Factor de compresibilidad Z', 'secundario'),
@@ -761,6 +855,7 @@ function renderResultadosFlujo(r, entradas) {
       tile(formatearNumero(r.reynolds), 'Número de Reynolds', 'secundario'),
       tile(formatearNumero(r.factorFriccion), 'Factor de fricción (Haaland)', 'secundario'),
     ]),
+    '</div>',
   ].join('');
 }
 
@@ -884,7 +979,7 @@ function renderResultadosAlmacenamiento(r, entradas) {
         tile(`${formatearNumero(r.masaKg)} kg`, `Masa de ${nombre} (capacidad × grado de llenado)`, 'kpi'),
         tileAutonomia(r.autonomiaHoras),
       ], 'kpis'),
-      grupo('Detalle del cálculo', [
+      bloques([grupo('Detalle del cálculo', [
         r.supercritico
           ? tile('Sobre la temperatura crítica', `A más de ${formatearNumero(tcC)} °C no hay líquido ni presión de vapor: la presión depende del llenado y sube rápido con la temperatura (no se estima aquí)`, 'alerta ancho')
           : tilePresion(r.presionVaporManBar, 'bar', `Presión en el recipiente = presión de vapor a ${formatearNumero(entradas.temperaturaC)} °C (manométrica)`, 'alm-psat', unidadesTilesAlm),
@@ -892,17 +987,17 @@ function renderResultadosAlmacenamiento(r, entradas) {
         tile(`${formatearSignificativo(entradas.gradoLlenadoKgL)} kg/L`, 'Grado de llenado usado', 'secundario'),
         ...consumo,
         '<div class="resultados-nota">Mientras quede líquido la presión se mantiene en la de vapor: el manómetro no indica cuánto queda (hay que pesar el recipiente). Al extraer gas, la evaporación enfría el líquido y baja la presión — con consumos altos puede limitar el caudal entregable, como en el GLP.</div>',
-      ]),
+      ], 'bloque-ancho')]),
     ].join('');
     return;
   }
 
   const fase = grupoFase(r.fase, gas, entradas.temperaturaC, unidadesTilesAlm);
   if (!r.aplica) {
-    contenedor.innerHTML = [
+    contenedor.innerHTML = bloques([
       fase,
       grupo(null, ['<div class="resultados-nota">Con líquido en el recipiente, PV = ZnRT no da la masa: usar <strong>Gas licuado</strong> arriba.</div>']),
-    ].join('');
+    ]);
     return;
   }
   contenedor.innerHTML = [
@@ -910,12 +1005,14 @@ function renderResultadosAlmacenamiento(r, entradas) {
       tile(`${formatearNumero(r.masaKg)} kg`, `Masa de ${nombre} almacenada (PV = ZnRT)`, 'kpi'),
       tileAutonomia(r.autonomiaHoras),
     ], 'kpis'),
-    fase,
-    grupo('Detalle del cálculo', [
-      tile(formatearZ(r.z), 'Factor de compresibilidad Z (Peng-Robinson)', 'secundario'),
-      tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad en el recipiente', 'secundario'),
-      tile(`${formatearNumero(r.volumenNormalNm3)} Nm³`, 'Gas equivalente (0 °C, 1 atm)', 'secundario'),
-      ...consumo,
+    bloques([
+      fase,
+      grupo('Detalle del cálculo', [
+        tile(formatearZ(r.z), 'Factor de compresibilidad Z (Peng-Robinson)', 'secundario'),
+        tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad en el recipiente', 'secundario'),
+        tile(`${formatearNumero(r.volumenNormalNm3)} Nm³`, 'Gas equivalente (0 °C, 1 atm)', 'secundario'),
+        ...consumo,
+      ]),
     ]),
   ].join('');
 }
@@ -2055,3 +2152,4 @@ initEditorRed({
 notificarCambioGas({ seleccion: true });
 initSelectorGas({ actualId: 'otros-gases', profundidad: 1 });
 initResumenMovil();
+initInfoVeredicto();

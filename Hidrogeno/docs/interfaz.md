@@ -525,3 +525,13 @@ La columna de resultados medía ~1 800 px contra ~860 del formulario; ahora ~1 0
 - **Acomodo** con consulta de contenedor (`.calc-resultados` con `container-type`): desde 560 px de resultados, Tubería a la
   izquierda, Estanque + Consumo a la derecha y la prueba a todo el ancho en dos columnas; bajo eso, una columna.
 - Solo en `Hidrogeno/`: GN-GLP y Otros gases tienen otros resultados. Revisado a 1 440, 375 y 320 px y en tema oscuro.
+- **Mismo diseño en GN-GLP y Otros gases** (mismo día, a pedido del usuario). `veredicto(chequeos, info)` e
+  `initInfoVeredicto()` pasan a ser genéricos (bloque `=== Veredicto de resultados ===` de `ui.js`, idéntico en los tres) y el
+  acomodo es genérico: `bloque-principal` (columna izquierda, dos filas) y `bloque-ancho` (todo el ancho, filas en dos columnas),
+  con `grid-auto-flow: dense`. Un chequeo crítico con `descarta: true` da «No cumple». Franjas:
+  - GN-GLP Tubería: pérdida bajo la admisible (descarta), condensación del GLP (descarta), factor K extrapolado (aviso). KPI:
+    pérdida requerida, pérdida admisible y velocidad.
+  - GN-GLP Quemador: si el inyector calza con la potencia del quemador (±10 %).
+  - Otros gases Tubería: espesor (descarta), fase (líquido descarta), erosión y caída de presión. KPI: presión de diseño,
+    velocidad y pérdida de carga.
+  - Sin franja (no hay chequeos de cumplimiento): GN-GLP Combustión, Otros gases Propiedades y Almacenamiento.

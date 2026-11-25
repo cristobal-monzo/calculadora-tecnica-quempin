@@ -263,14 +263,20 @@ input[aria-invalid="true"] {
 .resultado-tile.secundario .valor { font-size: 15px; font-weight: 700; }
 .resultado-tile.secundario .etiqueta { font-size: 11.5px; }
 
-/* --- Resultados de «Tubería y estanque» (2026-11-25, maqueta «A»
-   elegida por el usuario: «los resultados no ocupan bien el espacio»).
-   Franja de veredicto + 3 KPI + bloques en dos columnas. Dentro de un
-   bloque, los mismos .resultado-tile de siempre se ven como filas
-   «etiqueta … valor»: así siguen intactos los selectores de unidad
-   (tilePresion, tileConUnidad) y el resumen del teléfono, que lee solo el
-   grupo kpis. La columna de resultados pasó de ~1800 a ~900 px de alto.
-   Solo en Hidrogeno/. --- */
+/* === Resultados compactos con veredicto — INICIO ===
+   2026-11-25, maqueta «A» elegida por el usuario («los resultados no ocupan
+   bien el espacio»). Bloque IDÉNTICO en Hidrogeno, GasNatural-GLP y
+   OtrosGases: al tocarlo en uno, cópialo a los otros dos.
+   - .veredicto: franja Cumple / Revisar / No cumple con un chip por
+     chequeo (veredicto() en ui.js). El estado se lee por el símbolo
+     ✓ ! ✕ además del color.
+   - .bloques-resultados: el detalle en tarjetas. Dentro, los mismos
+     .resultado-tile de siempre se ven como filas «etiqueta … valor»: los
+     selectores de unidad (tilePresion, tileConUnidad) siguen iguales, y el
+     resumen del teléfono lee solo el grupo kpis, que queda fuera.
+   - Desde 560 px de resultados, dos columnas: .bloque-principal ocupa la
+     izquierda (dos filas), los demás llenan la derecha y .bloque-ancho va
+     a todo el ancho con sus filas en dos columnas. Bajo 560 px, una. --- */
 .veredicto {
   --color-estado: var(--estado-ok); --texto-estado: var(--estado-ok); --tinte-estado: var(--estado-ok-tinte);
   display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px;
@@ -291,42 +297,27 @@ input[aria-invalid="true"] {
   background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 999px; padding: 4px 10px;
 }
 .veredicto-chip[title] { cursor: help; }
-/* El estado se lee por el símbolo además del color. */
 .veredicto-chip::before { font-weight: 900; }
 .veredicto-chip.ok::before { content: '✓'; color: var(--estado-ok); }
 .veredicto-chip.alerta { border-color: var(--brand-orange); }
 .veredicto-chip.alerta::before { content: '!'; color: var(--estado-alerta); }
 .veredicto-chip.critico { border-color: var(--estado-critico); }
 .veredicto-chip.critico::before { content: '✕'; color: var(--estado-critico); }
+.veredicto .info-norma-texto { flex-basis: 100%; margin: 0; white-space: pre-line; }
 
-/* Una columna en angosto; desde 560 px de resultados (escritorio), Tubería
-   a la izquierda, Estanque y Consumo apilados a la derecha y la prueba a
-   todo el ancho en dos columnas: así ningún bloque deja un hueco al lado. */
-.calc-resultados:has(> #resultados-flujo) { container-type: inline-size; }
+.calc-resultados { container-type: inline-size; }
+/* Hasta 3 KPI en una fila (antes 2 + 1 con 220 px por tarjeta). */
+.resultados > .grupo-resultados.kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 .bloques-resultados {
   display: grid; grid-template-columns: minmax(0, 1fr);
   gap: 22px 20px; align-items: start;
-}
-@container (min-width: 560px) {
-  .bloques-resultados {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas: "tuberia estanque" "tuberia consumo" "prueba prueba";
-  }
-  .bloques-resultados .bloque-1 { grid-area: tuberia; }
-  .bloques-resultados .bloque-2 { grid-area: estanque; }
-  .bloques-resultados .bloque-3 { grid-area: consumo; }
-  .bloques-resultados .bloque-prueba { grid-area: prueba; }
-  .bloques-resultados .bloque-prueba .grupo-resultados {
-    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px;
-  }
-  .bloques-resultados .bloque-prueba .resultado-tile + .resultado-tile { border-top: 0; }
-  .bloques-resultados .bloque-prueba .resultado-tile:nth-child(n+3) { border-top: 1px solid var(--border-hairline); }
 }
 .bloques-resultados .bloque-resultados { gap: 8px; padding-top: 0; border-top: 0; }
 .bloques-resultados .grupo-resultados {
   display: block; background: var(--surface-card);
   border: 1px solid var(--gridline); border-radius: 10px; padding: 2px 14px;
 }
+.bloques-resultados .resultados-subtitulo { border-top: 0; padding: 10px 0 2px; }
 .bloques-resultados .resultado-tile {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   background: none; border: 0; border-radius: 0; box-shadow: none; padding: 8px 0;
@@ -337,6 +328,8 @@ input[aria-invalid="true"] {
   flex: 0 0 auto; justify-content: flex-end; gap: 4px; flex-wrap: nowrap;
   font-size: 15px; font-weight: 900; white-space: nowrap; overflow-wrap: normal; text-align: right;
 }
+/* Un valor que es una frase («Gas — cerca de condensar») sí se corta. */
+.bloques-resultados .resultado-tile.ancho .valor { flex: 0 1 auto; white-space: normal; max-width: 60%; }
 .bloques-resultados .resultado-tile.secundario .valor { font-size: 13.5px; font-weight: 700; color: var(--text-secondary); }
 .bloques-resultados .resultado-tile.secundario .etiqueta { font-size: 12px; }
 .bloques-resultados .select-unidad-inline { font-size: 11.5px; }
@@ -349,6 +342,26 @@ input[aria-invalid="true"] {
   margin: 0 -14px; padding-left: 14px; padding-right: 14px;
 }
 .bloques-resultados .resultados-nota { margin: 0 0 10px; }
+.bloques-resultados .lista-resultados { margin: 4px 0 10px; }
+.bloques-resultados .tabla-psat { border: 0; border-radius: 0; margin: 2px 0 8px; }
+@container (min-width: 560px) {
+  .bloques-resultados { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-flow: row dense; }
+  .bloques-resultados > .bloque-principal { grid-column: 1; grid-row: span 2; }
+  .bloques-resultados > .bloque-ancho { grid-column: 1 / -1; }
+  /* Filas en dos columnas: cada fila lleva su línea arriba y la primera
+     de cada columna queda oculta bajo el borde (margin −1 px + overflow). */
+  .bloque-ancho .grupo-resultados, .grupo-resultados.bloque-ancho {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px;
+    padding-top: 0; overflow: hidden;
+  }
+  .bloque-ancho .resultado-tile, .grupo-resultados.bloque-ancho .resultado-tile {
+    border-top: 1px solid var(--border-hairline); margin-top: -1px;
+  }
+  .bloque-ancho .resultados-subtitulo, .grupo-resultados.bloque-ancho .resultados-subtitulo { grid-column: 1 / -1; }
+  .grupo-resultados.bloque-ancho .lista-resultados { columns: 2; column-gap: 28px; }
+  .grupo-resultados.bloque-ancho .lista-resultados li { break-inside: avoid; }
+}
+/* === Resultados compactos con veredicto — FIN === */
 .bloques-resultados .detalle-factores > summary { padding: 4px 0; }
 
 /* --- Subtítulo de un grupo de resultados (ej. "Factores de verificación"

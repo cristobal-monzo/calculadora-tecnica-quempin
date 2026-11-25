@@ -272,9 +272,52 @@ function numeroSeccion(clave) {
   const orden = combustible === 'GLP' ? ['tub', 'alm', 'com'] : ['tub', 'com'];
   return clave === 'prueba' ? '✓' : String(orden.indexOf(clave) + 1);
 }
-function bloqueResultados(clave, titulo, contenido) {
-  return `<section class="bloque-resultados"><h3 class="bloque-resultados-titulo"><span class="marca ${CLASE_MARCA[clave]}" aria-hidden="true">${numeroSeccion(clave)}</span>${titulo}</h3>${contenido.join('')}</section>`;
+// `clase` = 'bloque-principal' | 'bloque-ancho' (acomodo en dos columnas,
+// ver «Resultados compactos con veredicto» en css/styles.css).
+function bloqueResultados(clave, titulo, contenido, clase = '') {
+  return `<section class="bloque-resultados${clase ? ` ${clase}` : ''}"><h3 class="bloque-resultados-titulo"><span class="marca ${CLASE_MARCA[clave]}" aria-hidden="true">${numeroSeccion(clave)}</span>${titulo}</h3>${contenido.join('')}</section>`;
 }
+
+/* === Veredicto de resultados — INICIO ===
+   Mismo código en Hidrogeno, GasNatural-GLP y OtrosGases (sus estilos,
+   en el bloque «Resultados compactos con veredicto» de css/styles.css).
+   Franja de veredicto (2026-11-25, maqueta «A» elegida por el usuario):
+   dice de un vistazo si el cálculo cumple y por qué. `chequeos` = lista de
+   { estado: 'ok' | 'alerta' | 'critico', texto, nota?, descarta? }. «No
+   cumple» solo si un chequeo crítico `descarta` el diseño (una tubería que
+   no resiste, un fluido que condensa); los demás avisos piden «Revisar»,
+   porque exigen verificar, no descartan. `info` = texto del ⓘ. */
+let infoVeredictoAbierta = false;
+function veredicto(chequeos, info) {
+  const peor = ['critico', 'alerta'].find((e) => chequeos.some((ch) => ch.estado === e)) ?? 'ok';
+  const titulo = chequeos.some((ch) => ch.estado === 'critico' && ch.descarta) ? 'No cumple'
+    : peor === 'ok' ? 'Cumple' : 'Revisar';
+  const chips = chequeos.map((ch) => `<li class="veredicto-chip ${ch.estado}"${ch.nota ? ` title="${escapeAttr(ch.nota)}"` : ''}>${ch.texto}</li>`).join('');
+  return `<div class="veredicto ${peor}">
+    <div class="veredicto-titulo">${titulo} <span class="info-norma" tabindex="0" role="img" aria-label="Qué se revisa" title="${escapeAttr(info)}">ⓘ</span></div>
+    <ul class="veredicto-chips">${chips}</ul>
+    <div class="resultados-nota info-norma-texto"${infoVeredictoAbierta ? '' : ' hidden'}>${escapeHtml(info)}</div>
+  </div>`;
+}
+
+// ⓘ del veredicto: en el teléfono no hay hover, así que al tocarlo muestra
+// u oculta su texto. Delegado en el documento porque el veredicto se
+// redibuja en cada tecla; se recuerda si quedó abierto.
+function initInfoVeredicto() {
+  const alternar = (evento) => {
+    const icono = evento.target.closest?.('.veredicto .info-norma');
+    if (!icono) return;
+    if (evento.type === 'keydown') {
+      if (evento.key !== 'Enter' && evento.key !== ' ') return;
+      evento.preventDefault();
+    }
+    infoVeredictoAbierta = !infoVeredictoAbierta;
+    document.querySelectorAll('.veredicto .info-norma-texto').forEach((nota) => { nota.hidden = !infoVeredictoAbierta; });
+  };
+  document.addEventListener('click', alternar);
+  document.addEventListener('keydown', alternar);
+}
+/* === Veredicto de resultados — FIN === */
 
 // ⓘ de los títulos: en el teléfono no hay hover, así que al tocarlo muestra
 // u oculta su texto (el mismo del title) debajo del título. Igual que en
@@ -285,7 +328,11 @@ function initInfoNorma() {
     nota.className = 'resultados-nota info-norma-texto';
     nota.hidden = true;
     nota.textContent = icono.title;
-    icono.closest('h3').after(nota);
+    // El ⓘ del veredicto se redibuja en cada tecla: lo maneja
+    // initInfoVeredicto(), no este.
+    const titulo = icono.closest('h3');
+    if (!titulo) return;
+    titulo.after(nota);
     const alternar = () => { nota.hidden = !nota.hidden; };
     icono.addEventListener('click', alternar);
     icono.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } });
@@ -470,23 +517,30 @@ function renderResultadosRedGas(r, alm) {
   ]) : '';
 
   if (r instanceof Error) {
-    document.getElementById('resultados-red-gas').innerHTML = tile(escapeHtml(r.message), 'Error', 'alerta') + bloqueAlmacenamiento;
+    document.getElementById('resultados-red-gas').innerHTML = tile(escapeHtml(r.message), 'Error', 'alerta')
+      + `<div class="bloques-resultados">${bloqueAlmacenamiento}</div>`;
     return;
   }
 
   const variante = r.tuberiaAdecuada ? 'ok' : 'alerta';
   const mediaPresion = r.presionFinalPa !== null;
+  // La pérdida admisible y la velocidad subieron a los KPI (2026-11-25,
+  // maqueta «A»): «Tubería adecuada» pasó a la franja de veredicto.
   const detalle = [
     tile(`${formatearFijo(r.caudalRealM3H, 3)} m³/h`, 'Caudal real al final del tramo', 'secundario'),
-    tile(`${formatearFijo(r.velocidadMS, 2)} m/s`, 'Velocidad de flujo (D.S. 66 f.5, final del tramo)', 'secundario'),
-    tilePresion(r.perdidaAdmisiblePa, mediaPresion ? 'Pérdida admisible (10 % de P inicial abs.)' : 'Pérdida de presión admisible (D.S. 66)', 'perdida-admisible', 'secundario'),
   ];
   if (mediaPresion) {
     detalle.push(tilePresion(r.presionFinalPa, 'Presión final', 'presion-final', 'secundario'));
   }
   const kpis = [
-    tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar diámetro mayor', 'Tubería adecuada', `kpi ${variante}`),
     tilePresion(r.perdidaPresionTotalPa, r.desnivelM ? 'Pérdida de presión (fricción + altura)' : 'Pérdida de presión requerida', 'perdida-requerida', `kpi ${variante}`),
+    tilePresion(r.perdidaAdmisiblePa, mediaPresion ? 'Pérdida admisible (10 % de P inicial abs.)' : 'Pérdida de presión admisible (D.S. 66)', 'perdida-admisible', 'kpi'),
+    tile(`${formatearFijo(r.velocidadMS, 2)} m/s`, 'Velocidad de flujo (D.S. 66 f.5, final del tramo)', 'kpi'),
+  ];
+  const chequeos = [
+    r.tuberiaAdecuada
+      ? { estado: 'ok', texto: 'Tubería adecuada: pérdida bajo la admisible' }
+      : { estado: 'critico', texto: 'Tubería no adecuada: usar diámetro mayor', descarta: true },
   ];
   // Variación de presión por altura — D.S. 66 e.2 (2026-09-25). Solo se
   // muestra con desnivel: positiva = el gas gana presión al subir (GN),
@@ -506,21 +560,26 @@ function renderResultadosRedGas(r, alm) {
     tile(formatearFijo(r.z, 4), 'Factor Z (Peng-Robinson)', 'secundario'),
   ];
   if (r.kFueraDeTablaIX) {
+    chequeos.push({ estado: 'alerta', texto: 'Factor K extrapolado: diámetro fuera de la Tabla IX' });
     detalle.push('<div class="resultados-nota">El D.S. 66 (Tabla IX) da el factor K solo de 3/8" a 4": para este diámetro el K es extrapolado. Confirmar antes de usarlo en un diseño.</div>');
   }
   if (r.presionRocioAbsPa !== null) {
-    kpis.push(tile(r.riesgoCondensacion ? 'Sí — el GLP condensa en la línea' : 'No', 'Riesgo de condensación', `kpi ${r.riesgoCondensacion ? 'critico' : 'ok'}`));
+    chequeos.push(r.riesgoCondensacion
+      ? { estado: 'critico', texto: 'El GLP condensa en la línea', descarta: true }
+      : { estado: 'ok', texto: 'Sin riesgo de condensación' });
     propiedades.push(tilePresion(r.presionRocioAbsPa, 'Presión de rocío del GLP (absoluta)', 'presion-rocio', 'secundario'));
     if (r.riesgoCondensacion) {
       propiedades.push('<div class="resultados-nota">A esta temperatura la presión absoluta de la línea alcanza la de rocío de la mezcla: parte del GLP llega líquido y el cálculo de gas deja de aplicar. Bajar la presión de la línea, aumentar el propano de la mezcla o evaluar la temperatura mínima real del recorrido.</div>');
     }
   }
   document.getElementById('resultados-red-gas').innerHTML = [
+    veredicto(chequeos, 'Chequeos del D.S. 66:\n• Pérdida de presión: la requerida (fricción + altura) no supera la admisible.\n• Condensación (solo GLP): la presión absoluta de la línea no alcanza la de rocío de la mezcla.\n• Factor K: la Tabla IX lo da de 3/8" a 4"; fuera de ese rango es extrapolado.'),
     grupo(null, kpis, 'kpis'),
+    '<div class="bloques-resultados">',
     bloqueResultados('tub', 'Tubería', [
       grupo(null, detalle),
       grupo('Propiedades del gas', propiedades),
-    ]),
+    ], 'bloque-principal'),
     bloqueAlmacenamiento,
     bloqueResultados('com', 'Consumo (datos comunes)', [
       grupo(null, [
@@ -533,7 +592,8 @@ function renderResultadosRedGas(r, alm) {
         tile(`${formatearFijo(r.volumenTuberiaM3, 4)} m³`, 'Volumen de la tubería de este tramo'),
         `<div class="resultados-nota">${textoPruebaHermeticidad(r.pruebaHermeticidad)}.</div>`,
       ]),
-    ]),
+    ], 'bloque-ancho'),
+    '</div>',
   ].join('');
 }
 
@@ -733,11 +793,12 @@ function renderResultadosCombustion(r) {
     grupo(null, [
       tile(`${formatearFijo(r.caudalCombustibleNm3H, 3)} Nm³/h`, 'Caudal de combustible', 'kpi'),
       tile(`${formatearFijo(r.caudalAireNm3H, 2)} Nm³/h`, 'Caudal de aire', 'kpi'),
-    ], 'kpis'),
-    grupo('Gases de combustión y emisiones', [
       tile(`${formatearFijo(r.composicion.co2 * 100, 2)} %`, 'CO₂ en gases de combustión', 'kpi'),
-      tile(`${formatearFijo(r.emisionNoxAdmisiblePpm, 1)} ppm`, 'Emisión NOx admisible', 'kpi'),
-      tile(`${formatearLibre(r.emisionCoAdmisiblePpm)} ppm`, 'Emisión CO admisible (valor normativo fijo)', 'kpi'),
+    ], 'kpis'),
+    '<div class="bloques-resultados">',
+    grupo('Emisiones admisibles', [
+      tile(`${formatearFijo(r.emisionNoxAdmisiblePpm, 1)} ppm`, 'Emisión NOx admisible'),
+      tile(`${formatearLibre(r.emisionCoAdmisiblePpm)} ppm`, 'Emisión CO admisible (valor normativo fijo)'),
     ]),
     grupo('Factores de verificación', [
       tile(formatearFijo(r.pm, 3), 'Masa molar [kg/kmol]', 'secundario'),
@@ -749,6 +810,7 @@ function renderResultadosCombustion(r) {
       tile(`${formatearFijo(r.composicion.o2 * 100, 2)} %`, 'O₂ en gases de combustión', 'secundario'),
       tile(`${formatearFijo(r.composicion.n2 * 100, 2)} %`, 'N₂ en gases de combustión', 'secundario'),
     ]),
+    '</div>',
   ].join('');
 }
 
@@ -839,8 +901,21 @@ function renderResultadosQuemador(r) {
     const signo = r.desviacionPotenciaInyector > 0 ? '+' : '−';
     kpis.push(`<div class="resultados-nota">El inyector entrega ${signo}${formatearFijo(Math.abs(r.desviacionPotenciaInyector) * 100, 0)} % respecto de la potencia del quemador: revisar el diámetro del inyector, la presión de gas o la cantidad de inyectores. El resto del cálculo usa la potencia del quemador.</div>`);
   }
+  // Franja de veredicto (2026-11-25, maqueta «A»): el único chequeo de
+  // esta pestaña es si el inyector calza con la potencia del quemador.
+  let franja = '';
+  if (r.desviacionPotenciaInyector !== null) {
+    const signo = r.desviacionPotenciaInyector > 0 ? '+' : '−';
+    const desvio = `${signo}${formatearFijo(Math.abs(r.desviacionPotenciaInyector) * 100, 0)} %`;
+    franja = veredicto([inyectorDescalzado
+      ? { estado: 'alerta', texto: `El inyector entrega ${desvio} respecto del quemador` }
+      : { estado: 'ok', texto: `El inyector calza con el quemador (${desvio})` },
+    ], `Chequeo del inyector: la potencia que entrega (diámetro, presión de gas y cantidad de inyectores) no debe diferir más de ${formatearFijo(TOLERANCIA_POTENCIA_INYECTOR * 100, 0)} % de la potencia del quemador.`);
+  }
   document.getElementById('resultados-quemador').innerHTML = [
+    franja,
     grupo(null, kpis, 'kpis'),
+    '<div class="bloques-resultados">',
     grupo('Factores de verificación', [
       tile(`${formatearFijo(r.areaInyectorIn2, 6)} in²`, 'Área del inyector', 'secundario'),
       tile(`${formatearFijo(r.caudalInyectorM3H, 4)} m³/h`, 'Caudal por el inyector', 'secundario'),
@@ -848,7 +923,8 @@ function renderResultadosQuemador(r) {
       tile(formatearFijo(r.densidadPremezcla1, 4), 'Densidad de la premezcla 1ª [kg/Nm³]', 'secundario'),
       tile(`${formatearFijo(r.caudalPremezcla1Nm3S * 1000, 4)} NL/s`, 'Caudal de premezcla 1ª', 'secundario'),
       tile(formatearFijo(r.relacionAreaGargantaPerforaciones, 4), 'Relación área garganta/perforaciones', 'secundario'),
-    ]),
+    ], 'bloque-ancho'),
+    '</div>',
   ].join('');
 }
 
@@ -1997,6 +2073,7 @@ initValidacionNumerica();
 initSelectorCombustible();
 initRedGas();
 initInfoNorma();
+initInfoVeredicto();
 initCombustion();
 initQuemador();
 initMemoria();

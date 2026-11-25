@@ -462,20 +462,56 @@ function filasChequeoSonico(c) {
   ];
 }
 
-// Franja de veredicto (2026-11-25, maqueta «A» elegida por el usuario):
-// dice de un vistazo si la línea cumple y por qué, con los 3 chequeos de la
-// tubería. Cada chequeo lleva su símbolo (✓ ! ✕) además del color. «No
-// cumple» solo cuando la tubería no resiste la presión; un aviso de erosión
-// o del screening sónico pide «Revisar», porque exige verificar, no
-// descarta la línea.
+/* === Veredicto de resultados — INICIO ===
+   Mismo código en Hidrogeno, GasNatural-GLP y OtrosGases (sus estilos,
+   en el bloque «Resultados compactos con veredicto» de css/styles.css).
+   Franja de veredicto (2026-11-25, maqueta «A» elegida por el usuario):
+   dice de un vistazo si el cálculo cumple y por qué. `chequeos` = lista de
+   { estado: 'ok' | 'alerta' | 'critico', texto, nota?, descarta? }. «No
+   cumple» solo si un chequeo crítico `descarta` el diseño (una tubería que
+   no resiste, un fluido que condensa); los demás avisos piden «Revisar»,
+   porque exigen verificar, no descartan. `info` = texto del ⓘ. */
+let infoVeredictoAbierta = false;
+function veredicto(chequeos, info) {
+  const peor = ['critico', 'alerta'].find((e) => chequeos.some((ch) => ch.estado === e)) ?? 'ok';
+  const titulo = chequeos.some((ch) => ch.estado === 'critico' && ch.descarta) ? 'No cumple'
+    : peor === 'ok' ? 'Cumple' : 'Revisar';
+  const chips = chequeos.map((ch) => `<li class="veredicto-chip ${ch.estado}"${ch.nota ? ` title="${escapeAttr(ch.nota)}"` : ''}>${ch.texto}</li>`).join('');
+  return `<div class="veredicto ${peor}">
+    <div class="veredicto-titulo">${titulo} <span class="info-norma" tabindex="0" role="img" aria-label="Qué se revisa" title="${escapeAttr(info)}">ⓘ</span></div>
+    <ul class="veredicto-chips">${chips}</ul>
+    <div class="resultados-nota info-norma-texto"${infoVeredictoAbierta ? '' : ' hidden'}>${escapeHtml(info)}</div>
+  </div>`;
+}
+
+// ⓘ del veredicto: en el teléfono no hay hover, así que al tocarlo muestra
+// u oculta su texto. Delegado en el documento porque el veredicto se
+// redibuja en cada tecla; se recuerda si quedó abierto.
+function initInfoVeredicto() {
+  const alternar = (evento) => {
+    const icono = evento.target.closest?.('.veredicto .info-norma');
+    if (!icono) return;
+    if (evento.type === 'keydown') {
+      if (evento.key !== 'Enter' && evento.key !== ' ') return;
+      evento.preventDefault();
+    }
+    infoVeredictoAbierta = !infoVeredictoAbierta;
+    document.querySelectorAll('.veredicto .info-norma-texto').forEach((nota) => { nota.hidden = !infoVeredictoAbierta; });
+  };
+  document.addEventListener('click', alternar);
+  document.addEventListener('keydown', alternar);
+}
+/* === Veredicto de resultados — FIN === */
+
+// Los 3 chequeos de la tubería para la franja de veredicto (ver veredicto()).
 function veredictoInstalacion(r, cercaDeErosion) {
   const c = r.chequeoSonico;
   const sonico = ESTADOS_SONICO[c.estado];
   const caida = c.caidaPresionPorcentaje === null ? '' : `: ΔP ${formatearNumero(c.caidaPresionPorcentaje)} %`;
-  const chequeos = [
+  return veredicto([
     r.tuberiaAdecuada
       ? { estado: 'ok', texto: 'Tubería adecuada' }
-      : { estado: 'critico', texto: 'Tubería no adecuada: usar mayor espesor o menor diámetro' },
+      : { estado: 'critico', texto: 'Tubería no adecuada: usar mayor espesor o menor diámetro', descarta: true },
     {
       estado: cercaDeErosion ? 'alerta' : 'ok',
       texto: `${r.velocidadFlujoErosionMS > r.velocidadErosionMS ? 'Supera la velocidad de erosión'
@@ -487,27 +523,22 @@ function veredictoInstalacion(r, cercaDeErosion) {
         : c.estado === 'no-aplica' ? 'Caída de presión: no aplica' : `${sonico.etiqueta}${caida}`,
       nota: sonico.nota,
     },
-  ];
-  const peor = ['critico', 'alerta'].find((e) => chequeos.some((ch) => ch.estado === e)) ?? 'ok';
-  const titulo = !r.tuberiaAdecuada ? 'No cumple' : peor === 'ok' ? 'Cumple' : 'Revisar';
-  const chips = chequeos.map((ch) => `<li class="veredicto-chip ${ch.estado}"${ch.nota ? ` title="${escapeAttr(ch.nota)}"` : ''}>${ch.texto}</li>`).join('');
-  const info = 'Tres chequeos de la tubería:\n• Espesor: la presión máx. de diseño (ASME B31.12 PL-3.7.1) supera la de operación.\n• Erosión (API RP 14E): aviso si la velocidad a la presión mínima pasa el 80 % de la de erosión.\n• Caída de presión / flujo sónico: screening simplificado de gas ideal; no reemplaza API RP 14E ni los datos del fabricante de válvulas y reguladores.';
-  return `<div class="veredicto ${peor}">
-    <div class="veredicto-titulo">${titulo} <span class="info-norma" tabindex="0" role="img" aria-label="Qué se revisa" title="${escapeAttr(info)}">ⓘ</span></div>
-    <ul class="veredicto-chips">${chips}</ul>
-    <div class="resultados-nota info-norma-texto"${infoVeredictoAbierta ? '' : ' hidden'}>${escapeHtml(info)}</div>
-  </div>`;
+  ], 'Tres chequeos de la tubería:
+• Espesor: la presión máx. de diseño (ASME B31.12 PL-3.7.1) supera la de operación.
+• Erosión (API RP 14E): aviso si la velocidad a la presión mínima pasa el 80 % de la de erosión.
+• Caída de presión / flujo sónico: screening simplificado de gas ideal; no reemplaza API RP 14E ni los datos del fabricante de válvulas y reguladores.');
 }
 
-let infoVeredictoAbierta = false;
 
 // Bloque de resultados con la misma marca (1, 2, 3) que su sección del
 // formulario (2026-11-24, maqueta «A·1» elegida por el usuario): el
 // resultado de lo que se acaba de cambiar se encuentra en el mismo orden y
 // con el mismo número. `marca` = '1' | '2' | '3' | 'prueba'.
-function bloqueResultados(marca, titulo, contenido) {
+// `clase` = 'bloque-principal' | 'bloque-ancho' (acomodo en dos columnas,
+// ver «Resultados compactos con veredicto» en css/styles.css).
+function bloqueResultados(marca, titulo, contenido, clase = '') {
   const simbolo = marca === 'prueba' ? '✓' : marca;
-  return `<section class="bloque-resultados bloque-${marca}"><h3 class="bloque-titulo"><span class="marca marca-${marca}" aria-hidden="true">${simbolo}</span>${titulo}</h3>${contenido.join('')}</section>`;
+  return `<section class="bloque-resultados${clase ? ` ${clase}` : ''}"><h3 class="bloque-titulo"><span class="marca marca-${marca}" aria-hidden="true">${simbolo}</span>${titulo}</h3>${contenido.join('')}</section>`;
 }
 
 // «Factores de verificación» va plegado: se recuerda si el usuario lo abrió,
@@ -535,8 +566,10 @@ function renderResultadosInstalacion(r, a, prueba, presionDisenoBarG) {
   const varianteAdecuada = r.tuberiaAdecuada ? 'ok' : 'alerta';
   const formatearVolumen = (v) => new Intl.NumberFormat('es-CL', { maximumSignificantDigits: 3 }).format(v);
   const ds66 = prueba.ds66;
-  const textoDs66 = ds66.ajuste === 'minimo' ? ` (mínimo; la fórmula da ${formatearNumero(ds66.formulaMin)})`
-    : ds66.ajuste === 'maximo' ? ` (máximo; la fórmula da ${formatearNumero(ds66.formulaMin)})` : '';
+  // El ajuste va en la etiqueta, no en el valor: el valor no se corta y
+  // una frase larga ahí aplastaba la etiqueta en una columna angosta.
+  const textoDs66 = ds66.ajuste === 'minimo' ? `; mínimo, la fórmula da ${formatearNumero(ds66.formulaMin)} min`
+    : ds66.ajuste === 'maximo' ? `; máximo, la fórmula da ${formatearNumero(ds66.formulaMin)} min` : '';
 
   document.getElementById('resultados-flujo').innerHTML = [
     veredictoInstalacion(r, cercaDeErosion),
@@ -566,7 +599,7 @@ function renderResultadosInstalacion(r, a, prueba, presionDisenoBarG) {
         tile(formatearNumero(r.reynolds), 'Número de Reynolds', 'secundario'),
         tile(formatearNumero(r.factorFriccion), 'Factor de fricción (Haaland)', 'secundario'),
       ])}</details>`,
-    ]),
+    ], 'bloque-principal'),
 
     bloqueResultados('2', 'Estanque', [
       grupo(null, [
@@ -594,10 +627,10 @@ function renderResultadosInstalacion(r, a, prueba, presionDisenoBarG) {
         tilePresion(prueba.hidrostaticaBarG, 'bar', 'Prueba hidrostática, mínimo (1,5 × diseño, IP-10.7.2)', 'prueba-hidrostatica', unidadesTilesPresionFlujo),
         tilePresion(prueba.neumaticaBarG, 'bar', 'Prueba neumática, aire o N₂ — nunca H₂ (1,1 × diseño, IP-10.8.4)', 'prueba-neumatica', unidadesTilesPresionFlujo),
         tilePresion(prueba.alivioMaxBarG, 'bar', 'Alivio en prueba neumática, calibración máx. (IP-10.8.2)', 'prueba-alivio', unidadesTilesPresionFlujo, 'secundario'),
-        tile(`${formatearNumero(ds66.duracionMin)} min${textoDs66}`, 'Referencia D.S. 66 f.11 (volumen × 214) — no exigida para H₂', 'secundario'),
+        tile(`${formatearNumero(ds66.duracionMin)} min`, `Referencia D.S. 66 f.11 (volumen × 214${textoDs66}) — no exigida para H₂`, 'secundario'),
         `<div class="resultados-nota">Presión de diseño tomada: la de la línea (${formatearNumero(presionDisenoBarG)} barG). Fuentes en el ⓘ de la Memoria de Cálculo.</div>`,
       ]),
-    ]),
+    ], 'bloque-ancho'),
     '</div>',
   ].join('');
 }
@@ -1322,25 +1355,6 @@ function initInfoNorma() {
     icono.addEventListener('click', alternar);
     icono.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } });
   });
-}
-
-// ⓘ del veredicto: mismo comportamiento que initInfoNorma() en el
-// teléfono, pero delegado, porque el veredicto se redibuja en cada tecla.
-// Se recuerda si quedó abierto, como «Factores de verificación».
-function initInfoVeredicto() {
-  const contenedor = document.getElementById('resultados-flujo');
-  const alternar = (evento) => {
-    const icono = evento.target.closest('.veredicto .info-norma');
-    if (!icono) return;
-    if (evento.type === 'keydown') {
-      if (evento.key !== 'Enter' && evento.key !== ' ') return;
-      evento.preventDefault();
-    }
-    infoVeredictoAbierta = !infoVeredictoAbierta;
-    contenedor.querySelector('.veredicto .info-norma-texto').hidden = !infoVeredictoAbierta;
-  };
-  contenedor.addEventListener('click', alternar);
-  contenedor.addEventListener('keydown', alternar);
 }
 
 function recalcularMemoria() {

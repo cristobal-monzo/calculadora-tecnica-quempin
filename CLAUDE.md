@@ -43,6 +43,11 @@ Los tres módulos comparten la misma estructura en cada `css/styles.css`: **al t
 arriba y grupos con subtítulo), tokens `--estado-ok/alerta/critico` con variante en oscuro y `aria-invalid` en cajetines con texto no
 numérico.
 
+**Resultados compactos con veredicto** (maqueta «A», 2026-11-25): en las 3 calculadoras, franja `veredicto()` (Cumple /
+Revisar / No cumple, un chip por chequeo) donde hay chequeos, KPI arriba y el detalle en `.bloques-resultados` (filas «etiqueta …
+valor», dos columnas: `bloque-principal` a la izquierda, `bloque-ancho` a todo el ancho). El CSS y el JS van entre comentarios
+`=== … INICIO/FIN ===` y son **idénticos** en los tres: cópialos enteros. Detalle en `Hidrogeno/docs/interfaz.md`.
+
 **Teléfono**: el bloque CSS «Uso desde el teléfono» y `centrarPestana()` e `initResumenMovil()` son idénticos en los tres. Bajo
 960 px, barra de KPI fija al pie (lee el grupo `kpis`: un resultado que deba verse ahí va en ese grupo); cajetines de 16 px (Safari de
 iPhone hace zoom con menos); áreas táctiles de 44 px; Memoria en tarjetas bajo 720 px (`data-label` en cada `<td>`). Revisa cada
