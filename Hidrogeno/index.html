@@ -10,6 +10,7 @@
        .value de estas cajas sigue dando el número sin formato («4.5»), que es lo que leen los ui.js. -->
   <script src="../assets/numeros.js" data-canonico='input[inputmode="decimal"]'></script>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="../assets/editor-red.css">
 </head>
 <body>
 <div class="viz-root">
@@ -212,7 +213,7 @@
         <p class="barra-acciones-estado" id="memoria-estado" role="status" aria-live="polite"></p>
       </div>
 
-      <h3 class="seccion-titulo no-imprimir">Diagrama de la red</h3>
+      <h3 class="seccion-titulo no-imprimir">Diagrama de la red <span class="info-norma" tabindex="0" role="img" aria-label="Cómo se usa" title="• Clic en un tramo: se edita en el panel de al lado y el cambio pasa a la tabla.&#10;• + en el extremo de un tramo: agrega un tramo a continuación, con la misma presión, diámetro, material y temperatura.&#10;• Arrastra un tramo sobre otro: cambia «Continúa desde». Suéltalo en un espacio vacío: inicia una red nueva.&#10;• Con teclado: Tab hasta un tramo y Enter para editarlo; Esc vuelve al diagrama.">ⓘ</span></h3>
       <div class="arbol-contenedor no-imprimir"><svg id="memoria-arbol" width="100%" height="220" role="img" aria-label="Diagrama de la red de tramos"></svg></div>
 
       <h3 class="seccion-titulo no-imprimir">Tramos <span class="seccion-titulo-nota">— las columnas sombreadas se calculan solas</span></h3>

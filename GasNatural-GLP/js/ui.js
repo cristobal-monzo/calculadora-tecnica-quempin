@@ -8,6 +8,7 @@ import { propiedadesGLP } from './gas-glp.js';
 import { calcularQuemador } from './calc-quemador.js';
 import { guardar, cargar, exportarJSON, importarJSON } from './storage.js';
 import { initSelectorGas } from '../../assets/gas-switcher.js';
+import { initEditorRed } from '../../assets/editor-red.js';
 import { aPa, desdePa, formatearPresion, opcionesUnidadPresion } from './unidades-presion.js';
 
 let combustible = cargar('combustible', 'GLP');
@@ -1255,7 +1256,7 @@ function dibujarDiagramaRed(svg, elementos) {
     const resultados = n.e.resultados
       .map((r) => (r.excede ? `<tspan class="arbol-excede">▲ ${escapeHtml(r.texto)}</tspan>` : escapeHtml(r.texto)))
       .join(' · ');
-    return `<g class="arbol-tramo${n.excede ? ' excede' : ''}">
+    return `<g class="arbol-tramo${n.excede ? ' excede' : ''}" data-id="${escapeAttr(n.e.id)}">
       <title>${escapeHtml(n.e.titulo)}</title>
       ${bajada}
       <line class="arbol-tuberia" x1="${inicio}" y1="${y}" x2="${x1}" y2="${y}" stroke-width="${grosor.toFixed(1)}"/>
@@ -1999,5 +2000,10 @@ initInfoNorma();
 initCombustion();
 initQuemador();
 initMemoria();
+initEditorRed({
+  svg: document.getElementById('memoria-arbol'),
+  tbody: document.getElementById('memoria-tabla-cuerpo'),
+  botonAgregar: document.getElementById('memoria-agregar-tramo'),
+});
 initSelectorGas({ actualId: 'gas-natural-glp', profundidad: 1 });
 initResumenMovil();

@@ -120,3 +120,20 @@ exportar/importar con gas personalizado (pide confirmar), rechazo de un
 `.json` de Hidrógeno y de uno inválido; PDF A4 real de 1 hoja; 1360 px sin
 desborde de la tabla, 375 y 320 px en tarjetas; tema oscuro; enlace del hub
 a `OtrosGases/#memoria`.
+
+## Diagrama interactivo: editar la red desde el dibujo (`assets/editor-red.js` y `.css`, 2026-11-25, a pedido del usuario)
+
+Pedido: «que el diagrama sea interactivo, que desde ahí se pueda modificar la línea y agregar la información, y que se vea en la
+tabla». Es un solo archivo para las tres Memorias (Hidrógeno, GN/GLP, Otros gases): `initEditorRed({ svg, tbody, botonAgregar })`.
+
+- **El panel es un espejo de la fila.** Se arma con las celdas del `<tr>` (`data-label` = etiqueta, `col-calculada` = tile de
+  resultado, controles secundarios con `title` = subcampo con etiqueta visible). Cada cambio se escribe en el control de la fila y
+  dispara su `'input'`: cálculo, guardado, unidades por columna, punto de miles (`numeros.js`) y validación son los de la tabla. Por
+  eso el editor no conoce los campos de ningún gas: **un campo nuevo en la tabla aparece solo en el panel.**
+- Lo único que pide al diagrama: `data-id` en cada `<g class="arbol-tramo">` de `dibujarDiagramaRed()`. Zona de clic, «+» en el
+  extremo, selección y foco se agregan con un `MutationObserver` cada vez que el `<svg>` se redibuja.
+- Clic o Enter en un tramo = editarlo (también al entrar a su fila). «+» en el extremo o «+ Tramo a continuación» = tramo nuevo que
+  continúa desde él y hereda todo salvo nombre, longitud, potencia, caudal y desnivel (`NO_HEREDAR`). Arrastrar (mouse o lápiz; en
+  el teléfono no, para no romper el desplazamiento) sobre otro tramo = cambiar «Continúa desde»; sobre un vacío = red nueva. Los
+  destinos válidos son las opciones del `<select>` de la fila, que ya excluye los ciclos. Esc vuelve al diagrama. Ayuda en el ⓘ.
+- Bajo 960 px el panel va debajo del diagrama. No se imprime.

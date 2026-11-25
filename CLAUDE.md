@@ -24,6 +24,7 @@ del módulo.
 
 Cada módulo es autocontenido (su motor y su UI), salvo lo que se comparte desde `assets/`: la marca y el registro único de módulos
 (`assets/gases.js`) con el selector «Cambiar de calculadora» (`assets/gas-switcher.js`).
+También el diagrama interactivo de las tres Memorias (`assets/editor-red.js` y `.css`, detalle en `Hidrogeno/docs/interfaz.md`).
 
 - **Módulo nuevo**: agrégalo a `GASES` en `assets/gases.js`, una sola vez, con su lista `herramientas` (`id` = `data-tab` de cada
   pestaña; el hub enlaza `<ruta>#<id>`). En su `index.html`, `<select id="selector-gas">` en la cabecera y `initSelectorGas({
