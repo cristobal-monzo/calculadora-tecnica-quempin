@@ -209,7 +209,7 @@ input[aria-invalid="true"] {
   padding: 8px 0; min-height: 28px;
 }
 .detalle-factores[open] > summary { margin-bottom: 8px; }
-/* Tres KPI (autonomía, presión máx. de diseño, tubería adecuada) en una fila. */
+/* Tres KPI (autonomía, presión máx. de diseño, masa utilizable) en una fila. */
 #resultados-flujo > .grupo-resultados.kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 
 /* --- Resultados: una columna de grupos, cada grupo con su propia grilla
@@ -262,6 +262,94 @@ input[aria-invalid="true"] {
 .resultado-tile.secundario { padding: 10px 12px; }
 .resultado-tile.secundario .valor { font-size: 15px; font-weight: 700; }
 .resultado-tile.secundario .etiqueta { font-size: 11.5px; }
+
+/* --- Resultados de «Tubería y estanque» (2026-11-25, maqueta «A»
+   elegida por el usuario: «los resultados no ocupan bien el espacio»).
+   Franja de veredicto + 3 KPI + bloques en dos columnas. Dentro de un
+   bloque, los mismos .resultado-tile de siempre se ven como filas
+   «etiqueta … valor»: así siguen intactos los selectores de unidad
+   (tilePresion, tileConUnidad) y el resumen del teléfono, que lee solo el
+   grupo kpis. La columna de resultados pasó de ~1800 a ~900 px de alto.
+   Solo en Hidrogeno/. --- */
+.veredicto {
+  --color-estado: var(--estado-ok); --texto-estado: var(--estado-ok); --tinte-estado: var(--estado-ok-tinte);
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px;
+  padding: 12px 16px; border: 1px solid var(--color-estado); border-radius: 12px;
+  background: linear-gradient(var(--tinte-estado), var(--tinte-estado)), var(--surface-card);
+  box-shadow: inset 3px 0 0 var(--color-estado);
+}
+.veredicto.alerta { --color-estado: var(--brand-orange); --texto-estado: var(--estado-alerta); --tinte-estado: var(--estado-alerta-tinte); }
+.veredicto.critico { --color-estado: var(--estado-critico); --texto-estado: var(--estado-critico); --tinte-estado: var(--estado-critico-tinte); }
+.veredicto-titulo {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 20px; font-weight: 900; color: var(--texto-estado); white-space: nowrap;
+}
+.veredicto-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.veredicto-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; line-height: 1.3; color: var(--text-primary);
+  background: var(--surface-card); border: 1px solid var(--gridline); border-radius: 999px; padding: 4px 10px;
+}
+.veredicto-chip[title] { cursor: help; }
+/* El estado se lee por el símbolo además del color. */
+.veredicto-chip::before { font-weight: 900; }
+.veredicto-chip.ok::before { content: '✓'; color: var(--estado-ok); }
+.veredicto-chip.alerta { border-color: var(--brand-orange); }
+.veredicto-chip.alerta::before { content: '!'; color: var(--estado-alerta); }
+.veredicto-chip.critico { border-color: var(--estado-critico); }
+.veredicto-chip.critico::before { content: '✕'; color: var(--estado-critico); }
+
+/* Una columna en angosto; desde 560 px de resultados (escritorio), Tubería
+   a la izquierda, Estanque y Consumo apilados a la derecha y la prueba a
+   todo el ancho en dos columnas: así ningún bloque deja un hueco al lado. */
+.calc-resultados:has(> #resultados-flujo) { container-type: inline-size; }
+.bloques-resultados {
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  gap: 22px 20px; align-items: start;
+}
+@container (min-width: 560px) {
+  .bloques-resultados {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "tuberia estanque" "tuberia consumo" "prueba prueba";
+  }
+  .bloques-resultados .bloque-1 { grid-area: tuberia; }
+  .bloques-resultados .bloque-2 { grid-area: estanque; }
+  .bloques-resultados .bloque-3 { grid-area: consumo; }
+  .bloques-resultados .bloque-prueba { grid-area: prueba; }
+  .bloques-resultados .bloque-prueba .grupo-resultados {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 28px;
+  }
+  .bloques-resultados .bloque-prueba .resultado-tile + .resultado-tile { border-top: 0; }
+  .bloques-resultados .bloque-prueba .resultado-tile:nth-child(n+3) { border-top: 1px solid var(--border-hairline); }
+}
+.bloques-resultados .bloque-resultados { gap: 8px; padding-top: 0; border-top: 0; }
+.bloques-resultados .grupo-resultados {
+  display: block; background: var(--surface-card);
+  border: 1px solid var(--gridline); border-radius: 10px; padding: 2px 14px;
+}
+.bloques-resultados .resultado-tile {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  background: none; border: 0; border-radius: 0; box-shadow: none; padding: 8px 0;
+}
+.bloques-resultados .resultado-tile + .resultado-tile { border-top: 1px solid var(--border-hairline); }
+.bloques-resultados .resultado-tile .etiqueta { order: -1; flex: 1 1 auto; min-width: 0; margin: 0; font-size: 12.5px; }
+.bloques-resultados .resultado-tile .valor {
+  flex: 0 0 auto; justify-content: flex-end; gap: 4px; flex-wrap: nowrap;
+  font-size: 15px; font-weight: 900; white-space: nowrap; overflow-wrap: normal; text-align: right;
+}
+.bloques-resultados .resultado-tile.secundario .valor { font-size: 13.5px; font-weight: 700; color: var(--text-secondary); }
+.bloques-resultados .resultado-tile.secundario .etiqueta { font-size: 12px; }
+.bloques-resultados .select-unidad-inline { font-size: 11.5px; }
+/* Fila con estado: tinte y barra lateral como en los tiles, sobre toda la fila. */
+.bloques-resultados .resultado-tile.ok,
+.bloques-resultados .resultado-tile.alerta,
+.bloques-resultados .resultado-tile.critico {
+  background-image: linear-gradient(var(--tinte-estado), var(--tinte-estado));
+  box-shadow: inset 3px 0 0 var(--color-estado);
+  margin: 0 -14px; padding-left: 14px; padding-right: 14px;
+}
+.bloques-resultados .resultados-nota { margin: 0 0 10px; }
+.bloques-resultados .detalle-factores > summary { padding: 4px 0; }
 
 /* --- Subtítulo de un grupo de resultados (ej. "Factores de verificación"
    al final de Tubería y Flujo) --- */

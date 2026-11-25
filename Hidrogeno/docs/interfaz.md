@@ -507,3 +507,21 @@ tabla». Es un solo archivo para las tres Memorias (Hidrógeno, GN/GLP, Otros ga
   el teléfono no, para no romper el desplazamiento) sobre otro tramo = cambiar «Continúa desde»; sobre un vacío = red nueva. Los
   destinos válidos son las opciones del `<select>` de la fila, que ya excluye los ciclos. Esc vuelve al diagrama. Ayuda en el ⓘ.
 - **Ventana flotante** (pedido del usuario, mismo día: «que no desplace lo que está cerca»): se abre junto al tramo (derecha, izquierda o debajo, siempre en pantalla), queda sobre el contenido sin moverlo, se arrastra por su barra y se cierra con ✕, Esc o un clic fuera. Entrar a una fila de la tabla solo marca el tramo, no abre la ventana. Bajo 960 px es una hoja fija abajo (75 % del alto, sobre la barra de KPI). No se imprime.
+
+## Resultados compactos con veredicto (`ui.js`/`css/styles.css`, 2026-11-25, a pedido del usuario)
+
+El usuario: «los resultados no ocupan bien el espacio». Eligió la maqueta «A» de 3 (`docs/plans/2026-11-25-resultados-maquetas.html`).
+La columna de resultados medía ~1 800 px contra ~860 del formulario; ahora ~1 060.
+
+- **Franja de veredicto** (`veredictoInstalacion()`): «Cumple», «Revisar» o «No cumple», con 3 chequeos de la tubería en chips
+  (✓ ! ✕ además del color): espesor (`tuberiaAdecuada`), erosión (aviso al 80 %, «Supera» si pasa el 100 %) y screening sónico
+  (la nota del usuario va en el `title` del chip). «No cumple» solo si la tubería no resiste; erosión o sónico piden «Revisar».
+  Su ⓘ se redibuja en cada tecla: lo maneja `initInfoVeredicto()` (delegado), no `initInfoNorma()`, que solo toma ⓘ dentro de `h3`.
+- **KPI**: autonomía, presión máx. de diseño y **masa utilizable** (reemplaza «Tubería adecuada», que pasó al veredicto). El
+  resumen del teléfono sigue leyendo el grupo `kpis`.
+- **Bloques como filas «etiqueta … valor»**: mismo `tile()`/`tilePresion()`/`tileConUnidad()`, solo cambia el CSS dentro de
+  `.bloques-resultados`; los selectores de unidad no cambian. El screening sónico ya no tiene tile «Estado»: sus cifras van en la
+  lista de Tubería (`filasChequeoSonico()`) y su nota solo aparece si el estado no es OK.
+- **Acomodo** con consulta de contenedor (`.calc-resultados` con `container-type`): desde 560 px de resultados, Tubería a la
+  izquierda, Estanque + Consumo a la derecha y la prueba a todo el ancho en dos columnas; bajo eso, una columna.
+- Solo en `Hidrogeno/`: GN-GLP y Otros gases tienen otros resultados. Revisado a 1 440, 375 y 320 px y en tema oscuro.

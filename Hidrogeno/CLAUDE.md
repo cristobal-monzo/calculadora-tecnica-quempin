@@ -45,6 +45,8 @@ NIST, ver más abajo—, Tabla Hf de ASME B31.12).
   (`flujo`, `almacenamiento`) no cambiaron; `#almacenamiento` lleva a `#flujo`. Detalle en [docs/interfaz.md](docs/interfaz.md).
 - **El rojo de estado crítico** (`#c62828`) es una extrapolación: el manual de marca no define un rojo.
 - El screening sónico complementa, no sustituye, el chequeo de velocidad erosional de API RP 14E.
+- **Resultados con veredicto** (maqueta «A», 2026-11-25): franja Cumple/Revisar/No cumple, 3 KPI y bloques como filas; el ⓘ del
+  veredicto se redibuja, por eso `initInfoNorma()` solo toma ⓘ dentro de `h3`. Detalle en [docs/interfaz.md](docs/interfaz.md).
 
 ## Verificar cambios a una fórmula
 

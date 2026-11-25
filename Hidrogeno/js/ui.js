@@ -449,17 +449,57 @@ const ESTADOS_SONICO = {
   },
 };
 
-function tilesChequeoSonico(c) {
-  const { etiqueta, variante, nota } = ESTADOS_SONICO[c.estado];
+// Filas del screening dentro de la lista de Tubería (2026-11-25, maqueta
+// «A»): el estado ya lo dice la franja de veredicto, aquí van solo las
+// cifras. La nota del usuario se muestra solo si el estado no es OK.
+function filasChequeoSonico(c) {
+  const { variante, nota } = ESTADOS_SONICO[c.estado];
   const valor = (v, sufijo = '') => (v === null ? '—' : `${formatearNumero(v)}${sufijo}`);
-  return grupo('Caída de presión / flujo sónico — H₂ (screening simplificado, no reemplaza API RP 14E)', [
-    tile(etiqueta, 'Estado', `${variante} ancho`),
-    tile(valor(c.caidaPresionPorcentaje, ' %'), 'ΔP/P₁ (sobre presión absoluta)'),
-    tile(c.relacionPresion === null ? '—' : formatearRatio(c.relacionPresion), 'P₂/P₁'),
-    tile(formatearRatio(c.relacionPresionCritica), 'Límite crítico aprox. P₂/P₁ (γ = 1,40)', 'secundario'),
-    `<div class="resultados-nota">${nota}</div>`,
-  ]);
+  return [
+    tile(valor(c.caidaPresionPorcentaje, ' %'), 'Caída de presión ΔP/P₁ (límite 10 %)', c.estado === 'ok' ? '' : variante),
+    tile(`${c.relacionPresion === null ? '—' : formatearRatio(c.relacionPresion)} · ${formatearRatio(c.relacionPresionCritica)}`, 'P₂/P₁ · límite crítico (γ = 1,40)', 'secundario'),
+    ...(c.estado === 'ok' ? [] : [`<div class="resultados-nota">${nota}</div>`]),
+  ];
 }
+
+// Franja de veredicto (2026-11-25, maqueta «A» elegida por el usuario):
+// dice de un vistazo si la línea cumple y por qué, con los 3 chequeos de la
+// tubería. Cada chequeo lleva su símbolo (✓ ! ✕) además del color. «No
+// cumple» solo cuando la tubería no resiste la presión; un aviso de erosión
+// o del screening sónico pide «Revisar», porque exige verificar, no
+// descarta la línea.
+function veredictoInstalacion(r, cercaDeErosion) {
+  const c = r.chequeoSonico;
+  const sonico = ESTADOS_SONICO[c.estado];
+  const caida = c.caidaPresionPorcentaje === null ? '' : `: ΔP ${formatearNumero(c.caidaPresionPorcentaje)} %`;
+  const chequeos = [
+    r.tuberiaAdecuada
+      ? { estado: 'ok', texto: 'Tubería adecuada' }
+      : { estado: 'critico', texto: 'Tubería no adecuada: usar mayor espesor o menor diámetro' },
+    {
+      estado: cercaDeErosion ? 'alerta' : 'ok',
+      texto: `${r.velocidadFlujoErosionMS > r.velocidadErosionMS ? 'Supera la velocidad de erosión'
+        : cercaDeErosion ? 'Cerca de la erosión' : 'Lejos de la erosión'}: ${formatearNumero(r.velocidadFlujoErosionMS)} de ${formatearNumero(r.velocidadErosionMS)} m/s`,
+    },
+    {
+      estado: sonico.variante,
+      texto: c.estado === 'ok' ? `Baja caída de presión${caida}`
+        : c.estado === 'no-aplica' ? 'Caída de presión: no aplica' : `${sonico.etiqueta}${caida}`,
+      nota: sonico.nota,
+    },
+  ];
+  const peor = ['critico', 'alerta'].find((e) => chequeos.some((ch) => ch.estado === e)) ?? 'ok';
+  const titulo = !r.tuberiaAdecuada ? 'No cumple' : peor === 'ok' ? 'Cumple' : 'Revisar';
+  const chips = chequeos.map((ch) => `<li class="veredicto-chip ${ch.estado}"${ch.nota ? ` title="${escapeAttr(ch.nota)}"` : ''}>${ch.texto}</li>`).join('');
+  const info = 'Tres chequeos de la tubería:\n• Espesor: la presión máx. de diseño (ASME B31.12 PL-3.7.1) supera la de operación.\n• Erosión (API RP 14E): aviso si la velocidad a la presión mínima pasa el 80 % de la de erosión.\n• Caída de presión / flujo sónico: screening simplificado de gas ideal; no reemplaza API RP 14E ni los datos del fabricante de válvulas y reguladores.';
+  return `<div class="veredicto ${peor}">
+    <div class="veredicto-titulo">${titulo} <span class="info-norma" tabindex="0" role="img" aria-label="Qué se revisa" title="${escapeAttr(info)}">ⓘ</span></div>
+    <ul class="veredicto-chips">${chips}</ul>
+    <div class="resultados-nota info-norma-texto"${infoVeredictoAbierta ? '' : ' hidden'}>${escapeHtml(info)}</div>
+  </div>`;
+}
+
+let infoVeredictoAbierta = false;
 
 // Bloque de resultados con la misma marca (1, 2, 3) que su sección del
 // formulario (2026-11-24, maqueta «A·1» elegida por el usuario): el
@@ -467,7 +507,7 @@ function tilesChequeoSonico(c) {
 // con el mismo número. `marca` = '1' | '2' | '3' | 'prueba'.
 function bloqueResultados(marca, titulo, contenido) {
   const simbolo = marca === 'prueba' ? '✓' : marca;
-  return `<section class="bloque-resultados"><h3 class="bloque-titulo"><span class="marca marca-${marca}" aria-hidden="true">${simbolo}</span>${titulo}</h3>${contenido.join('')}</section>`;
+  return `<section class="bloque-resultados bloque-${marca}"><h3 class="bloque-titulo"><span class="marca marca-${marca}" aria-hidden="true">${simbolo}</span>${titulo}</h3>${contenido.join('')}</section>`;
 }
 
 // «Factores de verificación» va plegado: se recuerda si el usuario lo abrió,
@@ -499,24 +539,25 @@ function renderResultadosInstalacion(r, a, prueba, presionDisenoBarG) {
     : ds66.ajuste === 'maximo' ? ` (máximo; la fórmula da ${formatearNumero(ds66.formulaMin)})` : '';
 
   document.getElementById('resultados-flujo').innerHTML = [
+    veredictoInstalacion(r, cercaDeErosion),
+
     grupo(null, [
       tile(formatearHoras(a.autonomiaHoras), 'Autonomía hasta la presión residual (hh:mm:ss)', 'kpi'),
       tilePresion(r.presionMaxDisenoBar, 'bar', 'Presión máxima diseño (PL-3.7.1)', 'presion-max-diseno', unidadesTilesPresionFlujo, `kpi ${varianteAdecuada}`),
-      tile(r.tuberiaAdecuada ? 'Sí' : 'No — usar tubería de mayor espesor o menor diámetro', 'Tubería adecuada', `kpi ${varianteAdecuada}`),
+      tile(`${formatearNumero(a.masaUtilizableKg)} kg`, 'Masa utilizable de H₂ (sobre la presión residual)', 'kpi'),
     ], 'kpis'),
 
+    '<div class="bloques-resultados">',
     bloqueResultados('1', 'Tubería', [
       grupo(null, [
         tileConUnidad(formatearNumero(r.flujoVolH2), 'Flujo volum. de H₂ en la línea', 'flujo-unidad-h2', OPCIONES_UNIDAD_H2, unidadH2Flujo),
         tile(`${formatearNumero(r.velocidadFlujoMS)} m/s`, 'Velocidad de flujo (presión de operación)'),
         tilePresion(r.perdidaCargaMbar, 'mbar', 'Pérdidas de carga', 'perdida-carga', unidadesTilesPresionFlujo),
-      ]),
-      grupo(`Velocidad de erosión — API RP 14E, a la presión mínima (${formatearNumero(r.presionErosionBarG)} barG)`, [
-        tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad erosión (I-3.4.5)'),
-        tile(`${formatearNumero(r.velocidadFlujoErosionMS)} m/s`, 'Velocidad de flujo a la presión mínima', cercaDeErosion ? 'alerta' : ''),
+        tile(`${formatearNumero(r.velocidadErosionMS)} m/s`, 'Velocidad de erosión (API RP 14E, I-3.4.5)'),
+        tile(`${formatearNumero(r.velocidadFlujoErosionMS)} m/s`, `Velocidad de flujo a la presión mínima (${formatearNumero(r.presionErosionBarG)} barG)`, cercaDeErosion ? 'alerta' : ''),
+        ...filasChequeoSonico(r.chequeoSonico),
         ...notaPresionMinima,
       ]),
-      tilesChequeoSonico(r.chequeoSonico),
       `<details class="detalle-factores"${factoresAbiertos ? ' open' : ''}><summary>Factores de verificación</summary>${grupo(null, [
         tile(`${formatearNumero(r.densidadKgM3)} kg/m³`, 'Densidad real en la línea', 'secundario'),
         tile(formatearNumero(r.factorHfAplicado), 'Factor Hf aplicado (Tabla IX-5A, fragilización por H₂)', 'secundario'),
@@ -530,7 +571,6 @@ function renderResultadosInstalacion(r, a, prueba, presionDisenoBarG) {
     bloqueResultados('2', 'Estanque', [
       grupo(null, [
         tile(`${formatearNumero(a.masaAlmacenadaKg)} kg`, 'Masa de H₂ almacenada (PV=ZnRT)'),
-        tile(`${formatearNumero(a.masaUtilizableKg)} kg`, 'Masa utilizable (sobre la presión residual)'),
         tile(`${formatearNumero(a.volumenNormalizadoNm3)} Nm³`, 'Volumen normalizado'),
         tile(a.tiempoLlenadoHoras === null ? '—' : formatearHoras(a.tiempoLlenadoHoras), 'Tiempo de llenado desde la presión residual (hh:mm:ss)'),
         tileConUnidad(formatearNumero(a.caudalReferenciaM3H), 'Caudal real de llenado (a la presión del estanque)', 'alm-unidad-caudal', OPCIONES_UNIDAD_CAUDAL_ALM, unidadCaudalAlm, 'secundario'),
@@ -558,6 +598,7 @@ function renderResultadosInstalacion(r, a, prueba, presionDisenoBarG) {
         `<div class="resultados-nota">Presión de diseño tomada: la de la línea (${formatearNumero(presionDisenoBarG)} barG). Fuentes en el ⓘ de la Memoria de Cálculo.</div>`,
       ]),
     ]),
+    '</div>',
   ].join('');
 }
 
@@ -1272,11 +1313,34 @@ function initInfoNorma() {
     nota.hidden = true;
     nota.style.whiteSpace = 'pre-line';
     nota.textContent = icono.title;
-    icono.closest('h3').after(nota);
+    // El ⓘ del veredicto se redibuja en cada tecla: lo maneja
+    // initInfoVeredicto(), no este.
+    const titulo = icono.closest('h3');
+    if (!titulo) return;
+    titulo.after(nota);
     const alternar = () => { nota.hidden = !nota.hidden; };
     icono.addEventListener('click', alternar);
     icono.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(); } });
   });
+}
+
+// ⓘ del veredicto: mismo comportamiento que initInfoNorma() en el
+// teléfono, pero delegado, porque el veredicto se redibuja en cada tecla.
+// Se recuerda si quedó abierto, como «Factores de verificación».
+function initInfoVeredicto() {
+  const contenedor = document.getElementById('resultados-flujo');
+  const alternar = (evento) => {
+    const icono = evento.target.closest('.veredicto .info-norma');
+    if (!icono) return;
+    if (evento.type === 'keydown') {
+      if (evento.key !== 'Enter' && evento.key !== ' ') return;
+      evento.preventDefault();
+    }
+    infoVeredictoAbierta = !infoVeredictoAbierta;
+    contenedor.querySelector('.veredicto .info-norma-texto').hidden = !infoVeredictoAbierta;
+  };
+  contenedor.addEventListener('click', alternar);
+  contenedor.addEventListener('keydown', alternar);
 }
 
 function recalcularMemoria() {
@@ -1631,6 +1695,7 @@ initEditorRed({
   botonAgregar: document.getElementById('memoria-agregar-tramo'),
 });
 initInfoNorma();
+initInfoVeredicto();
 initEstanquePrueba();
 initSelectorGas({ actualId: 'hidrogeno', profundidad: 1 });
 initResumenMovil();

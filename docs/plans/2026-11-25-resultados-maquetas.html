@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Maquetas — Resultados de la Calculadora (H₂)</title>
+<style>
+  :root {
+    --bg:#f4f2ee; --card:#fff; --t1:#171513; --t2:#52514e; --t3:#898781; --grid:#e1e0d9; --base:#c3c2b7;
+    --or:#ff5100; --ink:#b23a00; --ok:#2e7d32; --okt:#e8f3e9; --alt:#b23a00; --altt:#fff1e8;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: Lato, "Segoe UI", system-ui, sans-serif; background:#e9e7e2; color:var(--t1); }
+  .intro { max-width:1280px; margin:28px auto 8px; padding:0 20px; }
+  .intro h1 { font-size:22px; margin:0 0 6px; }
+  .intro p { margin:0; color:var(--t2); font-size:14px; }
+  .maqueta { max-width:1280px; margin:28px auto 48px; padding:0 20px; }
+  .ficha { display:grid; grid-template-columns: 70px 1fr 1fr 1fr; gap:14px; align-items:start; margin-bottom:12px; }
+  .letra { font-size:44px; font-weight:900; color:var(--or); line-height:1; }
+  .ficha h2 { grid-column: 2 / -1; margin:0; font-size:19px; }
+  .ficha .c { font-size:13.5px; line-height:1.45; background:#fff; border-radius:8px; padding:10px 12px; border:1px solid var(--grid); }
+  .ficha .c b { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--t2); margin-bottom:3px; }
+  .ficha .c.ojo b { color:var(--ink); }
+  .ficha .vacio { grid-column:1; }
+
+  /* --- Pantalla simulada --- */
+  .pantalla { background:var(--bg); border:1px solid var(--base); border-radius:10px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.08); }
+  .cab { background:#000; color:#fff; padding:12px 22px; font-weight:900; display:flex; gap:10px; align-items:center; border-bottom:3px solid var(--or); font-size:15px; }
+  .cab span { color:var(--or); }
+  .pest { padding:10px 22px 0; font-size:13px; color:var(--t2); border-bottom:1px solid var(--grid); display:flex; gap:22px; }
+  .pest i { font-style:normal; padding-bottom:8px; }
+  .pest i:first-child { color:var(--ink); border-bottom:2px solid var(--ink); font-weight:700; }
+  .cuerpo { padding:18px 22px 24px; }
+
+  /* entradas simplificadas */
+  .ent h4 { font-size:11px; text-transform:uppercase; letter-spacing:.05em; margin:0 0 8px; display:flex; gap:7px; align-items:center; }
+  .ent + .ent { margin-top:14px; padding-top:14px; border-top:1px solid var(--grid); }
+  .cajas { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; }
+  .caja { font-size:10.5px; color:var(--t2); }
+  .caja div { height:24px; background:#fff; border:1px solid var(--grid); border-radius:5px; margin-top:3px; font-size:12px; color:var(--t1); padding:4px 7px; }
+  .m { display:inline-flex; width:18px; height:18px; border-radius:5px; color:#fff; font-size:11px; font-weight:900; align-items:center; justify-content:center; }
+  .m1{background:var(--ink)} .m2{background:var(--t1)} .m3{background:var(--t2)} .mp{background:var(--ok)}
+
+  .rot { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--t2); font-weight:700; margin:0 0 8px; display:flex; gap:7px; align-items:center; }
+  .kpi { background:var(--card); border:1px solid var(--grid); border-radius:12px; padding:14px 16px; }
+  .kpi .v { font-size:30px; font-weight:900; line-height:1.1; font-variant-numeric:tabular-nums; }
+  .kpi .v small { font-size:15px; font-weight:700; color:var(--t2); }
+  .kpi .e { font-size:12px; color:var(--t2); margin-top:3px; }
+  .kpi.ok { border-color:var(--ok); background:var(--okt); box-shadow: inset 3px 0 0 var(--ok); }
+  .kpi.ok .v { color:var(--ok); }
+
+  /* lista compacta etiqueta … valor */
+  .lista { background:var(--card); border:1px solid var(--grid); border-radius:10px; padding:4px 14px; }
+  .lista .f { display:flex; justify-content:space-between; gap:12px; padding:6px 0; font-size:12.5px; border-bottom:1px solid #efeee9; }
+  .lista .f:last-child { border-bottom:0; }
+  .lista .f span { color:var(--t2); }
+  .lista .f b { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .lista .f.sec span, .lista .f.sec b { color:var(--t3); font-weight:400; }
+  .mas { font-size:12px; color:var(--t2); font-weight:700; margin-top:6px; }
+
+  /* A */
+  .A { display:grid; grid-template-columns: 1fr 1.25fr; gap:36px; }
+  .veredicto { display:flex; gap:12px; align-items:center; background:var(--okt); border:1px solid var(--ok); border-radius:12px; padding:12px 16px; margin-bottom:12px; }
+  .veredicto .g { font-size:18px; font-weight:900; color:var(--ok); white-space:nowrap; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-size:11.5px; background:#fff; border:1px solid #b9d8bb; color:#1f5a23; border-radius:20px; padding:3px 9px; }
+  .kpis3 { display:grid; grid-template-columns: repeat(3,1fr); gap:10px; margin-bottom:16px; }
+  .A .bloques { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+  /* B */
+  .B { display:grid; grid-template-columns: .9fr 1fr 1fr; gap:26px; }
+  .B .kpi + .kpi { margin-top:10px; }
+  .medidor { background:var(--card); border:1px solid var(--grid); border-radius:10px; padding:10px 14px; margin-top:10px; }
+  .medidor .t { display:flex; justify-content:space-between; font-size:12px; color:var(--t2); }
+  .medidor .t b { color:var(--t1); }
+  .barra { position:relative; height:10px; background:#eceae4; border-radius:6px; margin:7px 0 4px; }
+  .barra i { position:absolute; inset:0 auto 0 0; border-radius:6px; background:var(--ok); }
+  .barra u { position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--t1); }
+  .medidor .p { font-size:11px; color:var(--t3); display:flex; justify-content:space-between; }
+  .B .lista + .rot { margin-top:14px; }
+
+  /* C */
+  .banda { display:grid; grid-template-columns: repeat(4,1fr); gap:10px; padding-bottom:16px; margin-bottom:16px; border-bottom:1px solid var(--grid); }
+  .banda .kpi .v { font-size:26px; }
+  .fila { display:grid; grid-template-columns: 1fr 1.25fr; gap:36px; padding:14px 0; border-bottom:1px solid var(--grid); align-items:start; }
+  .fila:last-child { border-bottom:0; }
+  .tiles { display:grid; grid-template-columns: repeat(3,1fr); gap:8px; }
+  .tile { background:var(--card); border:1px solid var(--grid); border-radius:9px; padding:9px 11px; }
+  .tile .v { font-size:18px; font-weight:900; font-variant-numeric:tabular-nums; }
+  .tile .e { font-size:11px; color:var(--t2); }
+  .tile.ok { border-color:var(--ok); background:var(--okt); } .tile.ok .v { color:var(--ok); }
+  .fila.ancha { grid-template-columns: 1fr; }
+  .tiles4 { display:grid; grid-template-columns: repeat(4,1fr); gap:8px; }
+  .estado-linea { font-size:12px; color:var(--ok); font-weight:700; margin-bottom:8px; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Resultados de la Calculadora de H₂: 3 maquetas</h1>
+  <p>Mismos datos de la pantalla actual (línea ½" de 20 m, estanque de 0,19 m³ a 200 bar). Las entradas están simplificadas: lo que cambia es dónde y cómo se ven los resultados.</p>
+</div>
+
+<!-- ======================= A ======================= -->
+<section class="maqueta">
+  <div class="ficha">
+    <div class="letra">A</div>
+    <h2>Veredicto arriba y fichas compactas</h2>
+    <div class="vacio"></div>
+    <div class="c"><b>Idea</b>Una franja dice si la instalación cumple y por qué. Debajo, 3 cifras grandes. El resto pasa de tarjetas a listas «etiqueta … valor», en dos columnas.</div>
+    <div class="c"><b>Bueno si</b>Quieres saber «¿sirve o no?» de un vistazo. Los resultados miden casi lo mismo que las entradas: no queda hueco abajo.</div>
+    <div class="c ojo"><b>Ojo</b>Se pierde la tarjeta por cifra: los valores secundarios se leen como tabla, con letra más chica.</div>
+  </div>
+  <div class="pantalla">
+    <div class="cab">QUEMP<span>IN</span>&nbsp;&nbsp;Calculadora de Hidrógeno</div>
+    <div class="pest"><i>Tubería y estanque</i><i>Memoria de Cálculo</i></div>
+    <div class="cuerpo A">
+      <div>
+        <div class="ent"><h4><span class="m m1">1</span>Tubería</h4><div class="cajas">
+          <div class="caja">Presión de la línea<div>0,8 bar</div></div><div class="caja">Presión mínima<div>0,8 bar</div></div>
+          <div class="caja">Largo [m]<div>20</div></div><div class="caja">Tubería<div>1/2" — DI 10,3 mm</div></div>
+          <div class="caja">Factor F<div>Clase 4 (0,40)</div></div><div class="caja">Codos · Tee · Válvulas<div>0 · 0 · 0</div></div></div></div>
+        <div class="ent"><h4><span class="m m2">2</span>Estanque</h4><div class="cajas">
+          <div class="caja">Presión de almacenamiento<div>200 bar</div></div><div class="caja">Volumen [m³]<div>0,19</div></div>
+          <div class="caja">Presión residual<div>10 bar</div></div><div class="caja">Caudal de llenado<div>4 Nm³/h</div></div></div></div>
+        <div class="ent"><h4><span class="m m3">3</span>Datos comunes</h4><div class="cajas">
+          <div class="caja">Potencia [kW]<div>60</div></div><div class="caja">Temperatura [°C]<div>20</div></div></div></div>
+      </div>
+      <div>
+        <div class="veredicto">
+          <div class="g">✓ Cumple</div>
+          <div class="chips">
+            <span class="chip">Tubería adecuada</span>
+            <span class="chip">Lejos de erosión: 40 de 316 m/s</span>
+            <span class="chip">Sin flujo sónico: ΔP 4,65 %</span>
+          </div>
+        </div>
+        <div class="kpis3">
+          <div class="kpi"><div class="v">01:27:55</div><div class="e">Autonomía hasta la presión residual</div></div>
+          <div class="kpi"><div class="v">128,5 <small>bar</small></div><div class="e">Presión máx. de diseño (PL-3.7.1)</div></div>
+          <div class="kpi"><div class="v">2,64 <small>kg</small></div><div class="e">Masa utilizable de H₂</div></div>
+        </div>
+        <div class="bloques">
+          <div>
+            <div class="rot"><span class="m m1">1</span>Tubería</div>
+            <div class="lista">
+              <div class="f"><span>Flujo en la línea</span><b>12,1 m³/h</b></div>
+              <div class="f"><span>Velocidad de flujo</span><b>40,35 m/s</b></div>
+              <div class="f"><span>Pérdidas de carga</span><b>83,63 mbar</b></div>
+              <div class="f"><span>Velocidad de erosión</span><b>316,3 m/s</b></div>
+              <div class="f"><span>ΔP/P₁</span><b>4,65 %</b></div>
+              <div class="f sec"><span>P₂/P₁ · límite crítico</span><b>0,954 · 0,528</b></div>
+            </div>
+            <div class="mas">▸ Factores de verificación</div>
+          </div>
+          <div>
+            <div class="rot"><span class="m m2">2</span>Estanque</div>
+            <div class="lista">
+              <div class="f"><span>Masa almacenada</span><b>2,79 kg</b></div>
+              <div class="f"><span>Volumen normalizado</span><b>31,4 Nm³</b></div>
+              <div class="f"><span>Tiempo de llenado</span><b>07:24:38</b></div>
+              <div class="f sec"><span>Caudal real de llenado</span><b>0,02 m³/h</b></div>
+              <div class="f sec"><span>Z · densidad</span><b>1,1248 · 14,71 kg/m³</b></div>
+            </div>
+          </div>
+          <div>
+            <div class="rot"><span class="m m3">3</span>Consumo</div>
+            <div class="lista">
+              <div class="f"><span>Flujo másico</span><b>1,8 kg/h</b></div>
+              <div class="f"><span>Flujo normalizado</span><b>355,58 sL/min</b></div>
+            </div>
+          </div>
+          <div>
+            <div class="rot"><span class="m mp">✓</span>Prueba de hermeticidad</div>
+            <div class="lista">
+              <div class="f"><span>Duración mínima</span><b>10 min</b></div>
+              <div class="f"><span>Hidrostática / neumática</span><b>1,2 / 0,88 bar</b></div>
+              <div class="f sec"><span>Volumen probado</span><b>0,192 m³</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= B ======================= -->
+<section class="maqueta">
+  <div class="ficha">
+    <div class="letra">B</div>
+    <h2>Tres columnas: entradas · lo esencial · el detalle</h2>
+    <div class="vacio"></div>
+    <div class="c"><b>Idea</b>La página usa todo el ancho. Al centro, las cifras clave y barras que muestran cuánto margen queda (velocidad contra erosión, caída de presión contra el 10 %). A la derecha, el detalle en listas.</div>
+    <div class="c"><b>Bueno si</b>Trabajas en pantalla grande y quieres verlo todo sin bajar. Las barras dicen «qué tan cerca del límite», no solo «OK».</div>
+    <div class="c ojo"><b>Ojo</b>En un notebook (1 280 px) las columnas quedan estrechas; bajo cierto ancho vuelve a dos columnas.</div>
+  </div>
+  <div class="pantalla">
+    <div class="cab">QUEMP<span>IN</span>&nbsp;&nbsp;Calculadora de Hidrógeno</div>
+    <div class="pest"><i>Tubería y estanque</i><i>Memoria de Cálculo</i></div>
+    <div class="cuerpo B">
+      <div>
+        <div class="ent"><h4><span class="m m1">1</span>Tubería</h4><div class="cajas">
+          <div class="caja">Presión de la línea<div>0,8 bar</div></div><div class="caja">Presión mínima<div>0,8 bar</div></div>
+          <div class="caja">Largo [m]<div>20</div></div><div class="caja">Tubería<div>1/2" — DI 10,3</div></div>
+          <div class="caja">Factor F<div>Clase 4</div></div><div class="caja">Accesorios<div>0 · 0 · 0</div></div></div></div>
+        <div class="ent"><h4><span class="m m2">2</span>Estanque</h4><div class="cajas">
+          <div class="caja">Presión almac.<div>200 bar</div></div><div class="caja">Volumen [m³]<div>0,19</div></div>
+          <div class="caja">Presión residual<div>10 bar</div></div><div class="caja">Llenado<div>4 Nm³/h</div></div></div></div>
+        <div class="ent"><h4><span class="m m3">3</span>Datos comunes</h4><div class="cajas">
+          <div class="caja">Potencia [kW]<div>60</div></div><div class="caja">Temperatura [°C]<div>20</div></div></div></div>
+      </div>
+      <div>
+        <div class="rot">Lo esencial</div>
+        <div class="kpi"><div class="v">01:27:55</div><div class="e">Autonomía hasta la presión residual</div></div>
+        <div class="kpi ok"><div class="v">128,5 <small>bar</small></div><div class="e">Presión máx. de diseño — tubería adecuada ✓</div></div>
+        <div class="medidor">
+          <div class="t"><span>Velocidad / velocidad de erosión</span><b>40 de 316 m/s</b></div>
+          <div class="barra"><i style="width:12.7%"></i><u style="left:80%"></u></div>
+          <div class="p"><span>0</span><span>alerta 80 %</span></div>
+        </div>
+        <div class="medidor">
+          <div class="t"><span>Caída de presión ΔP/P₁</span><b>4,65 % de 10 %</b></div>
+          <div class="barra"><i style="width:46.5%"></i><u style="left:100%"></u></div>
+          <div class="p"><span>0</span><span>límite screening</span></div>
+        </div>
+        <div class="medidor">
+          <div class="t"><span>Masa utilizable</span><b>2,64 de 2,79 kg</b></div>
+          <div class="barra"><i style="width:94.6%;background:var(--t2)"></i></div>
+          <div class="p"><span>residual 10 bar</span><span>200 bar</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="rot"><span class="m m1">1</span>Tubería</div>
+        <div class="lista">
+          <div class="f"><span>Flujo en la línea</span><b>12,1 m³/h</b></div>
+          <div class="f"><span>Velocidad de flujo</span><b>40,35 m/s</b></div>
+          <div class="f"><span>Pérdidas de carga</span><b>83,63 mbar</b></div>
+          <div class="f sec"><span>P₂/P₁ · límite</span><b>0,954 · 0,528</b></div>
+        </div>
+        <div class="rot" style="margin-top:14px"><span class="m m2">2</span>Estanque</div>
+        <div class="lista">
+          <div class="f"><span>Volumen normalizado</span><b>31,4 Nm³</b></div>
+          <div class="f"><span>Tiempo de llenado</span><b>07:24:38</b></div>
+          <div class="f sec"><span>Z · densidad</span><b>1,1248 · 14,71 kg/m³</b></div>
+        </div>
+        <div class="rot" style="margin-top:14px"><span class="m m3">3</span>Consumo</div>
+        <div class="lista">
+          <div class="f"><span>Flujo másico · normalizado</span><b>1,8 kg/h · 355,6 sL/min</b></div>
+        </div>
+        <div class="rot" style="margin-top:14px"><span class="m mp">✓</span>Prueba de hermeticidad</div>
+        <div class="lista">
+          <div class="f"><span>Duración mínima</span><b>10 min</b></div>
+          <div class="f"><span>Hidrostática / neumática</span><b>1,2 / 0,88 bar</b></div>
+        </div>
+        <div class="mas">▸ Factores de verificación</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= C ======================= -->
+<section class="maqueta">
+  <div class="ficha">
+    <div class="letra">C</div>
+    <h2>Cada resultado al lado de su sección</h2>
+    <div class="vacio"></div>
+    <div class="c"><b>Idea</b>Una banda arriba con las 4 cifras clave. Luego la página va por filas: «1 Tubería» con sus resultados a la derecha, «2 Estanque» con los suyos, y así. La prueba de hermeticidad cierra a todo el ancho.</div>
+    <div class="c"><b>Bueno si</b>Quieres ver el efecto de cada dato justo al lado del cajetín que cambias. No queda ningún hueco: cada fila mide lo que mide su sección.</div>
+    <div class="c ojo"><b>Ojo</b>Los resultados ya no quedan fijos al costado al bajar; para eso está la banda de arriba.</div>
+  </div>
+  <div class="pantalla">
+    <div class="cab">QUEMP<span>IN</span>&nbsp;&nbsp;Calculadora de Hidrógeno</div>
+    <div class="pest"><i>Tubería y estanque</i><i>Memoria de Cálculo</i></div>
+    <div class="cuerpo">
+      <div class="banda">
+        <div class="kpi"><div class="v">01:27:55</div><div class="e">Autonomía</div></div>
+        <div class="kpi ok"><div class="v">128,5 <small>bar</small></div><div class="e">Presión máx. de diseño</div></div>
+        <div class="kpi ok"><div class="v">Sí</div><div class="e">Tubería adecuada</div></div>
+        <div class="kpi"><div class="v">2,64 <small>kg</small></div><div class="e">Masa utilizable</div></div>
+      </div>
+
+      <div class="fila">
+        <div class="ent"><h4><span class="m m1">1</span>Tubería</h4><div class="cajas">
+          <div class="caja">Presión de la línea<div>0,8 bar</div></div><div class="caja">Presión mínima<div>0,8 bar</div></div>
+          <div class="caja">Largo [m]<div>20</div></div><div class="caja">Tubería<div>1/2" — DI 10,3 mm</div></div>
+          <div class="caja">Factor F<div>Clase 4 (0,40)</div></div><div class="caja">Codos · Tee · Válvulas<div>0 · 0 · 0</div></div></div></div>
+        <div>
+          <div class="estado-linea">✓ Baja caída de presión · lejos de la erosión</div>
+          <div class="tiles">
+            <div class="tile"><div class="v">12,1 m³/h</div><div class="e">Flujo en la línea</div></div>
+            <div class="tile"><div class="v">40,35 m/s</div><div class="e">Velocidad de flujo</div></div>
+            <div class="tile"><div class="v">83,63 mbar</div><div class="e">Pérdidas de carga</div></div>
+            <div class="tile"><div class="v">316,3 m/s</div><div class="e">Velocidad de erosión</div></div>
+            <div class="tile"><div class="v">4,65 %</div><div class="e">ΔP/P₁ (límite 10 %)</div></div>
+            <div class="tile"><div class="v">0,954</div><div class="e">P₂/P₁ (crítico 0,528)</div></div>
+          </div>
+          <div class="mas">▸ Factores de verificación</div>
+        </div>
+      </div>
+
+      <div class="fila">
+        <div class="ent" style="border:0;margin:0;padding:0"><h4><span class="m m2">2</span>Estanque</h4><div class="cajas">
+          <div class="caja">Presión de almacenamiento<div>200 bar</div></div><div class="caja">Volumen [m³]<div>0,19</div></div>
+          <div class="caja">Presión residual<div>10 bar</div></div><div class="caja">Caudal de llenado<div>4 Nm³/h</div></div></div></div>
+        <div class="tiles">
+          <div class="tile"><div class="v">2,79 kg</div><div class="e">Masa almacenada</div></div>
+          <div class="tile"><div class="v">31,4 Nm³</div><div class="e">Volumen normalizado</div></div>
+          <div class="tile"><div class="v">07:24:38</div><div class="e">Tiempo de llenado</div></div>
+          <div class="tile"><div class="v">0,02 m³/h</div><div class="e">Caudal real de llenado</div></div>
+          <div class="tile"><div class="v">1,1248</div><div class="e">Factor Z</div></div>
+          <div class="tile"><div class="v">14,71 kg/m³</div><div class="e">Densidad real</div></div>
+        </div>
+      </div>
+
+      <div class="fila">
+        <div class="ent" style="border:0;margin:0;padding:0"><h4><span class="m m3">3</span>Datos comunes</h4><div class="cajas">
+          <div class="caja">Potencia [kW]<div>60</div></div><div class="caja">Temperatura [°C]<div>20</div></div></div></div>
+        <div class="tiles">
+          <div class="tile"><div class="v">1,8 kg/h</div><div class="e">Flujo másico de H₂</div></div>
+          <div class="tile"><div class="v">355,58 sL/min</div><div class="e">Flujo normalizado</div></div>
+        </div>
+      </div>
+
+      <div class="fila ancha">
+        <div>
+          <div class="rot"><span class="m mp">✓</span>Prueba de hermeticidad — ASME B31.12 IP-10</div>
+          <div class="tiles4">
+            <div class="tile"><div class="v">10 min</div><div class="e">Duración mínima</div></div>
+            <div class="tile"><div class="v">0,192 m³</div><div class="e">Volumen probado</div></div>
+            <div class="tile"><div class="v">1,2 bar</div><div class="e">Hidrostática mínima</div></div>
+            <div class="tile"><div class="v">0,88 bar</div><div class="e">Neumática (aire o N₂)</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
